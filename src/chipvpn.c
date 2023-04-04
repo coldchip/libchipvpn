@@ -10,12 +10,13 @@
 #include <arpa/inet.h>
 #include "crypto.h"
 #include "chipvpn.h"
+#include "socket.h"
 #include "tun.h"
 
-bool    quit = false;
+bool quit = false;
 
-VPNTun *tun = NULL;
-int     sock = -1;
+chipvpn_tun_t    *tun  = NULL;
+chipvpn_socket_t *sock = NULL;
 
 void chipvpn_setup(bool server) {
 	signal(SIGPIPE, SIG_IGN);
@@ -37,7 +38,7 @@ void chipvpn_init(bool server) {
 		chipvpn_error("unable to create tun device");
 	}
 
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	sock = chipvpn_socket_create();
 	if(sock < 0) {
 		chipvpn_error("socket creation failed");
 	}
@@ -49,7 +50,7 @@ void chipvpn_init(bool server) {
 		servaddr.sin_addr.s_addr = INADDR_ANY;
 		servaddr.sin_port = htons(1332);
 
-		if(bind(sock, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+		if(bind(sock->fd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
 			chipvpn_error("socket bind failed");
 		}
 
@@ -58,7 +59,7 @@ void chipvpn_init(bool server) {
 		inet_aton("255.255.255.0", &subnet);
 		inet_aton("10.0.2.1", &gateway);
 
-		chipvpn_tun_setip(tun, gateway, subnet, 1420, 2000);
+		chipvpn_tun_setip(tun, gateway, subnet, CHIPVPN_MTU, 2000);
 		chipvpn_tun_ifup(tun);
 	} else {
 		struct in_addr subnet, gateway;
@@ -66,7 +67,7 @@ void chipvpn_init(bool server) {
 		inet_aton("255.255.255.0", &subnet);
 		inet_aton("10.0.2.2", &gateway);
 
-		chipvpn_tun_setip(tun, gateway, subnet, 1420, 2000);
+		chipvpn_tun_setip(tun, gateway, subnet, CHIPVPN_MTU, 2000);
 		chipvpn_tun_ifup(tun);
 	}
 }
@@ -84,62 +85,62 @@ void chipvpn_loop() {
 	fd_set rdset, wdset;
 
 	FD_ZERO(&rdset);
-    FD_ZERO(&wdset);
+	FD_ZERO(&wdset);
 
 	int tun_can_read = 0;
-    int tun_can_write = 0;
-    int sock_can_read = 0;
-    int sock_can_write = 0;
+	int tun_can_write = 0;
+	int sock_can_read = 0;
+	int sock_can_write = 0;
 
 	while(!quit) {
-		tv.tv_sec = 0;
-		tv.tv_usec = 250000;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
 		FD_CLR(tun->fd, &rdset);
 		FD_CLR(tun->fd, &wdset);
-		FD_CLR(sock, &wdset);
-		FD_CLR(sock, &rdset);
+		FD_CLR(sock->fd, &wdset);
+		FD_CLR(sock->fd, &rdset);
 
 		if(!tun_can_read)   FD_SET(tun->fd, &rdset);
 		if(!tun_can_write)  FD_SET(tun->fd, &wdset);
-        if(!sock_can_write) FD_SET(sock, &wdset);
-        if(!sock_can_read)  FD_SET(sock, &rdset);
+		if(!sock_can_write) FD_SET(sock->fd, &wdset);
+		if(!sock_can_read)  FD_SET(sock->fd, &rdset);
 
-		if(select(MAX(sock, tun->fd) + 1, &rdset, &wdset, NULL, &tv) >= 0) {
+		if(select(MAX(sock->fd, tun->fd) + 1, &rdset, &wdset, NULL, &tv) >= 0) {
 
 			if(FD_ISSET(tun->fd, &rdset))  tun_can_read  = 1;
-        	if(FD_ISSET(tun->fd, &wdset))  tun_can_write = 1;
-        	if(FD_ISSET(sock, &rdset))     sock_can_read  = 1;
-        	if(FD_ISSET(sock, &wdset))     sock_can_write = 1;
+			if(FD_ISSET(tun->fd, &wdset))  tun_can_write = 1;
+			if(FD_ISSET(sock->fd, &rdset)) sock_can_read  = 1;
+			if(FD_ISSET(sock->fd, &wdset)) sock_can_write = 1;
 
-        	if(tun_can_read && sock_can_write) {
-        		char buf[8192];
-	            int r = read(tun->fd, buf, sizeof(buf));
-	            if(r > 0) {
-	            	chipvpn_crypto_xcrypt(buf, r);
-	                sendto(sock, buf, r, MSG_CONFIRM, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
-	                sock_can_write = 0;
-	            }
-	            tun_can_read = 0;
-	        }
+			if(tun_can_read && sock_can_write) {
+				char buf[CHIPVPN_MTU];
+				int r = read(tun->fd, buf, sizeof(buf));
+				if(r > 0) {
+					chipvpn_crypto_xcrypt(buf, r);
+					sendto(sock->fd, buf, r, MSG_CONFIRM, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
+					sock_can_write = 0;
+				}
+				tun_can_read = 0;
+			}
 
-	        if(sock_can_read && tun_can_write) {
-	        	char buf[8192];
-	            int r = recvfrom(sock, buf, sizeof(buf), MSG_WAITALL, (struct sockaddr*)&cliaddr, (socklen_t*)&len);
-	            if(r > 0) {
-	            	chipvpn_crypto_xcrypt(buf, r);
-	                write(tun->fd, buf, r);
-	                tun_can_write = 0;
-	            }
-	            sock_can_read = 0;
-	        }
+			if(sock_can_read && tun_can_write) {
+				char buf[CHIPVPN_MTU];
+				int r = recvfrom(sock->fd, buf, sizeof(buf), MSG_WAITALL, (struct sockaddr*)&cliaddr, (socklen_t*)&len);
+				if(r > 0) {
+					chipvpn_crypto_xcrypt(buf, r);
+					write(tun->fd, buf, r);
+					tun_can_write = 0;
+				}
+				sock_can_read = 0;
+			}
 		}
 	}
 }
 
 void chipvpn_cleanup() {
 	chipvpn_tun_free(tun);
-	close(sock);
+	chipvpn_socket_free(sock);
 }
 
 void chipvpn_exit(int type) {

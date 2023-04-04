@@ -5,6 +5,7 @@
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define CHIPVPN_MTU 1420
 
 void chipvpn_setup(bool server);
 void chipvpn_init(bool server);
