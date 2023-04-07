@@ -4,14 +4,18 @@
 #include "address.h"
 #include "list.h"
 
+typedef enum {
+	CHIPVPN_DEVICE_BIND     = (1 << 0),
+	CHIPVPN_DEVICE_POSTUP   = (1 << 1),
+	CHIPVPN_DEVICE_POSTDOWN = (1 << 2)
+} chipvpn_config_flag_e;
+
 typedef struct {
+	chipvpn_config_flag_e flag;
 	chipvpn_address_t address;
 	chipvpn_address_t bind;
-	bool has_bind;
 	char postup[1024];
-	bool has_postup;
 	char postdown[1024];
-	bool has_postdown;
 	List peers;
 } chipvpn_config_t;
 

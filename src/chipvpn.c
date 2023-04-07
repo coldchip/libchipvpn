@@ -59,7 +59,7 @@ void chipvpn_init() {
 		chipvpn_error("socket creation failed");
 	}
 
-	if(config->has_bind) {
+	if(config->flag & CHIPVPN_DEVICE_BIND) {
 		if(!chipvpn_socket_bind(sock, &config->bind)) {
 			chipvpn_error("socket bind failed");
 		}
@@ -68,19 +68,20 @@ void chipvpn_init() {
 	chipvpn_tun_setip(tun, &config->address, CHIPVPN_MTU, 2000);
 	chipvpn_tun_ifup(tun);
 
+	if(config->flag & CHIPVPN_DEVICE_POSTUP) {
+		system(config->postup);
+	}
+
 	for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 		if(peer->connect == true) {
+			chipvpn_log("connecting to peer %i", peer->id);
 			chipvpn_packet_t packet;
 			packet.type = 0;
 			packet.id = htonl(peer->id);
 
 			chipvpn_socket_write(sock, &packet, sizeof(chipvpn_packet_t), &peer->endpoint);
 		}
-	}
-
-	if(config->has_postup) {
-		system(config->postup);
 	}
 }
 
@@ -161,7 +162,7 @@ void chipvpn_loop() {
 
 								if(ntohl(packet_header->id) == peer->id) {
 									peer->address = addr;
-									chipvpn_log("peer %p connected, port %i", peer, addr.port);
+									chipvpn_log("connected to peer %i, port %i", peer->id, addr.port);
 
 									if(packet_header->type == 0) {
 										packet_header->type = 1;
@@ -201,7 +202,7 @@ void chipvpn_loop() {
 }
 
 void chipvpn_cleanup() {
-	if(config->has_postdown) {
+	if(config->flag & CHIPVPN_DEVICE_POSTDOWN) {
 		system(config->postdown);
 	}
 

@@ -24,8 +24,7 @@ char *chipvpn_config_read_file(const char *file) {
 }
 
 void chipvpn_config_load(chipvpn_config_t *config, char *file) {
-	config->has_bind = false;
-	config->has_postup = false;
+	config->flag = 0;
 	list_clear(&config->peers);
 
 	char *data = chipvpn_config_read_file(file);
@@ -64,7 +63,7 @@ void chipvpn_config_load(chipvpn_config_t *config, char *file) {
 						if(sscanf(value, "%16[^:]:%i", ip, &port) == 2) {
 							chipvpn_address_set_ip(&config->bind, ip);
 							config->bind.port = port;
-							config->has_bind = true;
+							config->flag |= CHIPVPN_DEVICE_BIND;
 						}
 					}
 
@@ -79,12 +78,12 @@ void chipvpn_config_load(chipvpn_config_t *config, char *file) {
 
 					if(strcmp(key, "postup") == 0) {
 						strcpy(config->postup, value);
-						config->has_postup = true;
+						config->flag |= CHIPVPN_DEVICE_POSTUP;
 					}
 
 					if(strcmp(key, "postdown") == 0) {
 						strcpy(config->postdown, value);
-						config->has_postdown = true;
+						config->flag |= CHIPVPN_DEVICE_POSTDOWN;
 					}
 				}
 				break;
