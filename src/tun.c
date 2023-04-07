@@ -25,6 +25,7 @@
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
+#include "address.h"
 
 chipvpn_tun_t *chipvpn_tun_create(const char *dev) {
 	struct ifreq ifr;
@@ -55,14 +56,14 @@ chipvpn_tun_t *chipvpn_tun_create(const char *dev) {
 		return NULL;
 	}
 
-	chipvpn_tun_t *tun = malloc(sizeof(chipvpn_tun_t *));
+	chipvpn_tun_t *tun = malloc(sizeof(chipvpn_tun_t));
 	tun->fd = fd;
 	strcpy(tun->dev, ifr.ifr_name);
 
 	return tun;
 }
 
-bool chipvpn_tun_setip(chipvpn_tun_t *tun, struct in_addr ip, struct in_addr mask, int mtu, int qlen) {
+bool chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *network, int mtu, int qlen) {
 	if(tun) {
 		struct ifreq ifr;
 		ifr.ifr_addr.sa_family = AF_INET;
@@ -73,10 +74,10 @@ bool chipvpn_tun_setip(chipvpn_tun_t *tun, struct in_addr ip, struct in_addr mas
 
 		int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-		addr->sin_addr.s_addr = ip.s_addr;
+		addr->sin_addr.s_addr = network->ip;
 		ioctl(fd, SIOCSIFADDR, &ifr);
 
-		addr->sin_addr.s_addr = mask.s_addr;
+		addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
 		ioctl(fd, SIOCSIFNETMASK, &ifr);
 
 		ifr.ifr_mtu = mtu;

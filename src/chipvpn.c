@@ -11,14 +11,21 @@
 #include "crypto.h"
 #include "chipvpn.h"
 #include "socket.h"
+#include "packet.h"
+#include "address.h"
+#include "config.h"
+#include "peer.h"
 #include "tun.h"
 
 bool quit = false;
 
+chipvpn_config_t *config = NULL;
+List peers;
+
 chipvpn_tun_t    *tun  = NULL;
 chipvpn_socket_t *sock = NULL;
 
-void chipvpn_setup(bool server) {
+void chipvpn_setup(chipvpn_config_t *cfg) {
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, chipvpn_exit);
 	signal(SIGQUIT, chipvpn_exit);
@@ -27,12 +34,21 @@ void chipvpn_setup(bool server) {
 
 	chipvpn_log("ChipVPN UDP v1.0");
 
-	chipvpn_init(server);
+	config = cfg;
+
+	chipvpn_init();
 	chipvpn_loop();
 	chipvpn_cleanup();
 }
 
-void chipvpn_init(bool server) {
+void chipvpn_init() {
+	list_clear(&peers);
+
+	while(!list_empty(&config->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_remove(list_begin(&config->peers));
+		list_insert(list_end(&peers), peer);
+	}
+
 	tun = chipvpn_tun_create(NULL);
 	if(!tun) {
 		chipvpn_error("unable to create tun device");
@@ -43,43 +59,35 @@ void chipvpn_init(bool server) {
 		chipvpn_error("socket creation failed");
 	}
 
-	if(server) {
-		struct sockaddr_in servaddr;
-		memset(&servaddr, 0, sizeof(servaddr));
-		servaddr.sin_family = AF_INET;
-		servaddr.sin_addr.s_addr = INADDR_ANY;
-		servaddr.sin_port = htons(1332);
-
-		if(bind(sock->fd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+	if(config->has_bind) {
+		if(!chipvpn_socket_bind(sock, &config->bind)) {
 			chipvpn_error("socket bind failed");
 		}
+	}
 
-		struct in_addr subnet, gateway;
+	chipvpn_tun_setip(tun, &config->address, CHIPVPN_MTU, 2000);
+	chipvpn_tun_ifup(tun);
 
-		inet_aton("255.255.255.0", &subnet);
-		inet_aton("10.0.2.1", &gateway);
+	for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+		if(peer->connect == true) {
+			chipvpn_packet_t packet;
+			packet.type = 0;
+			packet.id = htonl(peer->id);
 
-		chipvpn_tun_setip(tun, gateway, subnet, CHIPVPN_MTU, 2000);
-		chipvpn_tun_ifup(tun);
-	} else {
-		struct in_addr subnet, gateway;
+			chipvpn_socket_write(sock, &packet, sizeof(chipvpn_packet_t), &peer->endpoint);
+		}
+	}
 
-		inet_aton("255.255.255.0", &subnet);
-		inet_aton("10.0.2.2", &gateway);
-
-		chipvpn_tun_setip(tun, gateway, subnet, CHIPVPN_MTU, 2000);
-		chipvpn_tun_ifup(tun);
+	if(config->has_postup) {
+		system(config->postup);
 	}
 }
 
 void chipvpn_loop() {
-	struct sockaddr_in cliaddr;
-	memset(&cliaddr, 0, sizeof(cliaddr));
-	cliaddr.sin_family = AF_INET;
-	cliaddr.sin_addr.s_addr = inet_addr("3.0.7.3");
-	cliaddr.sin_port = htons(1332);
-
-	int len = sizeof(cliaddr);
+	char             *packet        = alloca(sizeof(chipvpn_packet_t) + CHIPVPN_MTU);
+	chipvpn_packet_t *packet_header = (chipvpn_packet_t*)packet;
+	char             *packet_data   = sizeof(chipvpn_packet_t) + packet;
 
 	struct timeval tv;
 	fd_set rdset, wdset;
@@ -117,20 +125,74 @@ void chipvpn_loop() {
 				char buf[CHIPVPN_MTU];
 				int r = read(tun->fd, buf, sizeof(buf));
 				if(r > 0) {
-					chipvpn_crypto_xcrypt(buf, r);
-					sendto(sock->fd, buf, r, MSG_CONFIRM, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
-					sock_can_write = 0;
+					ip_packet_t *ip = (ip_packet_t*)buf;
+
+					for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+						chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+						chipvpn_address_t dst = {
+							.ip = ip->dst_addr
+						};
+
+						if(chipvpn_address_cidr_match(&dst, &peer->allow)) {
+
+							chipvpn_crypto_xcrypt(buf, r);
+
+							packet_header->type = 2;
+							memcpy(packet_data, buf, r);
+
+							chipvpn_socket_write(sock, packet, sizeof(chipvpn_packet_t) + r, &peer->address);
+							sock_can_write = 0;
+						}
+					}
 				}
 				tun_can_read = 0;
 			}
 
 			if(sock_can_read && tun_can_write) {
-				char buf[CHIPVPN_MTU];
-				int r = recvfrom(sock->fd, buf, sizeof(buf), MSG_WAITALL, (struct sockaddr*)&cliaddr, (socklen_t*)&len);
+				chipvpn_address_t addr;
+				int r = chipvpn_socket_read(sock, packet, sizeof(chipvpn_packet_t) + CHIPVPN_MTU, &addr);
 				if(r > 0) {
-					chipvpn_crypto_xcrypt(buf, r);
-					write(tun->fd, buf, r);
-					tun_can_write = 0;
+					switch(packet_header->type) {
+						case 0:
+						case 1: {
+							for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+								if(ntohl(packet_header->id) == peer->id) {
+									peer->address = addr;
+									chipvpn_log("peer %p connected, port %i", peer, addr.port);
+
+									if(packet_header->type == 0) {
+										packet_header->type = 1;
+										chipvpn_socket_write(sock, packet, sizeof(chipvpn_packet_t), &addr);
+									}
+									break;
+								}
+							}
+						}
+						break;
+						case 2: {
+							int s = r - sizeof(chipvpn_packet_t);
+							chipvpn_crypto_xcrypt(packet_data, s);
+
+							ip_packet_t *ip = (ip_packet_t*)packet_data;
+
+							for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+								chipvpn_address_t src = {
+									.ip = ip->src_addr
+								};
+
+								if(chipvpn_address_cidr_match(&src, &peer->allow)) {
+									write(tun->fd, packet_data, s);
+									tun_can_write = 0;
+								}
+							}
+						}
+						break;
+					}
 				}
 				sock_can_read = 0;
 			}
@@ -139,6 +201,15 @@ void chipvpn_loop() {
 }
 
 void chipvpn_cleanup() {
+	if(config->has_postdown) {
+		system(config->postdown);
+	}
+
+	while(!list_empty(&peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_remove(list_begin(&peers));
+		free(peer);
+	}
+
 	chipvpn_tun_free(tun);
 	chipvpn_socket_free(sock);
 }

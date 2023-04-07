@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <netinet/in.h>
+#include "address.h"
 #include "chipvpn.h"
 
 typedef struct {
@@ -27,7 +28,7 @@ typedef struct {
 } chipvpn_tun_t;
 
 chipvpn_tun_t          *chipvpn_tun_create(const char *dev);
-bool                    chipvpn_tun_setip(chipvpn_tun_t *tun, struct in_addr ip, struct in_addr mask, int mtu, int qlen);
+bool                    chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *addr, int mtu, int qlen);
 bool                    chipvpn_tun_ifup(chipvpn_tun_t *tun);
 void                    chipvpn_tun_free(chipvpn_tun_t *tun);
 
