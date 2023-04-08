@@ -13,4 +13,7 @@ typedef struct {
 	chipvpn_address_t allow;
 } chipvpn_peer_t;
 
+chipvpn_peer_t    *chipvpn_peer_create();
+void               chipvpn_peer_free(chipvpn_peer_t *peer);
+
 #endif

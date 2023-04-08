@@ -19,17 +19,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <netinet/in.h>
+#include <net/if.h>
 #include "address.h"
 #include "chipvpn.h"
 
 typedef struct {
-	char dev[128];
+	char dev[IFNAMSIZ];
 	int fd;
 } chipvpn_tun_t;
 
 chipvpn_tun_t          *chipvpn_tun_create(const char *dev);
 bool                    chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *addr, int mtu, int qlen);
 bool                    chipvpn_tun_ifup(chipvpn_tun_t *tun);
+int                     chipvpn_tun_read(chipvpn_tun_t *tun, void *buf, int size);
+int                     chipvpn_tun_write(chipvpn_tun_t *tun, void *buf, int size);
 void                    chipvpn_tun_free(chipvpn_tun_t *tun);
 
 #endif

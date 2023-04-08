@@ -10,6 +10,9 @@ char key[] = {
 
 chipvpn_crypto_t *chipvpn_crypto_create() {
 	chipvpn_crypto_t *crypto = malloc(sizeof(chipvpn_crypto_t));
+	if(!crypto) {
+		return NULL;
+	}
 	return crypto;
 }
 
