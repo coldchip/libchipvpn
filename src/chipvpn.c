@@ -30,7 +30,7 @@ void chipvpn_setup(char *file) {
 	signal(SIGTERM, chipvpn_exit);
 	signal(SIGHUP, chipvpn_exit);
 
-	chipvpn_log("ChipVPN v2.0");
+	chipvpn_log("ChipVPN v2.0 beta");
 
 	chipvpn_init(file);
 	chipvpn_loop();
