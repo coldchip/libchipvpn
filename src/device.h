@@ -26,12 +26,6 @@ typedef struct {
 	List peers;
 } chipvpn_device_t;
 
-typedef enum {
-	CONFIG_SECTION_NONE,
-	CONFIG_SECTION_INTERFACE,
-	CONFIG_SECTION_PEER
-} chipvpn_device_section_e;
-
 chipvpn_device_t     *chipvpn_device_create(char *file);
 int                   chipvpn_device_parse_handler(void* user, const char* section, const char* name, const char* value);
 void                  chipvpn_device_free(chipvpn_device_t *device);
