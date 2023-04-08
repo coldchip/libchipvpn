@@ -8,6 +8,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
+#include <sys/types.h>
 #include "crypto.h"
 #include "chipvpn.h"
 #include "socket.h"
