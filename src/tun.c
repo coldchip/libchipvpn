@@ -28,6 +28,11 @@
 #include "address.h"
 
 chipvpn_tun_t *chipvpn_tun_create(const char *dev) {
+	chipvpn_tun_t *tun = malloc(sizeof(chipvpn_tun_t));
+	if(!tun) {
+		return NULL;
+	}
+
 	struct ifreq ifr;
 
 	char *clonedev = "/dev/net/tun";
@@ -56,7 +61,6 @@ chipvpn_tun_t *chipvpn_tun_create(const char *dev) {
 		return NULL;
 	}
 
-	chipvpn_tun_t *tun = malloc(sizeof(chipvpn_tun_t));
 	tun->fd = fd;
 	strcpy(tun->dev, ifr.ifr_name);
 
@@ -108,6 +112,14 @@ bool chipvpn_tun_ifup(chipvpn_tun_t *tun) {
 	    return true;
 	}
 	return false;
+}
+
+int chipvpn_tun_read(chipvpn_tun_t *tun, void *buf, int size) {
+	return read(tun->fd, buf, size);
+}
+
+int chipvpn_tun_write(chipvpn_tun_t *tun, void *buf, int size) {
+	return write(tun->fd, buf, size);
 }
 
 void chipvpn_tun_free(chipvpn_tun_t *tun) {

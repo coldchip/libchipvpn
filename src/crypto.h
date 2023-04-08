@@ -2,7 +2,7 @@
 #define CRYPTO_H
 
 typedef struct {
-	int sock;
+	int todo;
 } chipvpn_crypto_t;
 
 chipvpn_crypto_t     *chipvpn_crypto_create();

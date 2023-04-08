@@ -13,66 +13,50 @@
 #include "socket.h"
 #include "packet.h"
 #include "address.h"
-#include "config.h"
+#include "device.h"
 #include "peer.h"
 #include "tun.h"
 
 bool quit = false;
 
-chipvpn_config_t *config = NULL;
-List peers;
+chipvpn_device_t *config = NULL;
 
-chipvpn_tun_t    *tun  = NULL;
-chipvpn_socket_t *sock = NULL;
-
-void chipvpn_setup(chipvpn_config_t *cfg) {
+void chipvpn_setup(char *file) {
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, chipvpn_exit);
 	signal(SIGQUIT, chipvpn_exit);
 	signal(SIGTERM, chipvpn_exit);
 	signal(SIGHUP, chipvpn_exit);
 
-	chipvpn_log("ChipVPN UDP v1.0");
+	chipvpn_log("ChipVPN v2.0");
 
-	config = cfg;
-
-	chipvpn_init();
+	chipvpn_init(file);
 	chipvpn_loop();
 	chipvpn_cleanup();
 }
 
-void chipvpn_init() {
-	list_clear(&peers);
-
-	while(!list_empty(&config->peers)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_remove(list_begin(&config->peers));
-		list_insert(list_end(&peers), peer);
+void chipvpn_init(char *file) {
+	config = chipvpn_device_create(file);
+	if(!config) {
+		chipvpn_error("unable to create config");
 	}
 
-	tun = chipvpn_tun_create(NULL);
-	if(!tun) {
-		chipvpn_error("unable to create tun device");
-	}
-
-	sock = chipvpn_socket_create();
-	if(sock < 0) {
-		chipvpn_error("socket creation failed");
-	}
+	chipvpn_tun_setip(config->tun, &config->address, config->mtu, 2000);
+	chipvpn_tun_ifup(config->tun);
 
 	if(config->flag & CHIPVPN_DEVICE_BIND) {
-		if(!chipvpn_socket_bind(sock, &config->bind)) {
+		if(!chipvpn_socket_bind(config->sock, &config->bind)) {
 			chipvpn_error("socket bind failed");
 		}
 	}
 
-	chipvpn_tun_setip(tun, &config->address, CHIPVPN_MTU, 2000);
-	chipvpn_tun_ifup(tun);
-
 	if(config->flag & CHIPVPN_DEVICE_POSTUP) {
-		system(config->postup);
+		if(system(config->postup) == -1) {
+			chipvpn_log("unable to execute postdown");
+		}
 	}
 
-	for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+	for(ListNode *p = list_begin(&config->peers); p != list_end(&config->peers); p = list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 		if(peer->connect == true) {
 			chipvpn_log("connecting to peer %i", peer->id);
@@ -80,7 +64,7 @@ void chipvpn_init() {
 			packet.type = 0;
 			packet.id = htonl(peer->id);
 
-			chipvpn_socket_write(sock, &packet, sizeof(chipvpn_packet_t), &peer->endpoint);
+			chipvpn_socket_write(config->sock, &packet, sizeof(chipvpn_packet_t), &peer->endpoint);
 		}
 	}
 }
@@ -101,34 +85,37 @@ void chipvpn_loop() {
 	int sock_can_read = 0;
 	int sock_can_write = 0;
 
+	int tun_fd  = config->tun->fd;
+	int sock_fd = config->sock->fd;
+
 	while(!quit) {
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
-		FD_CLR(tun->fd, &rdset);
-		FD_CLR(tun->fd, &wdset);
-		FD_CLR(sock->fd, &wdset);
-		FD_CLR(sock->fd, &rdset);
+		FD_CLR(tun_fd, &rdset);
+		FD_CLR(tun_fd, &wdset);
+		FD_CLR(sock_fd, &wdset);
+		FD_CLR(sock_fd, &rdset);
 
-		if(!tun_can_read)   FD_SET(tun->fd, &rdset);
-		if(!tun_can_write)  FD_SET(tun->fd, &wdset);
-		if(!sock_can_write) FD_SET(sock->fd, &wdset);
-		if(!sock_can_read)  FD_SET(sock->fd, &rdset);
+		if(!tun_can_read)   FD_SET(tun_fd, &rdset);
+		if(!tun_can_write)  FD_SET(tun_fd, &wdset);
+		if(!sock_can_write) FD_SET(sock_fd, &wdset);
+		if(!sock_can_read)  FD_SET(sock_fd, &rdset);
 
-		if(select(MAX(sock->fd, tun->fd) + 1, &rdset, &wdset, NULL, &tv) >= 0) {
+		if(select(MAX(sock_fd, tun_fd) + 1, &rdset, &wdset, NULL, &tv) >= 0) {
 
-			if(FD_ISSET(tun->fd, &rdset))  tun_can_read  = 1;
-			if(FD_ISSET(tun->fd, &wdset))  tun_can_write = 1;
-			if(FD_ISSET(sock->fd, &rdset)) sock_can_read  = 1;
-			if(FD_ISSET(sock->fd, &wdset)) sock_can_write = 1;
+			if(FD_ISSET(tun_fd, &rdset))  tun_can_read  = 1;
+			if(FD_ISSET(tun_fd, &wdset))  tun_can_write = 1;
+			if(FD_ISSET(sock_fd, &rdset)) sock_can_read  = 1;
+			if(FD_ISSET(sock_fd, &wdset)) sock_can_write = 1;
 
 			if(tun_can_read && sock_can_write) {
 				char buf[CHIPVPN_MTU];
-				int r = read(tun->fd, buf, sizeof(buf));
+				int r = chipvpn_tun_read(config->tun, buf, sizeof(buf));
 				if(r > 0) {
 					ip_packet_t *ip = (ip_packet_t*)buf;
 
-					for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+					for(ListNode *p = list_begin(&config->peers); p != list_end(&config->peers); p = list_next(p)) {
 						chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
 						chipvpn_address_t dst = {
@@ -142,7 +129,7 @@ void chipvpn_loop() {
 							packet_header->type = 2;
 							memcpy(packet_data, buf, r);
 
-							chipvpn_socket_write(sock, packet, sizeof(chipvpn_packet_t) + r, &peer->address);
+							chipvpn_socket_write(config->sock, packet, sizeof(chipvpn_packet_t) + r, &peer->address);
 							sock_can_write = 0;
 						}
 					}
@@ -152,21 +139,21 @@ void chipvpn_loop() {
 
 			if(sock_can_read && tun_can_write) {
 				chipvpn_address_t addr;
-				int r = chipvpn_socket_read(sock, packet, sizeof(chipvpn_packet_t) + CHIPVPN_MTU, &addr);
+				int r = chipvpn_socket_read(config->sock, packet, sizeof(chipvpn_packet_t) + CHIPVPN_MTU, &addr);
 				if(r > 0) {
 					switch(packet_header->type) {
 						case 0:
 						case 1: {
-							for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+							for(ListNode *p = list_begin(&config->peers); p != list_end(&config->peers); p = list_next(p)) {
 								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
 								if(ntohl(packet_header->id) == peer->id) {
 									peer->address = addr;
-									chipvpn_log("connected to peer %i, port %i", peer->id, addr.port);
+									chipvpn_log("connected to peer %i", peer->id);
 
 									if(packet_header->type == 0) {
 										packet_header->type = 1;
-										chipvpn_socket_write(sock, packet, sizeof(chipvpn_packet_t), &addr);
+										chipvpn_socket_write(config->sock, packet, sizeof(chipvpn_packet_t), &addr);
 									}
 									break;
 								}
@@ -179,7 +166,7 @@ void chipvpn_loop() {
 
 							ip_packet_t *ip = (ip_packet_t*)packet_data;
 
-							for(ListNode *p = list_begin(&peers); p != list_end(&peers); p = list_next(p)) {
+							for(ListNode *p = list_begin(&config->peers); p != list_end(&config->peers); p = list_next(p)) {
 								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
 								chipvpn_address_t src = {
@@ -187,7 +174,7 @@ void chipvpn_loop() {
 								};
 
 								if(chipvpn_address_cidr_match(&src, &peer->allow)) {
-									write(tun->fd, packet_data, s);
+									chipvpn_tun_write(config->tun, packet_data, s);
 									tun_can_write = 0;
 								}
 							}
@@ -203,16 +190,12 @@ void chipvpn_loop() {
 
 void chipvpn_cleanup() {
 	if(config->flag & CHIPVPN_DEVICE_POSTDOWN) {
-		system(config->postdown);
+		if(system(config->postdown) == -1) {
+			chipvpn_log("unable to execute postdown");
+		}
 	}
 
-	while(!list_empty(&peers)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_remove(list_begin(&peers));
-		free(peer);
-	}
-
-	chipvpn_tun_free(tun);
-	chipvpn_socket_free(sock);
+	chipvpn_device_free(config);
 }
 
 void chipvpn_exit(int type) {
