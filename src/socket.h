@@ -8,9 +8,8 @@ typedef struct {
 	int fd;
 } chipvpn_socket_t;
 
-bool                 chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip);
-
 chipvpn_socket_t    *chipvpn_socket_create();
+bool                 chipvpn_socket_set_non_block(int fd);
 bool                 chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr);
 int                  chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr);
 int                  chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr);
