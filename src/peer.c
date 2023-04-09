@@ -6,6 +6,8 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	if(!peer) {
 		return NULL;
 	}
+	peer->state = PEER_DISCONNECTED;
+	peer->last_ping = 0;
 	return peer;
 }
 
