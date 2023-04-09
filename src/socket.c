@@ -17,26 +17,10 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	if(fd < 0) {
 		return NULL;
 	}
-	if(!chipvpn_socket_set_non_block(fd)) {
-		return NULL;
-	}
 
 	sock->fd = fd;
 
 	return sock;
-}
-
-bool chipvpn_socket_set_non_block(int fd) {
-	int flags = fcntl(fd, F_GETFL);
-	if(flags == -1) {
-		return false;
-	}
-
-	if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0) {
-		return true;
-	}
-
-	return false;
 }
 
 bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {

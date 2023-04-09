@@ -3,6 +3,11 @@
 ip=$(ip route show default | awk '/default/ {print $3}' | tr -cd '[a-zA-Z0-9]._-')
 
 up() {
+	while ! ping -c 1 -W 1 1.1.1.1; do
+		echo "waiting for network..."
+		sleep 1
+	done
+
 	echo "adding routes"
 	ip route add 3.0.7.3 via $ip
 	ip route add 0.0.0.0/1 via 10.0.2.1
