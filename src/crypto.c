@@ -16,9 +16,9 @@ chipvpn_crypto_t *chipvpn_crypto_create() {
 	return crypto;
 }
 
-void chipvpn_crypto_xcrypt(char *data, int size) {
+void chipvpn_crypto_xcrypt(void *data, int size) {
 	for(int i = 0; i < size; ++i) {
-		data[i] ^= key[i % sizeof(key)];
+		*((char*)data + i) ^= key[i % sizeof(key)];
 	}
 }
 

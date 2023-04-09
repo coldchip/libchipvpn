@@ -4,7 +4,6 @@
 #include <string.h>
 #include "peer.h"
 #include "device.h"
-#include "chipvpn.h"
 #include "ini.h"
 
 chipvpn_device_t *chipvpn_device_create(char *file) {
@@ -18,7 +17,7 @@ chipvpn_device_t *chipvpn_device_create(char *file) {
 	device->postup = NULL;
 	device->postdown = NULL;
 	device->name = NULL;
-	device->mtu = CHIPVPN_MTU;
+	device->mtu = 1420;
 
 	if(ini_parse(file, chipvpn_device_parse_handler, device) < 0) {
 		return NULL;
