@@ -19,25 +19,25 @@ typedef struct __attribute__((__packed__)) {
 } chipvpn_packet_header_t;
 
 typedef struct __attribute__((__packed__)) {
+	chipvpn_packet_header_t header;
 	int id;
+	bool ack;
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {
+	chipvpn_packet_header_t header;
 	char iv[16];
 } chipvpn_packet_data_t;
 
 typedef struct __attribute__((__packed__)) {
+	chipvpn_packet_header_t header;
 	int id;
 } chipvpn_packet_ping_t;
 
-typedef struct __attribute__((__packed__)) {
-	chipvpn_packet_header_t header;
-	union {
-		chipvpn_packet_auth_t auth_header;
-		chipvpn_packet_data_t data_header;
-		chipvpn_packet_ping_t ping_header;
-	};
-	char data[5000];
+typedef union {
+	chipvpn_packet_auth_t auth;
+	chipvpn_packet_data_t data;
+	chipvpn_packet_ping_t ping;
 } chipvpn_packet_t;
 
 #endif

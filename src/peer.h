@@ -16,7 +16,6 @@ typedef struct {
 	int id;
 	bool connect;
 	uint32_t last_ping;
-	chipvpn_address_t endpoint;
 	chipvpn_address_t address;
 	chipvpn_address_t allow;
 } chipvpn_peer_t;

@@ -99,8 +99,8 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			char ip[24];
 			int port;
 			if(sscanf(value, "%16[^:]:%i", ip, &port) == 2) {
-				chipvpn_address_set_ip(&peer->endpoint, ip);
-				peer->endpoint.port = port;
+				chipvpn_address_set_ip(&peer->address, ip);
+				peer->address.port = port;
 				peer->connect = true;
 			}
 		}
