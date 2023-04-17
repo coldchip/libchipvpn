@@ -10,6 +10,7 @@
 void chipvpn_setup(char *file);
 void chipvpn_init(char *file);
 void chipvpn_loop();
+void chipvpn_print_stats();
 void chipvpn_cleanup();
 void chipvpn_exit(int type);
 
