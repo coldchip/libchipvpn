@@ -86,6 +86,10 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			peer->id = atoi(value);
 		}
 
+		if(MATCH("peer", "key")) {
+			chipvpn_crypto_set_key(peer->crypto, (char*)value);
+		}
+
 		if(MATCH("peer", "allow")) {
 			char ip[24];
 			int prefix;
