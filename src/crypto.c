@@ -1,24 +1,22 @@
 #include <stdlib.h>
 #include "crypto.h"
 
-char key[] = {
-	0x90, 0x57, 0xc0, 0x4a, 0x39, 0x37, 0x3c, 0x1f, 
-	0x17, 0xc7, 0xd4, 0xb4, 0x49, 0xa5, 0x5b, 0x7e, 
-	0x83, 0xe0, 0xb7, 0x0b, 0x04, 0xd1, 0xf3, 0x65, 
-	0x24, 0xe5, 0x84, 0xde, 0x14, 0x6e, 0x99, 0xee 
-};
-
 chipvpn_crypto_t *chipvpn_crypto_create() {
 	chipvpn_crypto_t *crypto = malloc(sizeof(chipvpn_crypto_t));
 	if(!crypto) {
 		return NULL;
 	}
+	crypto->key[0] = '\0';
 	return crypto;
 }
 
-void chipvpn_crypto_xcrypt(void *data, int size) {
+void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key) {
+	strcpy(crypto->key, key);
+}
+
+void chipvpn_crypto_xcrypt(chipvpn_crypto_t *crypto, void *data, int size) {
 	for(int i = 0; i < size; ++i) {
-		*((char*)data + i) ^= key[i % sizeof(key)];
+		*((char*)data + i) ^= crypto->key[i % strlen(crypto->key)];
 	}
 }
 

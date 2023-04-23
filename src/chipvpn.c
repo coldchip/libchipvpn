@@ -159,10 +159,13 @@ void chipvpn_loop() {
 
 							chipvpn_packet_data_t data = {};
 							data.header.type = 1;
+							data.peer = htonl(peer->id);
 
-							chipvpn_crypto_xcrypt(buf, r);
+							chipvpn_crypto_xcrypt(peer->crypto, buf, r);
 							memcpy(buffer, &data, sizeof(chipvpn_packet_data_t));
 							memcpy(buffer + sizeof(chipvpn_packet_data_t), buf, r);
+
+							peer->tx += r;
 
 							chipvpn_socket_write(device->sock, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 							sock_can_write = 0;
@@ -193,6 +196,8 @@ void chipvpn_loop() {
 								if(ntohl(packet->id) == peer->id) {
 									peer->address = addr;
 									peer->state = PEER_CONNECTED;
+									peer->tx = 0;
+									peer->rx = 0;
 									peer->last_ping = chipvpn_get_time();
 
 									if(packet->ack == true) {
@@ -214,22 +219,28 @@ void chipvpn_loop() {
 								break;
 							}
 
-							chipvpn_packet_data_t *data = (chipvpn_packet_data_t*)buffer;
-							char *buf = buffer + sizeof(chipvpn_packet_data_t);
-
-							chipvpn_crypto_xcrypt(buf, r - sizeof(chipvpn_packet_data_t));
+							chipvpn_packet_data_t *packet = (chipvpn_packet_data_t*)buffer;
 
 							for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
 								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-								ip_packet_t *ip = (ip_packet_t*)buf;
-								chipvpn_address_t src = {
-									.ip = ip->src_addr
-								};
+								if(ntohl(packet->peer) == peer->id) {
+									char *buf = buffer + sizeof(chipvpn_packet_data_t);
 
-								if(chipvpn_address_cidr_match(&src, &peer->allow) && peer->state == PEER_CONNECTED) {
-									chipvpn_tun_write(device->tun, buf, r - sizeof(chipvpn_packet_data_t));
-									tun_can_write = 0;
+									chipvpn_crypto_xcrypt(peer->crypto, buf, r - sizeof(chipvpn_packet_data_t));
+
+									ip_packet_t *ip = (ip_packet_t*)buf;
+									chipvpn_address_t src = {
+										.ip = ip->src_addr
+									};
+
+									if(chipvpn_address_cidr_match(&src, &peer->allow) && peer->state == PEER_CONNECTED) {
+										peer->rx += r - sizeof(chipvpn_packet_data_t);
+
+										chipvpn_tun_write(device->tun, buf, r - sizeof(chipvpn_packet_data_t));
+										tun_can_write = 0;
+									}
+									break;
 								}
 							}
 						}
@@ -320,12 +331,25 @@ void chipvpn_print_stats() {
 			printw("online\n");
 			attron(COLOR_PAIR(1));
 		} else {
-			attron(COLOR_PAIR(4));
-			printw("offline\n");
-			attron(COLOR_PAIR(4));
+			if(peer->connect) {
+				attron(COLOR_PAIR(2));
+				printw("connecting\n");
+				attron(COLOR_PAIR(2));
+			} else {
+				attron(COLOR_PAIR(4));
+				printw("offline\n");
+				attron(COLOR_PAIR(4));
+			}
 		}
 		
 		if(peer->state == PEER_CONNECTED) {
+			attron(COLOR_PAIR(3));
+			printw("    key: ");
+			attroff(COLOR_PAIR(3));
+			attron(COLOR_PAIR(5));
+			printw("%s\n", peer->crypto->key);
+			attron(COLOR_PAIR(5));
+
 			attron(COLOR_PAIR(3));
 			printw("    endpoint: ");
 			attroff(COLOR_PAIR(3));
@@ -340,6 +364,24 @@ void chipvpn_print_stats() {
 			attron(COLOR_PAIR(5));
 			ip.s_addr = peer->allow.ip;
 			printw("%s/%i\n", inet_ntoa(ip), peer->allow.port);
+			attron(COLOR_PAIR(5));
+
+			attron(COLOR_PAIR(3));
+			printw("    encryption: ");
+			attroff(COLOR_PAIR(3));
+			attron(COLOR_PAIR(5));
+			printw("XOR\n");
+			attron(COLOR_PAIR(5));
+
+			attron(COLOR_PAIR(3));
+			printw("    bandwidth: ");
+			attroff(COLOR_PAIR(3));
+			attron(COLOR_PAIR(5));
+			char c_tx[64];
+			char c_rx[64];
+			strcpy(c_tx, chipvpn_format_bytes(peer->tx));
+			strcpy(c_rx, chipvpn_format_bytes(peer->rx));
+			printw("%s received, %s sent\n", c_rx, c_tx);
 			attron(COLOR_PAIR(5));
 		}
 
@@ -363,6 +405,24 @@ void chipvpn_cleanup() {
 
 void chipvpn_exit(int type) {
 	quit = true;
+}
+
+char *chipvpn_format_bytes(uint64_t bytes) {
+	char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
+	char length = sizeof(suffix) / sizeof(suffix[0]);
+
+	int i = 0;
+	double dblBytes = bytes;
+
+	if(bytes > 1024) {
+		for (i = 0; (bytes / 1024) > 0 && i < length - 1; i++, bytes /= 1024) {
+			dblBytes = bytes / 1024.0;
+		}
+	}
+
+	static char output[200];
+	sprintf(output, "%.02lf %s", dblBytes, suffix[i]);
+	return output;
 }
 
 void chipvpn_log(const char *format, ...) {
