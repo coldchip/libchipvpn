@@ -3,6 +3,7 @@
 
 typedef struct {
 	char key[1024];
+	int keylength;
 } chipvpn_crypto_t;
 
 chipvpn_crypto_t     *chipvpn_crypto_create();
