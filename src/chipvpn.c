@@ -31,8 +31,6 @@ void chipvpn_setup(char *file) {
 	signal(SIGTERM, chipvpn_exit);
 	signal(SIGHUP, chipvpn_exit);
 
-	chipvpn_log("ChipVPN v2.1 beta 1");
-
 	chipvpn_init(file);
 	chipvpn_loop();
 	chipvpn_cleanup();
@@ -276,7 +274,7 @@ void chipvpn_print_stats() {
 	bkgd(COLOR_PAIR(1));
 
 	attron(COLOR_PAIR(2) | A_BOLD);
-	printw("ColdChip ChipVPN v1.1 beta 1\n\n");
+	printw("ColdChip ChipVPN v1.1 beta 2\n\n");
 	attroff(COLOR_PAIR(2) | A_BOLD);
 
 	attron(COLOR_PAIR(1) | A_BOLD);
