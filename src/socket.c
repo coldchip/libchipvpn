@@ -40,7 +40,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	struct sockaddr_in sa;
 	int len = sizeof(sa);
 
-	int r = recvfrom(sock->fd, data, size, MSG_WAITALL, (struct sockaddr*)&sa, (socklen_t*)&len);
+	int r = recvfrom(sock->fd, data, size, 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 	
 	addr->ip = sa.sin_addr.s_addr;
 	addr->port = ntohs(sa.sin_port);
@@ -56,7 +56,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_addr.s_addr = addr->ip;
 	sa.sin_port = htons(addr->port);
 
-	int w = sendto(sock->fd, data, size, MSG_CONFIRM, (struct sockaddr*)&sa, sizeof(sa));
+	int w = sendto(sock->fd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
 	return w;
 }
 

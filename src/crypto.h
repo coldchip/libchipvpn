@@ -2,7 +2,7 @@
 #define CRYPTO_H
 
 typedef struct {
-	char key[1024];
+	char key[256];
 	int keylength;
 } chipvpn_crypto_t;
 
