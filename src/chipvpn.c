@@ -115,7 +115,7 @@ void chipvpn_loop() {
 					chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 					if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
 						chipvpn_packet_auth_t auth = {};
-						auth.header.type = 0;
+						auth.header.type = htonl(0);
 						auth.id = htonl(peer->id);
 						auth.ack = true;
 
@@ -127,7 +127,7 @@ void chipvpn_loop() {
 							peer->state = PEER_DISCONNECTED;
 						} else {
 							chipvpn_packet_ping_t ping = {};
-							ping.header.type = 2;
+							ping.header.type = htonl(2);
 							ping.id = htonl(peer->id);
 
 							chipvpn_socket_write(device->sock, &ping, sizeof(ping), &peer->address);
@@ -156,12 +156,12 @@ void chipvpn_loop() {
 							char buffer[sizeof(chipvpn_packet_data_t) + r];
 
 							chipvpn_packet_data_t data = {};
-							data.header.type = 1;
+							data.header.type = htonl(1);
 							data.peer = htonl(peer->id);
 
 							chipvpn_crypto_xcrypt(peer->crypto, buf, r);
-							memcpy(buffer, &data, sizeof(chipvpn_packet_data_t));
-							memcpy(buffer + sizeof(chipvpn_packet_data_t), buf, r);
+							memcpy(buffer, &data, sizeof(data));
+							memcpy(buffer + sizeof(data), buf, r);
 
 							peer->tx += r;
 
@@ -178,9 +178,9 @@ void chipvpn_loop() {
 				chipvpn_address_t addr;
 				int r = chipvpn_socket_read(device->sock, buffer, sizeof(buffer), &addr);
 				sock_can_read = 0;
-				if(r > 0) {
+				if(r > sizeof(chipvpn_packet_header_t)) {
 					chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
-					switch(header->type) {
+					switch(ntohl(header->type)) {
 						case 0: {
 							if(r < sizeof(chipvpn_packet_auth_t)) {
 								break;
@@ -200,7 +200,7 @@ void chipvpn_loop() {
 
 									if(packet->ack == true) {
 										chipvpn_packet_auth_t auth = {};
-										auth.header.type = 0;
+										auth.header.type = htonl(0);
 										auth.id = packet->id;
 										auth.ack = false;
 

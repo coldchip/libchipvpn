@@ -18,8 +18,9 @@ void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key) {
 }
 
 void chipvpn_crypto_xcrypt(chipvpn_crypto_t *crypto, void *data, int size) {
-	for(int i = 0; i < size; ++i) {
-		*((char*)data + i) ^= crypto->key[i % crypto->keylength];
+	char *c = (char*)data;
+	for(int i = 0; i < size; i++) {
+		c[i] ^= crypto->key[i % crypto->keylength];
 	}
 }
 
