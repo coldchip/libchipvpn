@@ -11,6 +11,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <ncurses.h>
+#include <sodium.h>
 #include "crypto.h"
 #include "chipvpn.h"
 #include "socket.h"
@@ -49,6 +50,10 @@ void chipvpn_init(char *file) {
 	init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
 	init_pair(6, COLOR_YELLOW, COLOR_BLACK);
 
+	if(sodium_init() == -1) {
+		chipvpn_error("unable to initialize libsodium crypto");
+	}
+
 	device = chipvpn_device_create(file);
 	if(!device) {
 		chipvpn_error("unable to create config");
@@ -72,6 +77,8 @@ void chipvpn_init(char *file) {
 
 void chipvpn_loop() {
 	uint32_t chipvpn_last_update = 0;
+
+	uint64_t counter = 0;
 
 	struct timeval tv;
 	fd_set rdset, wdset;
@@ -158,10 +165,13 @@ void chipvpn_loop() {
 							chipvpn_packet_data_t data = {};
 							data.header.type = htonl(1);
 							data.peer = htonl(peer->id);
+							data.counter = htonll(counter);
 
-							chipvpn_crypto_xcrypt(peer->crypto, buf, r);
+							chipvpn_crypto_xcrypt(peer->crypto, buf, r, counter);
 							memcpy(buffer, &data, sizeof(data));
 							memcpy(buffer + sizeof(data), buf, r);
+
+							counter++;
 
 							peer->tx += r;
 
@@ -225,7 +235,7 @@ void chipvpn_loop() {
 								if(ntohl(packet->peer) == peer->id) {
 									char *buf = buffer + sizeof(chipvpn_packet_data_t);
 
-									chipvpn_crypto_xcrypt(peer->crypto, buf, r - sizeof(chipvpn_packet_data_t));
+									chipvpn_crypto_xcrypt(peer->crypto, buf, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 
 									ip_packet_t *ip = (ip_packet_t*)buf;
 									chipvpn_address_t src = {
@@ -342,13 +352,6 @@ void chipvpn_print_stats() {
 		
 		if(peer->state == PEER_CONNECTED) {
 			attron(COLOR_PAIR(3));
-			printw("    key: ");
-			attroff(COLOR_PAIR(3));
-			attron(COLOR_PAIR(5));
-			printw("%s\n", peer->crypto->key);
-			attron(COLOR_PAIR(5));
-
-			attron(COLOR_PAIR(3));
 			printw("    endpoint: ");
 			attroff(COLOR_PAIR(3));
 			attron(COLOR_PAIR(5));
@@ -368,7 +371,7 @@ void chipvpn_print_stats() {
 			printw("    encryption: ");
 			attroff(COLOR_PAIR(3));
 			attron(COLOR_PAIR(5));
-			printw("XOR\n");
+			printw("chacha20\n");
 			attron(COLOR_PAIR(5));
 
 			attron(COLOR_PAIR(3));
