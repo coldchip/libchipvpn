@@ -284,7 +284,7 @@ void chipvpn_print_stats() {
 	bkgd(COLOR_PAIR(1));
 
 	attron(COLOR_PAIR(2) | A_BOLD);
-	printw("ColdChip ChipVPN v1.1 beta 2\n\n");
+	printw("ColdChip ChipVPN v1.1 beta 3\n\n");
 	attroff(COLOR_PAIR(2) | A_BOLD);
 
 	attron(COLOR_PAIR(1) | A_BOLD);
