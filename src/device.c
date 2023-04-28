@@ -87,7 +87,7 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 		}
 
 		if(MATCH("peer", "key")) {
-			chipvpn_crypto_set_key(peer->crypto, (char*)value);
+			chipvpn_crypto_set_key(peer->crypto, (char*)value, strlen((char*)value));
 		}
 
 		if(MATCH("peer", "allow")) {

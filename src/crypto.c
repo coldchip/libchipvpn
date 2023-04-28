@@ -18,8 +18,8 @@ chipvpn_crypto_t *chipvpn_crypto_create() {
 	return crypto;
 }
 
-void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key) {
-	crypto_hash_sha256((unsigned char*)crypto->key, (unsigned char*)key, strlen(key));
+void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key, int size) {
+	crypto_hash_sha256((unsigned char*)crypto->key, (unsigned char*)key, size);
 }
 
 void chipvpn_crypto_xcrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter) {
