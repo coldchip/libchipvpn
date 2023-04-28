@@ -15,24 +15,24 @@ typedef struct __attribute__((__packed__)) {
 } ip_packet_t;
 
 typedef struct __attribute__((__packed__)) {
-	int type;
+	uint32_t type;
 } chipvpn_packet_header_t;
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
-	int id;
+	uint32_t id;
 	bool ack;
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
-	int peer;
-	char iv[16];
+	uint32_t peer;
+	uint64_t counter;
 } chipvpn_packet_data_t;
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
-	int id;
+	uint32_t id;
 } chipvpn_packet_ping_t;
 
 typedef union {

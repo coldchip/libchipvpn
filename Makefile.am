@@ -5,7 +5,7 @@ bin_PROGRAMS = chipvpn
 chipvpn_SOURCES = src/list.c src/main.c src/chipvpn.c src/socket.c src/tun.c src/crypto.c src/peer.c src/address.c src/device.c src/ini.c
 
 chipvpn_CFLAGS = -Ofast -s -std=gnu99 -Wall
-chipvpn_LDADD = -lcrypto -lssl -lncurses
+chipvpn_LDADD = -lncurses -lsodium
 
 MAINTAINERCLEANFILES =                                  \
         aclocal.m4 config.guess config.xml              \
