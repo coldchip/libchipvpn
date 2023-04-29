@@ -82,10 +82,6 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_back(&device->peers);
 
-		if(MATCH("peer", "id")) {
-			peer->id = atoi(value);
-		}
-
 		if(MATCH("peer", "key")) {
 			chipvpn_crypto_set_key(peer->crypto, (char*)value, strlen((char*)value));
 		}
@@ -111,7 +107,6 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 	} else {
 		if(strcasecmp(section, "peer") == 0) {
 			chipvpn_peer_t *peer = chipvpn_peer_create();
-			peer->connect = false;
 			list_insert(list_end(&device->peers), peer);
 		}
 	}

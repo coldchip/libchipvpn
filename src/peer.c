@@ -7,9 +7,12 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	if(!peer) {
 		return NULL;
 	}
+	peer->sender_id = 0;
+	peer->receiver_id = 0;
 	peer->state = PEER_DISCONNECTED;
 	peer->crypto = chipvpn_crypto_create();
 	peer->last_ping = 0;
+	peer->connect = false;
 	return peer;
 }
 
