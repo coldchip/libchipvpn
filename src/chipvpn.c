@@ -124,6 +124,7 @@ void chipvpn_loop() {
 						chipvpn_packet_auth_t auth = {};
 						auth.header.type = htonl(0);
 						auth.id = htonl(peer->id);
+						randombytes_buf(auth.nonce, sizeof(auth.nonce));
 						auth.ack = true;
 
 						chipvpn_socket_write(device->sock, &auth, sizeof(auth), &peer->address);
@@ -208,10 +209,13 @@ void chipvpn_loop() {
 									peer->rx = 0;
 									peer->last_ping = chipvpn_get_time();
 
+									chipvpn_crypto_set_nonce(peer->crypto, packet->nonce, sizeof(packet->nonce));
+
 									if(packet->ack == true) {
 										chipvpn_packet_auth_t auth = {};
 										auth.header.type = htonl(0);
 										auth.id = packet->id;
+										memcpy(auth.nonce, packet->nonce, sizeof(auth.nonce));
 										auth.ack = false;
 
 										chipvpn_socket_write(device->sock, &auth, sizeof(chipvpn_packet_auth_t), &addr);

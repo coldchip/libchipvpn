@@ -1,6 +1,8 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+#include <sodium.h>
+
 typedef struct __attribute__((__packed__)) {
 	uint8_t	version:4, ihl:4;
 	uint8_t  ip_tos;
@@ -21,6 +23,7 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t id;
+	char nonce[crypto_stream_xchacha20_NONCEBYTES];
 	bool ack;
 } chipvpn_packet_auth_t;
 
