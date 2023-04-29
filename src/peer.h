@@ -15,7 +15,8 @@ typedef struct {
 	ListNode node;
 	chipvpn_peer_state_e state;
 	chipvpn_crypto_t *crypto;
-	int id;
+	uint32_t sender_id;
+	uint32_t receiver_id;
 	bool connect;
 	uint32_t last_ping;
 	chipvpn_address_t address;

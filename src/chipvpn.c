@@ -79,6 +79,7 @@ void chipvpn_loop() {
 	uint32_t chipvpn_last_update = 0;
 
 	uint64_t counter = 0;
+	uint64_t sender_id = 0;
 
 	struct timeval tv;
 	fd_set rdset, wdset;
@@ -121,10 +122,13 @@ void chipvpn_loop() {
 				for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
 					chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 					if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
+						peer->sender_id = ++sender_id;
+
 						chipvpn_packet_auth_t auth = {};
 						auth.header.type = htonl(0);
-						auth.id = htonl(peer->id);
+						auth.sender_id = htonl(peer->sender_id);
 						randombytes_buf(auth.nonce, sizeof(auth.nonce));
+						crypto_hash_sha256((unsigned char*)auth.hash, (unsigned char*)peer->crypto->key, sizeof(peer->crypto->key));
 						auth.ack = true;
 
 						chipvpn_socket_write(device->sock, &auth, sizeof(auth), &peer->address);
@@ -136,7 +140,7 @@ void chipvpn_loop() {
 						} else {
 							chipvpn_packet_ping_t ping = {};
 							ping.header.type = htonl(2);
-							ping.id = htonl(peer->id);
+							ping.receiver_id = htonl(peer->receiver_id);
 
 							chipvpn_socket_write(device->sock, &ping, sizeof(ping), &peer->address);
 							sock_can_write = 0;
@@ -165,7 +169,7 @@ void chipvpn_loop() {
 
 							chipvpn_packet_data_t data = {};
 							data.header.type = htonl(1);
-							data.peer = htonl(peer->id);
+							data.receiver_id = htonl(peer->receiver_id);
 							data.counter = htonll(counter);
 
 							chipvpn_crypto_xcrypt(peer->crypto, buf, r, counter);
@@ -202,7 +206,11 @@ void chipvpn_loop() {
 							for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
 								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-								if(ntohl(packet->id) == peer->id) {
+								char correct[crypto_hash_sha256_BYTES];
+								crypto_hash_sha256((unsigned char*)correct, (unsigned char*)peer->crypto->key, sizeof(peer->crypto->key));
+
+								if(memcmp(packet->hash, correct, sizeof(correct)) == 0) {
+									peer->receiver_id = ntohl(packet->sender_id);
 									peer->address = addr;
 									peer->state = PEER_CONNECTED;
 									peer->tx = 0;
@@ -212,10 +220,13 @@ void chipvpn_loop() {
 									chipvpn_crypto_set_nonce(peer->crypto, packet->nonce, sizeof(packet->nonce));
 
 									if(packet->ack == true) {
+										peer->sender_id = ++sender_id;
+
 										chipvpn_packet_auth_t auth = {};
 										auth.header.type = htonl(0);
-										auth.id = packet->id;
+										auth.sender_id = htonl(peer->sender_id);
 										memcpy(auth.nonce, packet->nonce, sizeof(auth.nonce));
+										memcpy(auth.hash, packet->hash, sizeof(auth.hash));
 										auth.ack = false;
 
 										chipvpn_socket_write(device->sock, &auth, sizeof(chipvpn_packet_auth_t), &addr);
@@ -236,7 +247,7 @@ void chipvpn_loop() {
 							for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
 								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-								if(ntohl(packet->peer) == peer->id) {
+								if(ntohl(packet->receiver_id) == peer->sender_id && peer->state == PEER_CONNECTED) {
 									char *buf = buffer + sizeof(chipvpn_packet_data_t);
 
 									chipvpn_crypto_xcrypt(peer->crypto, buf, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
@@ -267,8 +278,9 @@ void chipvpn_loop() {
 							for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
 								chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-								if(ntohl(packet->id) == peer->id) {
+								if(ntohl(packet->receiver_id) == peer->sender_id && peer->state == PEER_CONNECTED) {
 									peer->last_ping = chipvpn_get_time();
+									break;
 								}
 							}
 						}
@@ -332,7 +344,7 @@ void chipvpn_print_stats() {
 		printw("peer: ");
 		attroff(COLOR_PAIR(6) | A_BOLD);
 		attron(COLOR_PAIR(3));
-		printw("%i\n", peer->id);
+		printw("session::%u\n", peer->sender_id);
 		attron(COLOR_PAIR(3));
 
 		attron(COLOR_PAIR(3));
@@ -375,7 +387,7 @@ void chipvpn_print_stats() {
 			printw("    encryption: ");
 			attroff(COLOR_PAIR(3));
 			attron(COLOR_PAIR(5));
-			printw("chacha20\n");
+			printw("xchacha20\n");
 			attron(COLOR_PAIR(5));
 
 			attron(COLOR_PAIR(3));
