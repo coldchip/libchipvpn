@@ -2,8 +2,6 @@
 #define CONFIG_H
 
 #include "address.h"
-#include "tun.h"
-#include "socket.h"
 #include "list.h"
 
 typedef enum {
@@ -18,15 +16,15 @@ typedef struct {
 	chipvpn_address_t address;
 	chipvpn_address_t bind;
 	int mtu;
+	int qlen;
 	char *name;
 	char *postup;
 	char *postdown;
-	chipvpn_tun_t *tun;
-	chipvpn_socket_t *sock;
 	List peers;
 } chipvpn_device_t;
 
 chipvpn_device_t     *chipvpn_device_create(char *file);
+bool                  chipvpn_device_reload_config(chipvpn_device_t *device, char *file);
 int                   chipvpn_device_parse_handler(void* user, const char* section, const char* name, const char* value);
 void                  chipvpn_device_free(chipvpn_device_t *device);
 

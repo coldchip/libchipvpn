@@ -24,7 +24,7 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t sender_id;
 	char nonce[crypto_stream_xchacha20_NONCEBYTES];
-	char hash[crypto_hash_sha256_BYTES];
+	char keyhash[crypto_hash_sha256_BYTES];
 	bool ack;
 } chipvpn_packet_auth_t;
 

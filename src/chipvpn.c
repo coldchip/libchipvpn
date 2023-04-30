@@ -1,15 +1,10 @@
 #include <stddef.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <sys/time.h>
-#include <sys/types.h>
 #include <ncurses.h>
 #include <sodium.h>
 #include "crypto.h"
@@ -25,19 +20,22 @@ bool quit = false;
 
 chipvpn_device_t *device = NULL;
 
-void chipvpn_setup(char *file) {
+chipvpn_tun_t    *tun = NULL;
+chipvpn_socket_t *sock = NULL;
+
+void chipvpn_setup(char *config) {
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, chipvpn_exit);
 	signal(SIGQUIT, chipvpn_exit);
 	signal(SIGTERM, chipvpn_exit);
 	signal(SIGHUP, chipvpn_exit);
 
-	chipvpn_init(file);
-	chipvpn_loop();
+	chipvpn_init(config);
+	chipvpn_loop(config);
 	chipvpn_cleanup();
 }
 
-void chipvpn_init(char *file) {
+void chipvpn_init(char *config) {
 	initscr();
 	noecho();
 	curs_set(false);
@@ -54,16 +52,26 @@ void chipvpn_init(char *file) {
 		chipvpn_error("unable to initialize libsodium crypto");
 	}
 
-	device = chipvpn_device_create(file);
+	device = chipvpn_device_create(config);
 	if(!device) {
 		chipvpn_error("unable to create config");
 	}
 
-	chipvpn_tun_setip(device->tun, &device->address, device->mtu, 2000);
-	chipvpn_tun_ifup(device->tun);
+	tun = chipvpn_tun_create(device->name);
+	if(!tun) {
+		chipvpn_error("unable to create tunnel interface");
+	}
+
+	sock = chipvpn_socket_create();
+	if(!sock) {
+		chipvpn_error("unable to create socket");
+	}
+
+	chipvpn_tun_setip(tun, &device->address, device->mtu, device->qlen);
+	chipvpn_tun_ifup(tun);
 
 	if(device->flag & CHIPVPN_DEVICE_BIND) {
-		if(!chipvpn_socket_bind(device->sock, &device->bind)) {
+		if(!chipvpn_socket_bind(sock, &device->bind)) {
 			chipvpn_error("socket bind failed");
 		}
 	}
@@ -75,7 +83,7 @@ void chipvpn_init(char *file) {
 	}
 }
 
-void chipvpn_loop() {
+void chipvpn_loop(char *config) {
 	uint32_t chipvpn_last_update = 0;
 
 	uint64_t counter = 0;
@@ -92,8 +100,8 @@ void chipvpn_loop() {
 	int sock_can_read = 0;
 	int sock_can_write = 0;
 
-	int tun_fd  = device->tun->fd;
-	int sock_fd = device->sock->fd;
+	int tun_fd  = tun->fd;
+	int sock_fd = sock->fd;
 
 	while(!quit) {
 		tv.tv_sec = 0;
@@ -118,6 +126,7 @@ void chipvpn_loop() {
 
 			/* peer lifecycle service */
 			if(sock_can_write && chipvpn_get_time() - chipvpn_last_update >= 1) {
+				chipvpn_device_reload_config(device, config);
 				chipvpn_print_stats();
 				for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
 					chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
@@ -128,21 +137,21 @@ void chipvpn_loop() {
 						auth.header.type = htonl(0);
 						auth.sender_id = htonl(peer->sender_id);
 						randombytes_buf(auth.nonce, sizeof(auth.nonce));
-						crypto_hash_sha256((unsigned char*)auth.hash, (unsigned char*)peer->crypto->key, sizeof(peer->crypto->key));
+						crypto_hash_sha256((unsigned char*)auth.keyhash, (unsigned char*)peer->crypto->key, sizeof(peer->crypto->key));
 						auth.ack = true;
 
-						chipvpn_socket_write(device->sock, &auth, sizeof(auth), &peer->address);
+						chipvpn_socket_write(sock, &auth, sizeof(auth), &peer->address);
 						sock_can_write = 0;
 					}
 					if(peer->state == PEER_CONNECTED) {
-						if(chipvpn_get_time() - peer->last_ping > 15) {
+						if(chipvpn_get_time() - peer->last_ping > 10) {
 							peer->state = PEER_DISCONNECTED;
 						} else {
 							chipvpn_packet_ping_t ping = {};
 							ping.header.type = htonl(2);
 							ping.receiver_id = htonl(peer->receiver_id);
 
-							chipvpn_socket_write(device->sock, &ping, sizeof(ping), &peer->address);
+							chipvpn_socket_write(sock, &ping, sizeof(ping), &peer->address);
 							sock_can_write = 0;
 						}
 					}
@@ -153,7 +162,7 @@ void chipvpn_loop() {
 			/* tun => sock */
 			if(tun_can_read && sock_can_write) {
 				char buf[device->mtu];
-				int r = chipvpn_tun_read(device->tun, buf, sizeof(buf));
+				int r = chipvpn_tun_read(tun, buf, sizeof(buf));
 				tun_can_read = 0;
 
 				if(r <= 0) {
@@ -181,7 +190,7 @@ void chipvpn_loop() {
 
 					peer->tx += r;
 
-					chipvpn_socket_write(device->sock, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
+					chipvpn_socket_write(sock, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 					sock_can_write = 0;
 				}
 			}
@@ -191,7 +200,7 @@ void chipvpn_loop() {
 				char buffer[sizeof(chipvpn_packet_t) + device->mtu];
 				chipvpn_address_t addr;
 
-				int r = chipvpn_socket_read(device->sock, buffer, sizeof(buffer), &addr);
+				int r = chipvpn_socket_read(sock, buffer, sizeof(buffer), &addr);
 				sock_can_read = 0;
 
 				if(r <= sizeof(chipvpn_packet_header_t)) {
@@ -207,7 +216,7 @@ void chipvpn_loop() {
 
 						chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-						chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&device->peers, packet->hash);
+						chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&device->peers, packet->keyhash);
 						if(peer) {
 							peer->receiver_id = ntohl(packet->sender_id);
 							peer->address = addr;
@@ -216,7 +225,7 @@ void chipvpn_loop() {
 							peer->rx = 0;
 							peer->last_ping = chipvpn_get_time();
 
-							chipvpn_crypto_set_nonce(peer->crypto, packet->nonce, sizeof(packet->nonce));
+							chipvpn_crypto_set_nonce(peer->crypto, packet->nonce);
 
 							if(packet->ack == true) {
 								peer->sender_id = ++sender_id;
@@ -225,10 +234,10 @@ void chipvpn_loop() {
 								auth.header.type = htonl(0);
 								auth.sender_id = htonl(peer->sender_id);
 								memcpy(auth.nonce, packet->nonce, sizeof(auth.nonce));
-								memcpy(auth.hash, packet->hash, sizeof(auth.hash));
+								memcpy(auth.keyhash, packet->keyhash, sizeof(auth.keyhash));
 								auth.ack = false;
 
-								chipvpn_socket_write(device->sock, &auth, sizeof(chipvpn_packet_auth_t), &addr);
+								chipvpn_socket_write(sock, &auth, sizeof(chipvpn_packet_auth_t), &addr);
 								sock_can_write = 0;
 							}
 						}
@@ -254,7 +263,7 @@ void chipvpn_loop() {
 							if(chipvpn_address_cidr_match(&src, &peer->allow) && peer->state == PEER_CONNECTED) {
 								peer->rx += r - sizeof(chipvpn_packet_data_t);
 
-								chipvpn_tun_write(device->tun, buf, r - sizeof(chipvpn_packet_data_t));
+								chipvpn_tun_write(tun, buf, r - sizeof(chipvpn_packet_data_t));
 								tun_can_write = 0;
 							}
 						}
@@ -294,7 +303,7 @@ void chipvpn_print_stats() {
 	printw("interface: ");
 	attroff(COLOR_PAIR(1) | A_BOLD);
 	attron(COLOR_PAIR(3));
-	printw("%s\n", device->tun->dev);
+	printw("%s\n", tun->dev);
 	attron(COLOR_PAIR(3));
 
 	attron(COLOR_PAIR(3));
@@ -310,6 +319,13 @@ void chipvpn_print_stats() {
 	attroff(COLOR_PAIR(3));
 	attron(COLOR_PAIR(5));
 	printw("%i\n", device->mtu);
+	attron(COLOR_PAIR(5));
+
+	attron(COLOR_PAIR(3));
+	printw("    txqueuelen: ");
+	attroff(COLOR_PAIR(3));
+	attron(COLOR_PAIR(5));
+	printw("%i\n", device->qlen);
 	attron(COLOR_PAIR(5));
 
 	if(device->flag & CHIPVPN_DEVICE_BIND) {
@@ -401,6 +417,9 @@ void chipvpn_cleanup() {
 			chipvpn_log("unable to execute postdown");
 		}
 	}
+
+	chipvpn_tun_free(tun);
+	chipvpn_socket_free(sock);
 
 	chipvpn_device_free(device);
 

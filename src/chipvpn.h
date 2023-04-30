@@ -15,9 +15,9 @@
 # define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 #endif
 
-void           chipvpn_setup(char *file);
-void           chipvpn_init(char *file);
-void           chipvpn_loop();
+void           chipvpn_setup(char *config);
+void           chipvpn_init(char *config);
+void           chipvpn_loop(char *config);
 void           chipvpn_print_stats();
 void           chipvpn_cleanup();
 void           chipvpn_exit(int type);
