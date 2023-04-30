@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sodium.h>
 #include "peer.h"
 #include "device.h"
 #include "ini.h"
@@ -18,22 +19,61 @@ chipvpn_device_t *chipvpn_device_create(char *file) {
 	device->postdown = NULL;
 	device->name = NULL;
 	device->mtu = 1420;
+	device->qlen = 2000;
 
-	if(ini_parse(file, chipvpn_device_parse_handler, device) < 0) {
-		return NULL;
-	}
-
-	device->tun = chipvpn_tun_create(device->name);
-	if(!device->tun) {
-		return NULL;
-	}
-
-	device->sock = chipvpn_socket_create();
-	if(device->sock < 0) {
+	if(!chipvpn_device_reload_config(device, file)) {
 		return NULL;
 	}
 
 	return device;
+}
+
+bool chipvpn_device_reload_config(chipvpn_device_t *device, char *file) {
+	List temp;
+	list_clear(&temp);
+
+	// move every peer from device to temp
+	while(!list_empty(&device->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_remove(list_begin(&device->peers));
+		list_insert(list_end(&temp), peer);
+	}
+
+	// clear device peers
+	list_clear(&device->peers);
+
+	// reload config
+	if(ini_parse(file, chipvpn_device_parse_handler, device) < 0) {
+		return false;
+	}
+
+	// move connected peers from temp to device
+	ListNode *p = list_begin(&device->peers);
+	while(p != list_end(&device->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+		p = list_next(p);
+
+		ListNode *t = list_begin(&temp);
+		while(t != list_end(&temp)) {
+			chipvpn_peer_t *peer1 = (chipvpn_peer_t*)t;
+			t = list_next(t);
+
+			if(memcmp(peer->crypto->key, peer1->crypto->key, sizeof(peer->crypto->key)) == 0 && peer1->state == PEER_CONNECTED) {
+				list_remove(&peer->node);
+				chipvpn_peer_free(peer);
+
+				list_remove(&peer1->node);
+				list_insert(list_end(&device->peers), peer1);
+			}
+		}
+	}
+
+	// remove deleted peers from temp
+	while(!list_empty(&temp)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_remove(list_begin(&temp));
+		chipvpn_peer_free(peer);
+	}
+
+	return true;
 }
 
 int chipvpn_device_parse_handler(void* user, const char* section, const char* name, const char* value) {
@@ -80,10 +120,16 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			device->mtu = atoi(value);
 		}
 
+		if(MATCH("interface", "qlen")) {
+			device->qlen = atoi(value);
+		}
+
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)list_back(&device->peers);
 
 		if(MATCH("peer", "key")) {
-			chipvpn_crypto_set_key(peer->crypto, (char*)value, strlen((char*)value));
+			char keyhash[crypto_stream_xchacha20_KEYBYTES];
+			crypto_hash_sha256((unsigned char*)keyhash, (unsigned char*)value, strlen(value));
+			chipvpn_crypto_set_key(peer->crypto, keyhash);
 		}
 
 		if(MATCH("peer", "allow")) {
@@ -131,9 +177,6 @@ void chipvpn_device_free(chipvpn_device_t *device) {
 	if(device->flag & CHIPVPN_DEVICE_NAME) {
 		free(device->name);
 	}
-
-	chipvpn_tun_free(device->tun);
-	chipvpn_socket_free(device->sock);
 
 	free(device);
 }

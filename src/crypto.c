@@ -14,12 +14,12 @@ chipvpn_crypto_t *chipvpn_crypto_create() {
 	return crypto;
 }
 
-void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key, int size) {
-	crypto_hash_sha256((unsigned char*)crypto->key, (unsigned char*)key, size);
+void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key) {
+	memcpy(crypto->key, key, crypto_stream_xchacha20_KEYBYTES);
 }
 
-void chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *key, int size) {
-	memcpy(crypto->nonce, key, size);
+void chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce) {
+	memcpy(crypto->nonce, nonce, crypto_stream_xchacha20_NONCEBYTES);
 }
 
 void chipvpn_crypto_xcrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter) {
