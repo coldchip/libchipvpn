@@ -25,7 +25,10 @@ typedef struct {
 	uint64_t rx;
 } chipvpn_peer_t;
 
-chipvpn_peer_t    *chipvpn_peer_create();
-void               chipvpn_peer_free(chipvpn_peer_t *peer);
+chipvpn_peer_t      *chipvpn_peer_create();
+chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(List *peers, char *key);
+chipvpn_peer_t      *chipvpn_peer_get_by_allowip(List *peers, chipvpn_address_t *ip);
+chipvpn_peer_t      *chipvpn_peer_get_by_index(List *peers, uint32_t index);
+void                 chipvpn_peer_free(chipvpn_peer_t *peer);
 
 #endif
