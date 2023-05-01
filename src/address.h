@@ -11,6 +11,7 @@ typedef struct {
 } chipvpn_address_t;
 
 bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip);
+bool chipvpn_address_set_domain(chipvpn_address_t *addr, const char *domain);
 bool chipvpn_address_cidr_match(chipvpn_address_t *addr, chipvpn_address_t *net);
 
 #endif
