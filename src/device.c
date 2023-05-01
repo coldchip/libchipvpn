@@ -161,8 +161,8 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			char ip[24];
 			int port;
 			if(sscanf(value, "%254[^:]:%i", ip, &port) == 2) {
-				if(!chipvpn_address_set_domain(&peer->address, ip)) {
-					chipvpn_error("unable to resolve %s", ip);
+				if(!chipvpn_address_set_ip(&peer->address, ip)) {
+					chipvpn_error("invalid ip address: %s", ip);
 				}
 				peer->address.port = port;
 				peer->connect = true;
