@@ -5,6 +5,7 @@
 #include <sodium.h>
 #include "peer.h"
 #include "device.h"
+#include "chipvpn.h"
 #include "ini.h"
 
 chipvpn_device_t *chipvpn_device_create(char *file) {
@@ -86,7 +87,9 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			char ip[24];
 			int port;
 			if(sscanf(value, "%16[^:]:%i", ip, &port) == 2) {
-				chipvpn_address_set_ip(&device->bind, ip);
+				if(!chipvpn_address_set_ip(&device->bind, ip)) {
+					chipvpn_error("invalid ip address: %s", ip);
+				}
 				device->bind.port = port;
 				device->flag |= CHIPVPN_DEVICE_BIND;
 			}
@@ -96,7 +99,9 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			char ip[24];
 			int prefix;
 			if(sscanf(value, "%16[^/]/%i", ip, &prefix) == 2) {
-				chipvpn_address_set_ip(&device->address, ip);
+				if(!chipvpn_address_set_ip(&device->address, ip)) {
+					chipvpn_error("invalid ip address: %s", ip);
+				}
 				device->address.prefix = prefix;
 			}
 		}
@@ -136,7 +141,9 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			char ip[24];
 			int prefix;
 			if(sscanf(value, "%16[^/]/%i", ip, &prefix) == 2) {
-				chipvpn_address_set_ip(&peer->allow, ip);
+				if(!chipvpn_address_set_ip(&peer->allow, ip)) {
+					chipvpn_error("invalid ip address: %s", ip);
+				}
 				peer->allow.prefix = prefix;
 			}
 		}
@@ -145,7 +152,9 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			char ip[24];
 			int port;
 			if(sscanf(value, "%16[^:]:%i", ip, &port) == 2) {
-				chipvpn_address_set_ip(&peer->address, ip);
+				if(!chipvpn_address_set_domain(&peer->address, ip)) {
+					chipvpn_error("unable to resolve %s", ip);
+				}
 				peer->address.port = port;
 				peer->connect = true;
 			}
