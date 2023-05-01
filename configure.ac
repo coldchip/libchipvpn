@@ -7,10 +7,5 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
 AC_PROG_CC
 
-AC_CHECK_HEADERS(openssl/evp.h)
-AC_CHECK_HEADERS(openssl/aes.h)
-AC_SEARCH_LIBS(crypto, crypto)
-AC_SEARCH_LIBS(ssl, ssl)
-
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

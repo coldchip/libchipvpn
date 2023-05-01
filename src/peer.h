@@ -18,9 +18,9 @@ typedef struct {
 	uint32_t sender_id;
 	uint32_t receiver_id;
 	bool connect;
-	uint32_t last_ping;
 	chipvpn_address_t address;
 	chipvpn_address_t allow;
+	uint32_t last_ping;
 	uint64_t tx;
 	uint64_t rx;
 } chipvpn_peer_t;

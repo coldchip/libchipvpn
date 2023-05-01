@@ -131,6 +131,10 @@ void chipvpn_loop(char *config) {
 				for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
 					chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 					if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
+						if(!chipvpn_address_resolve_domain(&peer->address)) {
+							continue;
+						}
+						
 						peer->sender_id = ++sender_id;
 
 						chipvpn_packet_auth_t auth = {};
@@ -139,7 +143,6 @@ void chipvpn_loop(char *config) {
 						randombytes_buf(auth.nonce, sizeof(auth.nonce));
 						crypto_hash_sha256((unsigned char*)auth.keyhash, (unsigned char*)peer->crypto->key, sizeof(peer->crypto->key));
 						auth.ack = true;
-
 						chipvpn_socket_write(sock, &auth, sizeof(auth), &peer->address);
 						sock_can_write = 0;
 					}

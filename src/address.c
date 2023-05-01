@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stddef.h>
+#include <string.h>
 #include <netdb.h>
 #include "address.h"
 
@@ -14,7 +15,16 @@ bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
 }
 
 bool chipvpn_address_set_domain(chipvpn_address_t *addr, const char *domain) {
-	struct hostent *he = gethostbyname(domain);
+	if(strlen(domain) > 254) {
+		return false;
+	}
+
+	strcpy(addr->domain, domain);
+	return true;
+}
+
+bool chipvpn_address_resolve_domain(chipvpn_address_t *addr) {
+	struct hostent *he = gethostbyname(addr->domain);
 	if(he == NULL) {
 		return false;
 	}
