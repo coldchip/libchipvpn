@@ -14,30 +14,6 @@ bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
 	return true;
 }
 
-bool chipvpn_address_set_domain(chipvpn_address_t *addr, const char *domain) {
-	if(strlen(domain) > 254) {
-		return false;
-	}
-
-	strcpy(addr->domain, domain);
-	return true;
-}
-
-bool chipvpn_address_resolve_domain(chipvpn_address_t *addr) {
-	struct hostent *he = gethostbyname(addr->domain);
-	if(he == NULL) {
-		return false;
-	}
-	struct in_addr *ip = ((struct in_addr **)he->h_addr_list)[0];
-	if(ip == NULL) {
-		return false;
-	}
-
-	addr->ip = (uint32_t)ip->s_addr;
-
-	return true;
-}
-
 bool chipvpn_address_cidr_match(chipvpn_address_t *addr, chipvpn_address_t *net) {
 	if (net->prefix == 0) {
 		// C99 6.5.7 (3): u32 << 32 is undefined behaviour

@@ -5,15 +5,12 @@
 #include <stdbool.h>
 
 typedef struct {
-	char domain[255];
 	uint32_t ip;
 	uint16_t port;
 	uint8_t prefix;
 } chipvpn_address_t;
 
 bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip);
-bool chipvpn_address_set_domain(chipvpn_address_t *addr, const char *domain);
-bool chipvpn_address_resolve_domain(chipvpn_address_t *addr);
 bool chipvpn_address_cidr_match(chipvpn_address_t *addr, chipvpn_address_t *net);
 
 #endif
