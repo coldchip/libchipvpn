@@ -107,16 +107,25 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 		}
 
 		if(MATCH("interface", "postup")) {
+			if(device->flag & CHIPVPN_DEVICE_POSTUP) {
+				free(device->postup);
+			}
 			device->postup = strdup(value);
 			device->flag |= CHIPVPN_DEVICE_POSTUP;
 		}
 
 		if(MATCH("interface", "postdown")) {
+			if(device->flag & CHIPVPN_DEVICE_POSTDOWN) {
+				free(device->postdown);
+			}
 			device->postdown = strdup(value);
 			device->flag |= CHIPVPN_DEVICE_POSTDOWN;
 		}
 
 		if(MATCH("interface", "name")) {
+			if(device->flag & CHIPVPN_DEVICE_NAME) {
+				free(device->name);
+			}
 			device->name = strdup(value);
 			device->flag |= CHIPVPN_DEVICE_NAME;
 		}
@@ -151,7 +160,7 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 		if(MATCH("peer", "endpoint")) {
 			char ip[24];
 			int port;
-			if(sscanf(value, "%16[^:]:%i", ip, &port) == 2) {
+			if(sscanf(value, "%254[^:]:%i", ip, &port) == 2) {
 				if(!chipvpn_address_set_domain(&peer->address, ip)) {
 					chipvpn_error("unable to resolve %s", ip);
 				}

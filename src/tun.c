@@ -33,17 +33,13 @@ chipvpn_tun_t *chipvpn_tun_create(const char *dev) {
 		return NULL;
 	}
 
-	struct ifreq ifr;
-
-	char *clonedev = "/dev/net/tun";
-
-	int fd = open(clonedev, O_RDWR);
+	int fd = open("/dev/net/tun", O_RDWR);
 	if(fd < 0) {
 		return NULL;
 	}
 
+	struct ifreq ifr;
 	memset(&ifr, 0, sizeof(ifr));
-
 	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
 
 	if(dev) {
