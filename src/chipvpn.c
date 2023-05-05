@@ -382,7 +382,7 @@ void chipvpn_print_stats() {
 			attroff(COLOR_PAIR(3));
 			attron(COLOR_PAIR(5));
 			ip.s_addr = peer->allow.ip;
-			printw("%s/%i\n", inet_ntoa(ip), peer->allow.port);
+			printw("%s/%i\n", inet_ntoa(ip), peer->allow.prefix);
 			attron(COLOR_PAIR(5));
 
 			attron(COLOR_PAIR(3));
