@@ -20,7 +20,7 @@ typedef struct {
 	char *name;
 	char *postup;
 	char *postdown;
-	List peers;
+	chipvpn_list_t peers;
 } chipvpn_device_t;
 
 chipvpn_device_t     *chipvpn_device_create(char *file);
