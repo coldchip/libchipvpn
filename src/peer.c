@@ -20,8 +20,8 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_keyhash(List *peers, char *key) {
-	for(ListNode *p = list_begin(peers); p != list_end(peers); p = list_next(p)) {
+chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
 		char current[crypto_hash_sha256_BYTES];
@@ -34,8 +34,8 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(List *peers, char *key) {
 	return NULL;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_allowip(List *peers, chipvpn_address_t *ip) {
-	for(ListNode *p = list_begin(peers); p != list_end(peers); p = list_next(p)) {
+chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
 		if(chipvpn_address_cidr_match(ip, &peer->allow)) {
@@ -45,8 +45,8 @@ chipvpn_peer_t *chipvpn_peer_get_by_allowip(List *peers, chipvpn_address_t *ip) 
 	return NULL;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_index(List *peers, uint32_t index) {
-	for(ListNode *p = list_begin(peers); p != list_end(peers); p = list_next(p)) {
+chipvpn_peer_t *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
 		if(index == peer->sender_id) {

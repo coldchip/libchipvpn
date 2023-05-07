@@ -35,7 +35,7 @@ void chipvpn_setup(char *config) {
 }
 
 void chipvpn_init(char *config) {
-	chipvpn_log("ColdChip ChipVPN v1.1.6");
+	chipvpn_log("ColdChip ChipVPN v1.1.8");
 
 	if(sodium_init() == -1) {
 		chipvpn_error("unable to initialize libsodium crypto");
@@ -117,7 +117,7 @@ void chipvpn_loop(char *config) {
 			if(sock_can_write && chipvpn_get_time() - chipvpn_last_update >= 1) {
 				chipvpn_device_reload_config(device, config);
 				chipvpn_print_stats();
-				for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
+				for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 					chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 					if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
 						peer->sender_id = ++sender_id;
@@ -286,11 +286,11 @@ void chipvpn_print_stats() {
 	struct in_addr ip = {};
 
 	chipvpn_log("--------------------");
-	for(ListNode *p = list_begin(&device->peers); p != list_end(&device->peers); p = list_next(p)) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
 		ip.s_addr = peer->address.ip;
-		chipvpn_log("peer [%p@%s:%i] connected: %i", peer, inet_ntoa(ip), peer->address.port, peer->state);
+		chipvpn_log("peer [%i@%s:%i] connected: %i", peer->sender_id, inet_ntoa(ip), peer->address.port, peer->state);
 	}
 	chipvpn_log("--------------------");
 }
@@ -304,7 +304,6 @@ void chipvpn_cleanup() {
 
 	chipvpn_tun_free(tun);
 	chipvpn_socket_free(sock);
-
 	chipvpn_device_free(device);
 }
 

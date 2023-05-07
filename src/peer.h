@@ -12,7 +12,7 @@ typedef enum {
 } chipvpn_peer_state_e;
 
 typedef struct {
-	ListNode node;
+	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
 	chipvpn_crypto_t *crypto;
 	uint32_t sender_id;
@@ -26,9 +26,9 @@ typedef struct {
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();
-chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(List *peers, char *key);
-chipvpn_peer_t      *chipvpn_peer_get_by_allowip(List *peers, chipvpn_address_t *ip);
-chipvpn_peer_t      *chipvpn_peer_get_by_index(List *peers, uint32_t index);
+chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key);
+chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
+chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index);
 void                 chipvpn_peer_free(chipvpn_peer_t *peer);
 
 #endif

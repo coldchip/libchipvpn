@@ -13,32 +13,30 @@
 
 #include <stddef.h>
 
-typedef struct _ListNode {
-	struct _ListNode *next;
-	struct _ListNode *previous;
-} ListNode;
+typedef struct _chipvpn_list_node_t {
+	struct _chipvpn_list_node_t *next;
+	struct _chipvpn_list_node_t *previous;
+} chipvpn_list_node_t;
 
-typedef struct _List {
-	ListNode sentinel;
-} List;
+typedef struct {
+	chipvpn_list_node_t sentinel;
+} chipvpn_list_t;
 
-extern void list_clear(List *list);
+extern void                     chipvpn_list_clear(chipvpn_list_t *list);
+extern chipvpn_list_node_t     *chipvpn_list_insert(chipvpn_list_node_t *position, void *data);
+extern void                    *chipvpn_list_remove(chipvpn_list_node_t *position);
+extern chipvpn_list_node_t     *chipvpn_list_move(chipvpn_list_node_t *position, void *dataFirst, void *dataLast);
+extern size_t                   chipvpn_list_size(chipvpn_list_t *list);
 
-extern ListNode *list_insert(ListNode *position, void *data);
-extern void *list_remove(ListNode *position);
-extern ListNode *list_move(ListNode *position, void *dataFirst, void *dataLast);
+#define chipvpn_list_begin(list) ((list)->sentinel.next)
+#define chipvpn_list_end(list) (&(list)->sentinel)
 
-extern size_t list_size(List *list);
+#define chipvpn_list_empty(list) (chipvpn_list_begin(list) == chipvpn_list_end(list))
 
-#define list_begin(list) ((list)->sentinel.next)
-#define list_end(list) (&(list)->sentinel)
+#define chipvpn_list_next(iterator) ((iterator)->next)
+#define chipvpn_list_previous(iterator) ((iterator)->previous)
 
-#define list_empty(list) (list_begin(list) == list_end(list))
-
-#define list_next(iterator) ((iterator)->next)
-#define list_previous(iterator) ((iterator)->previous)
-
-#define list_front(list) ((void *) (list)->sentinel.next)
-#define list_back(list) ((void *) (list)->sentinel.previous)
+#define chipvpn_list_front(list) ((void *) (list)->sentinel.next)
+#define chipvpn_list_back(list) ((void *) (list)->sentinel.previous)
 
 #endif

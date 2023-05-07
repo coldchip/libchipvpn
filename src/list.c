@@ -11,13 +11,13 @@
 #include "list.h"
 #include <stddef.h>
 
-void list_clear(List *list) {
+void chipvpn_list_clear(chipvpn_list_t *list) {
 	list->sentinel.next = &list->sentinel;
 	list->sentinel.previous = &list->sentinel;
 }
 
-ListNode * list_insert(ListNode *position, void *data) {
-	ListNode *result = (ListNode *)data;
+chipvpn_list_node_t *chipvpn_list_insert(chipvpn_list_node_t *position, void *data) {
+	chipvpn_list_node_t *result = (chipvpn_list_node_t*)data;
 
 	result->previous = position->previous;
 	result->next = position;
@@ -28,16 +28,16 @@ ListNode * list_insert(ListNode *position, void *data) {
 	return result;
 }
 
-void *list_remove(ListNode *position) {
+void *chipvpn_list_remove(chipvpn_list_node_t *position) {
 	position->previous->next = position->next;
 	position->next->previous = position->previous;
 
 	return position;
 }
 
-ListNode * list_move(ListNode *position, void *dataFirst, void *dataLast) {
-	ListNode *first = (ListNode *)dataFirst;
-	ListNode *last = (ListNode *)dataLast;
+chipvpn_list_node_t *chipvpn_list_move(chipvpn_list_node_t *position, void *dataFirst, void *dataLast) {
+	chipvpn_list_node_t *first = (chipvpn_list_node_t*)dataFirst;
+	chipvpn_list_node_t *last = (chipvpn_list_node_t*)dataLast;
 
 	first->previous->next = last->next;
 	last->next->previous = first->previous;
@@ -51,10 +51,10 @@ ListNode * list_move(ListNode *position, void *dataFirst, void *dataLast) {
 	return first;
 }
 
-size_t list_size(List *list) {
+size_t chipvpn_list_size(chipvpn_list_t *list) {
 	size_t size = 0;
 
-	for(ListNode *position = list_begin (list); position != list_end (list); position = list_next (position)) {
+	for(chipvpn_list_node_t *position = chipvpn_list_begin(list); position != chipvpn_list_end(list); position = chipvpn_list_next(position)) {
 		++size;
 	}
 
