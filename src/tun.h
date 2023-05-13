@@ -38,12 +38,16 @@ typedef struct {
 } chipvpn_tun_t;
 
 chipvpn_tun_t          *chipvpn_tun_create(const char *dev);
+#ifdef _WIN32
 char                   *chipvpn_tun_regquery(char *key_name);
 void                    get_name(char *ifname, int namelen, char *dev_name);
+#endif
 bool                    chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *addr, int mtu, int qlen);
 bool                    chipvpn_tun_ifup(chipvpn_tun_t *tun);
+#ifdef _WIN32
 DWORD WINAPI            chipvpn_tun_reader(LPVOID arg);
 DWORD WINAPI            chipvpn_tun_writer(LPVOID arg);
+#endif
 int                     chipvpn_tun_read(chipvpn_tun_t *tun, void *buf, int size);
 int                     chipvpn_tun_write(chipvpn_tun_t *tun, void *buf, int size);
 void                    chipvpn_tun_free(chipvpn_tun_t *tun);

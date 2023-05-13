@@ -324,6 +324,7 @@ bool chipvpn_tun_ifup(chipvpn_tun_t *tun) {
 	#endif
 }
 
+#ifdef _WIN32
 DWORD WINAPI chipvpn_tun_reader(LPVOID arg) {
 	chipvpn_tun_t *tun = (chipvpn_tun_t*)arg;
 
@@ -380,6 +381,7 @@ DWORD WINAPI chipvpn_tun_writer(LPVOID arg) {
 		}
 	}
 }
+#endif
 
 int chipvpn_tun_read(chipvpn_tun_t *tun, void *buf, int size) {
 	#ifdef _WIN32
