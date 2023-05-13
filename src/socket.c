@@ -1,17 +1,30 @@
-#include <sys/socket.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <fcntl.h>
 #include "socket.h"
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+	#include <sys/socket.h>
+    #include <arpa/inet.h>
+#endif
 
 chipvpn_socket_t *chipvpn_socket_create() {
 	chipvpn_socket_t *sock = malloc(sizeof(chipvpn_socket_t));
 	if(!sock) {
 		return NULL;
 	}
+
+	#ifdef _WIN32
+
+	WSADATA wsaData;
+	if(WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		return NULL;
+	}
+
+	#endif
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(fd < 0) {
@@ -61,6 +74,10 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 }
 
 void chipvpn_socket_free(chipvpn_socket_t *sock) {
+	#ifdef _WIN32
+	closesocket(sock->fd);
+	#else
 	close(sock->fd);
+	#endif
 	free(sock);
 }

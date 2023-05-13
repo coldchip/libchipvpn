@@ -14,6 +14,11 @@
 #include "device.h"
 #include "peer.h"
 #include "tun.h"
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <arpa/inet.h>
+#endif
 
 bool quit = false;
 
@@ -23,11 +28,14 @@ chipvpn_tun_t    *tun = NULL;
 chipvpn_socket_t *sock = NULL;
 
 void chipvpn_setup(char *config) {
-	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, chipvpn_exit);
-	signal(SIGQUIT, chipvpn_exit);
 	signal(SIGTERM, chipvpn_exit);
+
+	#ifndef _WIN32
+	signal(SIGPIPE, SIG_IGN);
 	signal(SIGHUP, chipvpn_exit);
+	signal(SIGQUIT, chipvpn_exit);
+	#endif
 
 	chipvpn_init(config);
 	chipvpn_loop(config);
@@ -56,8 +64,12 @@ void chipvpn_init(char *config) {
 		chipvpn_error("unable to create socket");
 	}
 
-	chipvpn_tun_setip(tun, &device->address, device->mtu, device->qlen);
-	chipvpn_tun_ifup(tun);
+	if(!chipvpn_tun_setip(tun, &device->address, device->mtu, device->qlen)) {
+		chipvpn_error("set tun ip failed");
+	}
+	if(!chipvpn_tun_ifup(tun)) {
+		chipvpn_error("tun up failed");
+	}
 
 	if(device->flag & CHIPVPN_DEVICE_BIND) {
 		if(!chipvpn_socket_bind(sock, &device->bind)) {

@@ -1,16 +1,19 @@
 #include <stdbool.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <stddef.h>
 #include <string.h>
-#include <netdb.h>
 #include "address.h"
 
+#ifdef _WIN32
+	#include <ws2tcpip.h>
+#else
+    #include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+#endif
+
 bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
-	if(!inet_aton(ip, (struct in_addr *)&addr->ip)) {
-		return false;
-	}
+	addr->ip = inet_addr(ip);
+
 	return true;
 }
 
