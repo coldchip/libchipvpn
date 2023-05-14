@@ -132,6 +132,9 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 
 		if(MATCH("interface", "mtu")) {
 			device->mtu = atoi(value);
+			if(!(device->mtu > 200 && device->mtu < 50000)) {
+				chipvpn_error("invalid MTU, accepted ranges: 200-50000");
+			}
 		}
 
 		if(MATCH("interface", "qlen")) {
