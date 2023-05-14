@@ -18,23 +18,29 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "socket.h"
 #include "address.h"
 #include "chipvpn.h"
 #ifdef _WIN32
     #include <winsock2.h>
+	#define IFNAMSIZ 256 
 #else
     #include <netinet/in.h>
     #include <net/if.h>
 #endif
 
 typedef struct {
-    #ifdef _WIN32
-    HANDLE tun_fd;
-    char dev[128];
-    #else
-	char dev[IFNAMSIZ];
-    #endif
 	int fd;
+	char dev[IFNAMSIZ];
+	#ifdef _WIN32
+	HANDLE tun_fd;
+	HANDLE reader_thread;
+	HANDLE writer_thread;
+	chipvpn_address_t frontend_addr;
+	chipvpn_address_t backend_addr;
+	chipvpn_socket_t *frontend;
+	chipvpn_socket_t *backend;
+	#endif
 } chipvpn_tun_t;
 
 chipvpn_tun_t          *chipvpn_tun_create(const char *dev);

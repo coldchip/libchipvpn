@@ -55,8 +55,10 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 	int r = recvfrom(sock->fd, data, size, 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 	
-	addr->ip = sa.sin_addr.s_addr;
-	addr->port = ntohs(sa.sin_port);
+	if(addr) {
+		addr->ip = sa.sin_addr.s_addr;
+		addr->port = ntohs(sa.sin_port);
+	}
 
 	return r;
 }
