@@ -246,20 +246,36 @@ bool chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *network, int mtu, 
 		return NULL;
 	}
 
-	psock[0] = inet_addr("10.0.2.2"); 
-	psock[1] = inet_addr("10.0.2.0");
-    psock[2] = inet_addr("255.255.255.0");
+	uint32_t mask = 0;
+	if(network->prefix == 0) {
+		mask = 0;
+	} else {
+		mask = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
+	}
+
+	psock[0] = network->ip; 
+	psock[1] = network->ip & mask;
+    psock[2] = mask;
 
 	if(!DeviceIoControl(tun->tun_fd, TAP_IOCTL_CONFIG_TUN, &psock, sizeof(psock), &psock, sizeof(psock), &len, NULL)) {
 		return false;
 	}
 
+	struct in_addr ip_a, mask_a;
+	char ip_char[24], mask_char[24];
+
+	ip_a.s_addr = network->ip;
+	mask_a.s_addr = mask;
+
+	strcpy(ip_char, inet_ntoa(ip_a));
+	strcpy(mask_char, inet_ntoa(mask_a));
+
 	char cmdline[512];
-	fprintf(stderr, "Setting IP of interface '%s' to %s (can take a few seconds)...\n", tun->dev, "10.0.2.2");
-	snprintf(cmdline, sizeof(cmdline), "netsh interface ip set address \"%s\" static %s %s", tun->dev, "10.0.2.2", "255.255.255.0");
+	fprintf(stderr, "Setting IP of interface '%s' to %s (can take a few seconds)...\n", tun->dev, ip_char);
+	snprintf(cmdline, sizeof(cmdline), "netsh interface ip set address \"%s\" static %s %s", tun->dev, ip_char, mask_char);
 	system(cmdline);
 
-	fprintf(stderr, "Setting MTU of interface '%s' to %s (can take a few seconds)...\n", tun->dev, "10.0.2.2");
+	fprintf(stderr, "Setting MTU of interface '%s' to %s (can take a few seconds)...\n", tun->dev, ip_char);
 	snprintf(cmdline, sizeof(cmdline), "netsh interface ipv4 set subinterface \"%s\" mtu=%i", tun->dev, mtu);
 	system(cmdline);
 
@@ -324,6 +340,8 @@ bool chipvpn_tun_ifup(chipvpn_tun_t *tun) {
 	#endif
 }
 
+#ifdef _WIN32
+
 DWORD WINAPI chipvpn_tun_reader(LPVOID arg) {
 	chipvpn_tun_t *tun = (chipvpn_tun_t*)arg;
 
@@ -374,6 +392,8 @@ DWORD WINAPI chipvpn_tun_writer(LPVOID arg) {
 
 	return 0;
 }
+
+#endif
 
 int chipvpn_tun_read(chipvpn_tun_t *tun, void *buf, int size) {
 	#ifdef _WIN32
