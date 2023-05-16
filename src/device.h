@@ -16,7 +16,6 @@ typedef struct {
 	chipvpn_address_t address;
 	chipvpn_address_t bind;
 	int mtu;
-	int qlen;
 	char *name;
 	char *postup;
 	char *postdown;

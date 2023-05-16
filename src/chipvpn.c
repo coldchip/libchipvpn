@@ -64,8 +64,11 @@ void chipvpn_init(char *config) {
 		chipvpn_error("unable to create socket");
 	}
 
-	if(!chipvpn_tun_setip(tun, &device->address, device->mtu, device->qlen)) {
+	if(!chipvpn_tun_set_ip(tun, &device->address)) {
 		chipvpn_error("set tun ip failed");
+	}
+	if(!chipvpn_tun_set_mtu(tun, device->mtu)) {
+		chipvpn_error("set tun mtu failed");
 	}
 	if(!chipvpn_tun_ifup(tun)) {
 		chipvpn_error("tun up failed");
@@ -345,9 +348,15 @@ void chipvpn_log(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
 
+	#ifdef _WIN32
+	printf("[ChipVPN] ");
+	vprintf(format, args);
+	printf("\n");
+	#else
 	printf("\033[0;36m[ChipVPN] ");
 	vprintf(format, args);
 	printf("\033[0m\n");
+	#endif
 	
 	va_end(args);
 }
@@ -356,9 +365,15 @@ void chipvpn_error(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
 
+	#ifdef _WIN32
+	printf("[ChipVPN] ");
+	vprintf(format, args);
+	printf("\n");
+	#else
 	printf("\033[0;31m[ChipVPN] ");
 	vprintf(format, args);
 	printf("\033[0m\n");
+	#endif
 
 	exit(1);
 }

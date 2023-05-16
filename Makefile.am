@@ -4,8 +4,8 @@ ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 bin_PROGRAMS = chipvpn
 chipvpn_SOURCES = src/list.c src/main.c src/chipvpn.c src/socket.c src/tun.c src/crypto.c src/peer.c src/address.c src/device.c src/ini.c
 
-chipvpn_CFLAGS = -L. -I/home/ryan/libsodium-stable/src/libsodium/include -Ofast -s -std=gnu99 -Wall
-chipvpn_LDADD = -lsodium -lws2_32
+chipvpn_CFLAGS = -Ofast -s -std=gnu99 -Wall
+chipvpn_LDADD = -lsodium
 
 MAINTAINERCLEANFILES =                                  \
         aclocal.m4 config.guess config.xml              \
