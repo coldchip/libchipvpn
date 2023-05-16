@@ -20,7 +20,6 @@ chipvpn_device_t *chipvpn_device_create(char *file) {
 	device->postdown = NULL;
 	device->name = NULL;
 	device->mtu = 1420;
-	device->qlen = 2000;
 
 	if(!chipvpn_device_reload_config(device, file)) {
 		return NULL;
@@ -135,10 +134,6 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			if(!(device->mtu > 200 && device->mtu < 50000)) {
 				chipvpn_error("invalid MTU, accepted ranges: 200-50000");
 			}
-		}
-
-		if(MATCH("interface", "qlen")) {
-			device->qlen = atoi(value);
 		}
 
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&device->peers);

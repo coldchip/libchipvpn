@@ -26,22 +26,26 @@
 #include "address.h"
 
 #ifdef _WIN32
+	#include <netioapi.h>
+	#include <iptypes.h>
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <iphlpapi.h>
 	#include <winioctl.h>
 	/* From OpenVPN tap driver, common.h */
 	#define TAP_CONTROL_CODE(request, method) CTL_CODE(FILE_DEVICE_UNKNOWN, request, method, FILE_ANY_ACCESS)
-	#define TAP_IOCTL_GET_MAC               TAP_CONTROL_CODE (1, METHOD_BUFFERED)
-	#define TAP_IOCTL_GET_VERSION           TAP_CONTROL_CODE (2, METHOD_BUFFERED)
-	#define TAP_IOCTL_GET_MTU               TAP_CONTROL_CODE (3, METHOD_BUFFERED)
-	#define TAP_IOCTL_GET_INFO              TAP_CONTROL_CODE (4, METHOD_BUFFERED)
-	#define TAP_IOCTL_CONFIG_POINT_TO_POINT TAP_CONTROL_CODE (5, METHOD_BUFFERED)
-	#define TAP_IOCTL_SET_MEDIA_STATUS      TAP_CONTROL_CODE (6, METHOD_BUFFERED)
-	#define TAP_IOCTL_CONFIG_DHCP_MASQ      TAP_CONTROL_CODE (7, METHOD_BUFFERED)
-	#define TAP_IOCTL_GET_LOG_LINE          TAP_CONTROL_CODE (8, METHOD_BUFFERED)
-	#define TAP_IOCTL_CONFIG_DHCP_SET_OPT   TAP_CONTROL_CODE (9, METHOD_BUFFERED)
-	#define TAP_IOCTL_CONFIG_TUN            TAP_CONTROL_CODE (10, METHOD_BUFFERED)
+	#define TAP_IOCTL_GET_MAC               TAP_CONTROL_CODE(1, METHOD_BUFFERED)
+	#define TAP_IOCTL_GET_VERSION           TAP_CONTROL_CODE(2, METHOD_BUFFERED)
+	#define TAP_IOCTL_GET_MTU               TAP_CONTROL_CODE(3, METHOD_BUFFERED)
+	#define TAP_IOCTL_GET_INFO              TAP_CONTROL_CODE(4, METHOD_BUFFERED)
+	#define TAP_IOCTL_CONFIG_POINT_TO_POINT TAP_CONTROL_CODE(5, METHOD_BUFFERED)
+	#define TAP_IOCTL_SET_MEDIA_STATUS      TAP_CONTROL_CODE(6, METHOD_BUFFERED)
+	#define TAP_IOCTL_CONFIG_DHCP_MASQ      TAP_CONTROL_CODE(7, METHOD_BUFFERED)
+	#define TAP_IOCTL_GET_LOG_LINE          TAP_CONTROL_CODE(8, METHOD_BUFFERED)
+	#define TAP_IOCTL_CONFIG_DHCP_SET_OPT   TAP_CONTROL_CODE(9, METHOD_BUFFERED)
+	#define TAP_IOCTL_CONFIG_TUN            TAP_CONTROL_CODE(10, METHOD_BUFFERED)
 
 	#define MAX_KEY_LENGTH 255
-	#define MAX_VALUE_NAME 16383
 	#define NETWORK_ADAPTERS "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 	#define NETWORK_KEY "SYSTEM\\CurrentControlSet\\Control\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}"
 #else
@@ -77,10 +81,10 @@ chipvpn_tun_t *chipvpn_tun_create(const char *dev) {
 		chipvpn_error("socket bind failed");
 	}
 
-	tun->frontend = frontend;
 	tun->frontend_addr = frontend_addr;
-	tun->backend = backend;
 	tun->backend_addr = backend_addr;
+	tun->frontend = frontend;
+	tun->backend = backend;
 
 	char *deviceid = chipvpn_tun_regquery(NETWORK_ADAPTERS);
 	if(!deviceid) {
@@ -94,12 +98,13 @@ chipvpn_tun_t *chipvpn_tun_create(const char *dev) {
 		return NULL;
 	}
 
-	tun->reader_thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) chipvpn_tun_reader, tun, 0, NULL);
-	tun->writer_thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) chipvpn_tun_writer, tun, 0, NULL);
+	tun->reader_thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)chipvpn_tun_reader, tun, 0, NULL);
+	tun->writer_thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)chipvpn_tun_writer, tun, 0, NULL);
 
 	tun->fd = frontend->fd;
 	tun->tun_fd = tun_fd;
-	get_name(tun->dev, sizeof(dev), deviceid);
+	strcpy(tun->dev, deviceid);
+	free(deviceid);
 
 	#else
 
@@ -196,54 +201,47 @@ char *chipvpn_tun_regquery(char *key_name) {
 			deviceid = strdup(data);
 			break;
 		}
-clean:
+		clean:
 		RegCloseKey(adapter);
 	}
 	RegCloseKey(adapters);
 	return deviceid;
 }
 
-void get_name(char *ifname, int namelen, char *dev_name) {
-	char path[256];
-	char name_str[256] = "Name";
-	LONG status;
-	HKEY conn_key;
-	DWORD len;
-	DWORD datatype;
+IP_ADAPTER_INFO *chipvpn_get_adapter_list() {
+    ULONG size = 0;
+    IP_ADAPTER_INFO *pi = NULL;
+    DWORD status;
 
-	memset(ifname, 0, namelen);
+    if((status = GetAdaptersInfo(NULL, &size)) == ERROR_BUFFER_OVERFLOW) {
+        pi = (PIP_ADAPTER_INFO)malloc(size * sizeof(char));
+        if ((status = GetAdaptersInfo(pi, &size)) != NO_ERROR) {
+            pi = NULL;
+        }
+    }
+    return pi;
+}
 
-	snprintf(path, sizeof(path), "%s\\%s\\Connection", NETWORK_KEY, dev_name);
-	status = RegOpenKeyEx(HKEY_LOCAL_MACHINE, path, 0, KEY_READ, &conn_key);
-	if(status != ERROR_SUCCESS) {
-		fprintf(stderr, "Could not look up name of interface %s: error opening key\n", dev_name);
-		RegCloseKey(conn_key);
-		return;
-	}
-	len = namelen;
-	status = RegQueryValueEx(conn_key, name_str, NULL, &datatype, (LPBYTE)ifname, &len);
-	if(status != ERROR_SUCCESS || datatype != REG_SZ) {
-		fprintf(stderr, "Could not look up name of interface %s: error reading value\n", dev_name);
-		RegCloseKey(conn_key);
-		return;
-	}
-	RegCloseKey(conn_key);
+IP_ADAPTER_INFO *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid) {
+    if(ai && guid) {
+        IP_ADAPTER_INFO *a;
+
+        for(a = ai; a != NULL; a = a->Next) {
+            if(strcmp(guid, a->AdapterName) == 0) {
+                return a;
+            }
+        }
+    }
+    return NULL;
 }
 
 #endif
 
-bool chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *network, int mtu, int qlen) {
+bool chipvpn_tun_set_ip(chipvpn_tun_t *tun, chipvpn_address_t *network) {
 	#ifdef _WIN32
 
 	if(!chipvpn_tun_ifup(tun)) {
 		return false;
-	}
-
-	DWORD len;
-	unsigned long psock[3];
-
-	if(!DeviceIoControl(tun->tun_fd, TAP_IOCTL_GET_VERSION, &psock, sizeof(psock), &psock, sizeof(psock), &len, NULL)) {
-		return NULL;
 	}
 
 	uint32_t mask = 0;
@@ -253,61 +251,99 @@ bool chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *network, int mtu, 
 		mask = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
 	}
 
+	uint32_t psock[3];
 	psock[0] = network->ip; 
 	psock[1] = network->ip & mask;
     psock[2] = mask;
 
+    DWORD len;
 	if(!DeviceIoControl(tun->tun_fd, TAP_IOCTL_CONFIG_TUN, &psock, sizeof(psock), &psock, sizeof(psock), &len, NULL)) {
 		return false;
 	}
 
-	struct in_addr ip_a, mask_a;
-	char ip_char[24], mask_char[24];
+	IP_ADAPTER_INFO *adapter = chipvpn_get_adapter(chipvpn_get_adapter_list(), tun->dev);
+	if(!adapter) {
+		chipvpn_error("unable to locate adapter");
+	}
 
-	ip_a.s_addr = network->ip;
-	mask_a.s_addr = mask;
+	IP_ADDR_STRING *ip = &adapter->IpAddressList;
+	while(ip) {
+		if(DeleteIPAddress(ip->Context) == NO_ERROR) {
+			chipvpn_log("deleting previous ip address set on the interface successfully");
+		}
+		ip = ip->Next;
+	}
 
-	strcpy(ip_char, inet_ntoa(ip_a));
-	strcpy(mask_char, inet_ntoa(mask_a));
-
-	char cmdline[512];
-	fprintf(stderr, "Setting IP of interface '%s' to %s (can take a few seconds)...\n", tun->dev, ip_char);
-	snprintf(cmdline, sizeof(cmdline), "netsh interface ip set address \"%s\" static %s %s", tun->dev, ip_char, mask_char);
-	system(cmdline);
-
-	fprintf(stderr, "Setting MTU of interface '%s' to %s (can take a few seconds)...\n", tun->dev, ip_char);
-	snprintf(cmdline, sizeof(cmdline), "netsh interface ipv4 set subinterface \"%s\" mtu=%i", tun->dev, mtu);
-	system(cmdline);
+	DWORD ctx, ins;
+	if(AddIPAddress(network->ip, mask, adapter->Index, &ctx, &ins) != NO_ERROR) {
+		chipvpn_error("unable to set ip address on the interface");
+	}
 
 	return true;
 
 	#else
-	if(tun) {
-		struct ifreq ifr;
-		ifr.ifr_addr.sa_family = AF_INET;
 
-		strcpy(ifr.ifr_name, tun->dev);
+	struct ifreq ifr;
+	ifr.ifr_addr.sa_family = AF_INET;
 
-		struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
+	strcpy(ifr.ifr_name, tun->dev);
 
-		int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
 
-		addr->sin_addr.s_addr = network->ip;
-		ioctl(fd, SIOCSIFADDR, &ifr);
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
+	addr->sin_addr.s_addr = network->ip;
+	ioctl(fd, SIOCSIFADDR, &ifr);
+
+	if(network->prefix == 0) {
+		addr->sin_addr.s_addr = 0;
+	} else {
 		addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
-		ioctl(fd, SIOCSIFNETMASK, &ifr);
-
-		ifr.ifr_mtu = mtu;
-		ioctl(fd, SIOCSIFMTU, &ifr);
-
-		ifr.ifr_qlen = qlen;
-		ioctl(fd, SIOCSIFTXQLEN, &ifr);
-
-	    close(fd);
-	    return true;
 	}
-	return false;
+
+	ioctl(fd, SIOCSIFNETMASK, &ifr);
+
+	close(fd);
+	return true;
+	#endif
+}
+
+bool chipvpn_tun_set_mtu(chipvpn_tun_t *tun, int mtu) {
+	#ifdef _WIN32
+
+	IP_ADAPTER_INFO *adapter = chipvpn_get_adapter(chipvpn_get_adapter_list(), tun->dev);
+	if(!adapter) {
+		chipvpn_error("unable to locate adapter");
+	}
+
+	MIB_IPINTERFACE_ROW ipiface;
+	InitializeIpInterfaceEntry(&ipiface);
+	ipiface.Family = AF_INET;
+	ipiface.InterfaceIndex = adapter->Index;
+	if(GetIpInterfaceEntry(&ipiface) != NO_ERROR) {
+		chipvpn_error("unable to set interface mtu");
+	}
+	ipiface.SitePrefixLength = 0;
+	ipiface.NlMtu = mtu;
+	if(SetIpInterfaceEntry(&ipiface) != NO_ERROR) {
+		chipvpn_error("unable to set interface mtu");
+	}
+	return true;
+
+	#else
+
+	struct ifreq ifr;
+	ifr.ifr_addr.sa_family = AF_INET;
+
+	strcpy(ifr.ifr_name, tun->dev);
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	ifr.ifr_mtu = mtu;
+	ioctl(fd, SIOCSIFMTU, &ifr);
+
+    close(fd);
+    return true;
 	#endif
 }
 
@@ -321,22 +357,21 @@ bool chipvpn_tun_ifup(chipvpn_tun_t *tun) {
 		return false;
 	}
 	return true;
+
 	#else
-	if(tun) {
-		struct ifreq ifr;
-		ifr.ifr_addr.sa_family = AF_INET;
 
-		strcpy(ifr.ifr_name, tun->dev);
+	struct ifreq ifr;
+	ifr.ifr_addr.sa_family = AF_INET;
 
-		int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	strcpy(ifr.ifr_name, tun->dev);
 
-		ifr.ifr_flags |= IFF_UP;
-		ioctl(fd, SIOCSIFFLAGS, &ifr);
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-	    close(fd);
-	    return true;
-	}
-	return false;
+	ifr.ifr_flags |= IFF_UP;
+	ioctl(fd, SIOCSIFFLAGS, &ifr);
+
+	close(fd);
+	return true;
 	#endif
 }
 
@@ -412,32 +447,32 @@ int chipvpn_tun_write(chipvpn_tun_t *tun, void *buf, int size) {
 }
 
 void chipvpn_tun_free(chipvpn_tun_t *tun) {
-	if(tun) {
-		#ifdef _WIN32
-		TerminateThread(tun->reader_thread, 0);
-		CloseHandle(tun->reader_thread);
-		TerminateThread(tun->writer_thread, 0);
-		CloseHandle(tun->writer_thread);
+	#ifdef _WIN32
+	TerminateThread(tun->reader_thread, 0);
+	CloseHandle(tun->reader_thread);
+	TerminateThread(tun->writer_thread, 0);
+	CloseHandle(tun->writer_thread);
 
-		CloseHandle(tun->tun_fd);
-		chipvpn_socket_free(tun->frontend);
-		chipvpn_socket_free(tun->backend);
-		#else
-		if(*tun->dev != '\0') {
-			struct ifreq ifr;
-			ifr.ifr_addr.sa_family = AF_INET;
+	CloseHandle(tun->tun_fd);
+	chipvpn_socket_free(tun->frontend);
+	chipvpn_socket_free(tun->backend);
 
-			strcpy(ifr.ifr_name, tun->dev);
+	#else
 
-			int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(*tun->dev != '\0') {
+		struct ifreq ifr;
+		ifr.ifr_addr.sa_family = AF_INET;
 
-			ifr.ifr_flags = ifr.ifr_flags & ~IFF_UP;
-			ioctl(fd, SIOCSIFFLAGS, &ifr);
+		strcpy(ifr.ifr_name, tun->dev);
 
-		    close(fd);
-		}
-		close(tun->fd);
-		#endif
-		free(tun);
+		int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+		ifr.ifr_flags = ifr.ifr_flags & ~IFF_UP;
+		ioctl(fd, SIOCSIFFLAGS, &ifr);
+
+	    close(fd);
 	}
+	close(tun->fd);
+	#endif
+	free(tun);
 }

@@ -23,6 +23,7 @@
 #include "chipvpn.h"
 #ifdef _WIN32
     #include <winsock2.h>
+    #include <iptypes.h>
 	#define IFNAMSIZ 256 
 #else
     #include <netinet/in.h>
@@ -46,9 +47,11 @@ typedef struct {
 chipvpn_tun_t          *chipvpn_tun_create(const char *dev);
 #ifdef _WIN32
 char                   *chipvpn_tun_regquery(char *key_name);
-void                    get_name(char *ifname, int namelen, char *dev_name);
+IP_ADAPTER_INFO        *chipvpn_get_adapter_list();
+IP_ADAPTER_INFO        *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid);
 #endif
-bool                    chipvpn_tun_setip(chipvpn_tun_t *tun, chipvpn_address_t *addr, int mtu, int qlen);
+bool                    chipvpn_tun_set_ip(chipvpn_tun_t *tun, chipvpn_address_t *addr);
+bool                    chipvpn_tun_set_mtu(chipvpn_tun_t *tun, int mtu);
 bool                    chipvpn_tun_ifup(chipvpn_tun_t *tun);
 #ifdef _WIN32
 DWORD WINAPI            chipvpn_tun_reader(LPVOID arg);
