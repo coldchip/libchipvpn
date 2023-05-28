@@ -43,6 +43,7 @@ void chipvpn_setup(char *config) {
 }
 
 void chipvpn_init(char *config) {
+	setbuf(stdout, 0);
 	chipvpn_log("ColdChip ChipVPN v1.2");
 
 	if(sodium_init() == -1) {

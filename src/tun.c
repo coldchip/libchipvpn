@@ -163,7 +163,7 @@ char *chipvpn_tun_regquery(char *key_name) {
 	}
 
 	/* Walk througt all adapters */
-    for(i = 0; i < sub_keys; i++) {
+	for(i = 0; i < sub_keys; i++) {
 		char new_key[MAX_KEY_LENGTH];
 		char data[256];
 		TCHAR key[MAX_KEY_LENGTH];
@@ -209,30 +209,28 @@ char *chipvpn_tun_regquery(char *key_name) {
 }
 
 IP_ADAPTER_INFO *chipvpn_get_adapter_list() {
-    ULONG size = 0;
-    IP_ADAPTER_INFO *pi = NULL;
-    DWORD status;
+	ULONG size = 0;
+	IP_ADAPTER_INFO *pi = NULL;
+	DWORD status;
 
-    if((status = GetAdaptersInfo(NULL, &size)) == ERROR_BUFFER_OVERFLOW) {
-        pi = (PIP_ADAPTER_INFO)malloc(size * sizeof(char));
-        if ((status = GetAdaptersInfo(pi, &size)) != NO_ERROR) {
-            pi = NULL;
-        }
-    }
-    return pi;
+	if((status = GetAdaptersInfo(NULL, &size)) == ERROR_BUFFER_OVERFLOW) {
+		pi = (PIP_ADAPTER_INFO)malloc(size * sizeof(char));
+		if((status = GetAdaptersInfo(pi, &size)) != NO_ERROR) {
+			pi = NULL;
+		}
+	}
+	return pi;
 }
 
 IP_ADAPTER_INFO *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid) {
-    if(ai && guid) {
-        IP_ADAPTER_INFO *a;
-
-        for(a = ai; a != NULL; a = a->Next) {
-            if(strcmp(guid, a->AdapterName) == 0) {
-                return a;
-            }
-        }
-    }
-    return NULL;
+	if(ai && guid) {
+		for(IP_ADAPTER_INFO *a = ai; a != NULL; a = a->Next) {
+			if(strcmp(guid, a->AdapterName) == 0) {
+				return a;
+			}
+		}
+	}
+	return NULL;
 }
 
 #endif
@@ -254,14 +252,15 @@ bool chipvpn_tun_set_ip(chipvpn_tun_t *tun, chipvpn_address_t *network) {
 	uint32_t psock[3];
 	psock[0] = network->ip; 
 	psock[1] = network->ip & mask;
-    psock[2] = mask;
+	psock[2] = mask;
 
-    DWORD len;
+	DWORD len;
 	if(!DeviceIoControl(tun->tun_fd, TAP_IOCTL_CONFIG_TUN, &psock, sizeof(psock), &psock, sizeof(psock), &len, NULL)) {
 		return false;
 	}
 
-	IP_ADAPTER_INFO *adapter = chipvpn_get_adapter(chipvpn_get_adapter_list(), tun->dev);
+	IP_ADAPTER_INFO *list = chipvpn_get_adapter_list();
+	IP_ADAPTER_INFO *adapter = chipvpn_get_adapter(list, tun->dev);
 	if(!adapter) {
 		chipvpn_error("unable to locate adapter");
 	}
@@ -278,6 +277,8 @@ bool chipvpn_tun_set_ip(chipvpn_tun_t *tun, chipvpn_address_t *network) {
 	if(AddIPAddress(network->ip, mask, adapter->Index, &ctx, &ins) != NO_ERROR) {
 		chipvpn_error("unable to set ip address on the interface");
 	}
+
+	free(list);
 
 	return true;
 
@@ -311,7 +312,8 @@ bool chipvpn_tun_set_ip(chipvpn_tun_t *tun, chipvpn_address_t *network) {
 bool chipvpn_tun_set_mtu(chipvpn_tun_t *tun, int mtu) {
 	#ifdef _WIN32
 
-	IP_ADAPTER_INFO *adapter = chipvpn_get_adapter(chipvpn_get_adapter_list(), tun->dev);
+	IP_ADAPTER_INFO *list = chipvpn_get_adapter_list();
+	IP_ADAPTER_INFO *adapter = chipvpn_get_adapter(list, tun->dev);
 	if(!adapter) {
 		chipvpn_error("unable to locate adapter");
 	}
@@ -324,10 +326,14 @@ bool chipvpn_tun_set_mtu(chipvpn_tun_t *tun, int mtu) {
 		chipvpn_error("unable to set interface mtu");
 	}
 	ipiface.SitePrefixLength = 0;
+	ipiface.UseAutomaticMetric = false;
 	ipiface.NlMtu = mtu;
+	ipiface.Metric = 1;
 	if(SetIpInterfaceEntry(&ipiface) != NO_ERROR) {
 		chipvpn_error("unable to set interface mtu");
 	}
+
+	free(list);
 	return true;
 
 	#else
@@ -342,8 +348,8 @@ bool chipvpn_tun_set_mtu(chipvpn_tun_t *tun, int mtu) {
 	ifr.ifr_mtu = mtu;
 	ioctl(fd, SIOCSIFMTU, &ifr);
 
-    close(fd);
-    return true;
+	close(fd);
+	return true;
 	#endif
 }
 
