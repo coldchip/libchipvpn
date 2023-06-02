@@ -57,7 +57,7 @@ bool chipvpn_device_reload_config(chipvpn_device_t *device, char *file) {
 			chipvpn_peer_t *peer1 = (chipvpn_peer_t*)t;
 			t = chipvpn_list_next(t);
 
-			if(memcmp(peer->crypto->key, peer1->crypto->key, sizeof(peer->crypto->key)) == 0 && peer1->state == PEER_CONNECTED) {
+			if(memcmp(peer->crypto->key, peer1->crypto->key, sizeof(peer->crypto->key)) == 0) {
 				chipvpn_list_remove(&peer->node);
 				chipvpn_peer_free(peer);
 
