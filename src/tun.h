@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include "socket.h"
 #include "address.h"
+#include "chipvpn.h"
 #ifdef _WIN32
     #include <winsock2.h>
     #include <iptypes.h>
@@ -52,6 +53,7 @@ IP_ADAPTER_INFO        *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid);
 bool                    chipvpn_tun_set_ip(chipvpn_tun_t *tun, chipvpn_address_t *addr);
 bool                    chipvpn_tun_set_mtu(chipvpn_tun_t *tun, int mtu);
 bool                    chipvpn_tun_ifup(chipvpn_tun_t *tun);
+bool                    chipvpn_tun_ifdown(chipvpn_tun_t *tun);
 #ifdef _WIN32
 DWORD WINAPI            chipvpn_tun_reader(LPVOID arg);
 DWORD WINAPI            chipvpn_tun_writer(LPVOID arg);
