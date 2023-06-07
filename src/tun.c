@@ -381,6 +381,34 @@ bool chipvpn_tun_ifup(chipvpn_tun_t *tun) {
 	#endif
 }
 
+bool chipvpn_tun_ifdown(chipvpn_tun_t *tun) {
+	#ifdef _WIN32
+
+	int zero = 0;
+
+	DWORD len;
+	if(!DeviceIoControl(tun->tun_fd, TAP_IOCTL_SET_MEDIA_STATUS, &zero, sizeof(zero), &one, sizeof(one), &len, NULL)) {
+		return false;
+	}
+	return true;
+
+	#else
+
+	struct ifreq ifr;
+	ifr.ifr_addr.sa_family = AF_INET;
+
+	strcpy(ifr.ifr_name, tun->dev);
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	ifr.ifr_flags &= ~IFF_UP;
+	ioctl(fd, SIOCSIFFLAGS, &ifr);
+
+	close(fd);
+	return true;
+	#endif
+}
+
 #ifdef _WIN32
 
 DWORD WINAPI chipvpn_tun_reader(LPVOID arg) {
