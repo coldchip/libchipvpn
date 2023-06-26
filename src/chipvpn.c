@@ -186,7 +186,6 @@ void chipvpn_loop(char *config) {
 					if(peer->state == PEER_CONNECTED) {
 						if(chipvpn_get_time() - peer->last_ping > 10) {
 							peer->state = PEER_DISCONNECTED;
-							printf("peer %p has disconnected\n", peer);
 						} else {
 							chipvpn_packet_ping_t ping = {};
 							ping.header.type = htonl(2);
@@ -372,14 +371,11 @@ void chipvpn_loop(char *config) {
 }
 
 void chipvpn_print_stats() {
-	struct in_addr ip = {};
-
 	chipvpn_log("--------------------");
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		ip.s_addr = peer->address.ip;
-		chipvpn_log("peer [%i@%s:%i] connected: %i", peer->sender_id, inet_ntoa(ip), peer->address.port, peer->state);
+		chipvpn_log("peer [%i] tx: [%lli] rx: [%lli] connected: [%i]", peer->sender_id, peer->tx, peer->rx, peer->state);
 	}
 	chipvpn_log("--------------------");
 }
