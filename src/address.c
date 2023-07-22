@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include "address.h"
+#include "chipvpn/address.h"
 
 #ifdef _WIN32
 	#include <ws2tcpip.h>

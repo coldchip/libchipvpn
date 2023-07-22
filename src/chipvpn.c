@@ -5,14 +5,14 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sodium.h>
-#include "crypto.h"
-#include "chipvpn.h"
-#include "socket.h"
-#include "packet.h"
-#include "address.h"
-#include "device.h"
-#include "peer.h"
-#include "tun.h"
+#include "chipvpn/crypto.h"
+#include "chipvpn/chipvpn.h"
+#include "chipvpn/socket.h"
+#include "chipvpn/packet.h"
+#include "chipvpn/address.h"
+#include "chipvpn/device.h"
+#include "chipvpn/peer.h"
+#include "chipvpn/tun.h"
 #ifdef _WIN32
     #include <winsock2.h>
 #else
@@ -23,52 +23,51 @@ chipvpn_t *chipvpn_init(char *config) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	chipvpn_device_t *device = NULL;
-	chipvpn_tun_t    *tun = NULL;
-	chipvpn_socket_t *sock = NULL;
+	chipvpn_tun_t    *tun    = NULL;
+	chipvpn_socket_t *sock   = NULL;
 
 	setbuf(stdout, 0);
-	chipvpn_log("ColdChip ChipVPN v1.2");
 
 	if(sodium_init() == -1) {
-		chipvpn_error("unable to initialize libsodium crypto");
+		return NULL;
 	}
 
 	/* create device config */
 
 	device = chipvpn_device_create(config);
 	if(!device) {
-		chipvpn_error("unable to load config");
+		return NULL;
 	}
 
 	/* create tunnel socket */
 
 	tun = chipvpn_tun_create(device->name);
 	if(!tun) {
-		chipvpn_error("unable to create tunnel interface");
+		return NULL;
 	}
 
 	/* create vpn socket */
 
 	sock = chipvpn_socket_create();
 	if(!sock) {
-		chipvpn_error("unable to create socket");
+		return NULL;
 	}
 
 	/* set tunnel ip */
 
 	if(!chipvpn_tun_set_ip(tun, &device->address)) {
-		chipvpn_error("set tun ip failed");
+		return NULL;
 	}
 	if(!chipvpn_tun_set_mtu(tun, device->mtu)) {
-		chipvpn_error("set tun mtu failed");
+		return NULL;
 	}
 	if(!chipvpn_tun_ifup(tun)) {
-		chipvpn_error("tun up failed");
+		return NULL;
 	}
 
 	if(device->flag & CHIPVPN_DEVICE_BIND) {
 		if(!chipvpn_socket_bind(sock, &device->bind)) {
-			chipvpn_error("socket bind failed");
+			return NULL;
 		}
 	}
 
@@ -87,15 +86,18 @@ chipvpn_t *chipvpn_init(char *config) {
 	vpn->sock_can_read = 0;
 	vpn->sock_can_write = 0;
 
+	vpn->counter = 0;
+	vpn->sender_id = 0;
+	vpn->last_update = 0;
+
+	FD_ZERO(&vpn->rdset);
+	FD_ZERO(&vpn->wdset);
+
 	return vpn;
 }
 
-void chipvpn_loop(chipvpn_t *vpn, char *config) {
+int chipvpn_service(chipvpn_t *vpn, int external_fd) {
 	struct timeval tv;
-	fd_set rdset, wdset;
-
-	FD_ZERO(&rdset);
-	FD_ZERO(&wdset);
 
 	int tun_fd  = vpn->tun->fd;
 	int sock_fd = vpn->sock->fd;
@@ -103,27 +105,29 @@ void chipvpn_loop(chipvpn_t *vpn, char *config) {
 	tv.tv_sec = 0;
 	tv.tv_usec = 250000;
 
-	FD_CLR(tun_fd, &rdset);
-	FD_CLR(tun_fd, &wdset);
-	FD_CLR(sock_fd, &wdset);
-	FD_CLR(sock_fd, &rdset);
+	FD_CLR(tun_fd, &vpn->rdset);
+	FD_CLR(tun_fd, &vpn->wdset);
+	FD_CLR(sock_fd, &vpn->wdset);
+	FD_CLR(sock_fd, &vpn->rdset);
 
-	if(!vpn->tun_can_read)   FD_SET(tun_fd, &rdset);
-	if(!vpn->tun_can_write)  FD_SET(tun_fd, &wdset);
-	if(!vpn->sock_can_write) FD_SET(sock_fd, &wdset);
-	if(!vpn->sock_can_read)  FD_SET(sock_fd, &rdset);
+	if(!vpn->tun_can_read)   FD_SET(tun_fd, &vpn->rdset);
+	if(!vpn->tun_can_write)  FD_SET(tun_fd, &vpn->wdset);
+	if(!vpn->sock_can_write) FD_SET(sock_fd, &vpn->wdset);
+	if(!vpn->sock_can_read)  FD_SET(sock_fd, &vpn->rdset);
 
-	if(select(MAX(tun_fd, sock_fd) + 1, &rdset, &wdset, NULL, &tv) >= 0) {
+	int max = MAX(tun_fd, sock_fd);
+	if(external_fd > 0) {
+		max = MAX(max, external_fd);
+	}
 
-		if(FD_ISSET(tun_fd, &rdset))  vpn->tun_can_read  = 1;
-		if(FD_ISSET(tun_fd, &wdset))  vpn->tun_can_write = 1;
-		if(FD_ISSET(sock_fd, &rdset)) vpn->sock_can_read  = 1;
-		if(FD_ISSET(sock_fd, &wdset)) vpn->sock_can_write = 1;
+	if(select(max + 1, &vpn->rdset, &vpn->wdset, NULL, &tv) >= 0) {
+		if(FD_ISSET(tun_fd, &vpn->rdset))  vpn->tun_can_read  = 1;
+		if(FD_ISSET(tun_fd, &vpn->wdset))  vpn->tun_can_write = 1;
+		if(FD_ISSET(sock_fd, &vpn->rdset)) vpn->sock_can_read  = 1;
+		if(FD_ISSET(sock_fd, &vpn->wdset)) vpn->sock_can_write = 1;
 
 		/* peer lifecycle service */
 		if(vpn->sock_can_write && chipvpn_get_time() - vpn->last_update >= 1) {
-			chipvpn_device_reload_config(vpn->device, config);
-			chipvpn_print_stats(vpn);
 			for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
 				chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 				if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
@@ -161,7 +165,7 @@ void chipvpn_loop(chipvpn_t *vpn, char *config) {
 			vpn->tun_can_read = 0;
 
 			if(r <= 0) {
-				return;
+				return 0;
 			}
 
 			chipvpn_address_t dst = {};
@@ -169,7 +173,7 @@ void chipvpn_loop(chipvpn_t *vpn, char *config) {
 
 			chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(&vpn->device->peers, &dst);
 			if(!peer || peer->state != PEER_CONNECTED) {
-				return;
+				return 0;
 			}
 
 			char buffer[sizeof(chipvpn_packet_data_t) + r];
@@ -200,7 +204,7 @@ void chipvpn_loop(chipvpn_t *vpn, char *config) {
 			vpn->sock_can_read = 0;
 
 			if(r <= sizeof(chipvpn_packet_header_t)) {
-				return;
+				return 0;
 			}
 
 			chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
@@ -285,7 +289,11 @@ void chipvpn_loop(chipvpn_t *vpn, char *config) {
 				break;
 			}
 		}
+
+		return 1;
 	}
+
+	return 0;
 }
 
 void chipvpn_print_stats(chipvpn_t *vpn) {
@@ -343,23 +351,6 @@ void chipvpn_log(const char *format, ...) {
 	#endif
 	
 	va_end(args);
-}
-
-void chipvpn_error(const char *format, ...) {
-	va_list args;
-	va_start(args, format);
-
-	#ifdef _WIN32
-	printf("[ChipVPN] ");
-	vprintf(format, args);
-	printf("\n");
-	#else
-	printf("\033[0;31m[ChipVPN] ");
-	vprintf(format, args);
-	printf("\033[0m\n");
-	#endif
-
-	exit(1);
 }
 
 uint32_t chipvpn_get_time() {

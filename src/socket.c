@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <fcntl.h>
-#include "socket.h"
+#include "chipvpn/socket.h"
 #ifdef _WIN32
     #include <winsock2.h>
 #else

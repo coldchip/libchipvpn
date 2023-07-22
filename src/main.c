@@ -1,6 +1,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "chipvpn.h"
 
 bool quit = false;
@@ -22,11 +24,12 @@ int main(int argc, char const *argv[]) {
 
 		chipvpn_t *vpn = chipvpn_init((char *)argv[1]);
 		while(!quit) {
-			chipvpn_loop(vpn, (char *)argv[1]);
+			chipvpn_service(vpn, 0);
 		}
 		chipvpn_cleanup(vpn);
     } else {
-        chipvpn_error("usage: %s config.ini", (char *)argv[0]);
+        printf("usage: %s config.ini\n", (char *)argv[0]);
+        exit(1);
     }
 
     return 0;
