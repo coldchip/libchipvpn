@@ -8,11 +8,11 @@ lib_LTLIBRARIES = libchipvpn.la
 libchipvpn_la_LDFLAGS = -lsodium -version-info $(LIBCHIPVPN_SO_VERSION)
 libchipvpn_la_SOURCES = src/list.c src/chipvpn.c src/socket.c src/tun.c src/crypto.c src/peer.c src/address.c src/device.c src/ini.c src/sb.c
 
-libchipvpn_includedir = $(includedir)/
+libchipvpn_includedir = $(includedir)/chipvpn
 #nobase_libcircle_include_HEADERS = libcircle.h
 
 # headers to be installed in /include
-include_HEADERS = src/address.h src/crypto.h src/ini.h src/packet.h src/sb.h src/tun.h src/chipvpn.h src/device.h src/list.h src/peer.h src/socket.h
+libchipvpn_include_HEADERS = src/address.h src/crypto.h src/ini.h src/packet.h src/sb.h src/tun.h src/chipvpn.h src/device.h src/list.h src/peer.h src/socket.h
 
 # headers that should be part of distribution
 # but not installed in /include
