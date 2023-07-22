@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <sys/select.h>
 #include <sodium.h>
 #include "crypto.h"
 #include "chipvpn.h"
