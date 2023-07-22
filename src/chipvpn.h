@@ -32,16 +32,17 @@ typedef struct {
 	uint64_t counter;
 	uint64_t sender_id;
 	uint64_t last_update;
+
+	fd_set rdset, wdset;
 } chipvpn_t;
 
 chipvpn_t *    chipvpn_init(char *config);
-void           chipvpn_loop(chipvpn_t *vpn, char *config);
+int            chipvpn_service(chipvpn_t *vpn, int external_fd);
 void           chipvpn_print_stats(chipvpn_t *vpn);
 void           chipvpn_cleanup(chipvpn_t *vpn);
 
 char          *chipvpn_format_bytes(uint64_t bytes);
 void           chipvpn_log(const char *format, ...);
-void           chipvpn_error(const char *format, ...);
 uint32_t       chipvpn_get_time();
 
 #endif

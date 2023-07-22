@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
-#include "peer.h"
-#include "device.h"
-#include "chipvpn.h"
-#include "ini.h"
+#include "chipvpn/peer.h"
+#include "chipvpn/device.h"
+#include "chipvpn/chipvpn.h"
+#include "chipvpn/ini.h"
 
 chipvpn_device_t *chipvpn_device_create(char *file) {
 	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));
@@ -21,8 +21,10 @@ chipvpn_device_t *chipvpn_device_create(char *file) {
 	device->name = NULL;
 	device->mtu = 1420;
 
-	if(!chipvpn_device_reload_config(device, file)) {
-		return NULL;
+	if(file) {
+		if(!chipvpn_device_reload_config(device, file)) {
+			return NULL;
+		}
 	}
 
 	return device;
@@ -87,7 +89,7 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			int port;
 			if(sscanf(value, "%16[^:]:%i", ip, &port) == 2) {
 				if(!chipvpn_address_set_ip(&device->bind, ip)) {
-					chipvpn_error("invalid ip address: %s", ip);
+					return 0;
 				}
 				device->bind.port = port;
 				device->flag |= CHIPVPN_DEVICE_BIND;
@@ -99,7 +101,7 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 			int prefix;
 			if(sscanf(value, "%16[^/]/%i", ip, &prefix) == 2) {
 				if(!chipvpn_address_set_ip(&device->address, ip)) {
-					chipvpn_error("invalid ip address: %s", ip);
+					return 0;
 				}
 				device->address.prefix = prefix;
 			}
@@ -132,39 +134,22 @@ int chipvpn_device_parse_handler(void* user, const char* section, const char* na
 		if(MATCH("interface", "mtu")) {
 			device->mtu = atoi(value);
 			if(!(device->mtu > 200 && device->mtu < 50000)) {
-				chipvpn_error("invalid MTU, accepted ranges: 200-50000");
+				return 0;
 			}
 		}
 
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&device->peers);
 
 		if(MATCH("peer", "key")) {
-			char keyhash[crypto_stream_xchacha20_KEYBYTES];
-			crypto_hash_sha256((unsigned char*)keyhash, (unsigned char*)value, strlen(value));
-			chipvpn_crypto_set_key(peer->crypto, keyhash);
+			chipvpn_peer_set_key(peer, (char*)value);
 		}
 
 		if(MATCH("peer", "allow")) {
-			char ip[24];
-			int prefix;
-			if(sscanf(value, "%16[^/]/%i", ip, &prefix) == 2) {
-				if(!chipvpn_address_set_ip(&peer->allow, ip)) {
-					chipvpn_error("invalid ip address: %s", ip);
-				}
-				peer->allow.prefix = prefix;
-			}
+			chipvpn_peer_set_allow(peer, value);
 		}
 
 		if(MATCH("peer", "endpoint")) {
-			char ip[24];
-			int port;
-			if(sscanf(value, "%254[^:]:%i", ip, &port) == 2) {
-				if(!chipvpn_address_set_ip(&peer->address, ip)) {
-					chipvpn_error("invalid ip address: %s", ip);
-				}
-				peer->address.port = port;
-				peer->connect = true;
-			}
+			chipvpn_peer_set_endpoint(peer, value);
 		}
 	} else {
 		if(strcasecmp(section, "peer") == 0) {
