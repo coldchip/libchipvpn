@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
-#include "chipvpn/peer.h"
-#include "chipvpn/device.h"
-#include "chipvpn/chipvpn.h"
-#include "chipvpn/ini.h"
+#include "peer.h"
+#include "device.h"
+#include "chipvpn.h"
+#include "ini.h"
 
 chipvpn_device_t *chipvpn_device_create(char *file) {
 	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));

@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <sodium.h>
 #include <string.h>
-#include "chipvpn/chipvpn.h"
-#include "chipvpn/crypto.h"
-#include "chipvpn/peer.h"
+#include "chipvpn.h"
+#include "crypto.h"
+#include "peer.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));

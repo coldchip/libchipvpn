@@ -2,7 +2,7 @@
 #include <string.h>
 #include <sodium.h>
 #include <stdint.h>
-#include "chipvpn/crypto.h"
+#include "crypto.h"
 
 chipvpn_crypto_t *chipvpn_crypto_create() {
 	chipvpn_crypto_t *crypto = malloc(sizeof(chipvpn_crypto_t));
