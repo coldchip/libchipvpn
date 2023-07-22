@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/select.h>
 
 #include "device.h"
 #include "tun.h"
