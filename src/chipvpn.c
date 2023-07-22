@@ -5,14 +5,14 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sodium.h>
-#include "chipvpn/crypto.h"
-#include "chipvpn/chipvpn.h"
-#include "chipvpn/socket.h"
-#include "chipvpn/packet.h"
-#include "chipvpn/address.h"
-#include "chipvpn/device.h"
-#include "chipvpn/peer.h"
-#include "chipvpn/tun.h"
+#include "crypto.h"
+#include "chipvpn.h"
+#include "socket.h"
+#include "packet.h"
+#include "address.h"
+#include "device.h"
+#include "peer.h"
+#include "tun.h"
 #ifdef _WIN32
     #include <winsock2.h>
 #else

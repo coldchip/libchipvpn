@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include "chipvpn/sb.h"
+#include "sb.h"
 
 /*
  * sb_create returns a pointer to a new StringBuilder or NULL if memory is not

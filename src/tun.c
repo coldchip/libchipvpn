@@ -13,8 +13,8 @@
  * See README for more details.
  */
 
-#include "chipvpn/tun.h"
-#include "chipvpn/socket.h"
+#include "tun.h"
+#include "socket.h"
 #include <stdint.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -22,8 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "chipvpn/chipvpn.h"
-#include "chipvpn/address.h"
+#include "chipvpn.h"
+#include "address.h"
 
 #ifdef _WIN32
 	#include <netioapi.h>
