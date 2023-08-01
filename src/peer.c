@@ -41,7 +41,6 @@ bool chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *value) {
 			return false;
 		}
 		peer->address.port = port;
-		peer->connect = true;
 	}
 	return true;
 }
@@ -99,6 +98,16 @@ chipvpn_peer_t *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index)
 		}
 	}
 	return NULL;
+}
+
+void chipvpn_peer_connect(chipvpn_peer_t *peer) {
+	peer->connect = true;
+	peer->state = PEER_DISCONNECTED;
+}
+
+void chipvpn_peer_disconnect(chipvpn_peer_t *peer) {
+	peer->connect = false;
+	peer->state = PEER_DISCONNECTED;
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {

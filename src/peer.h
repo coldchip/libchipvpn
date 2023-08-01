@@ -33,6 +33,8 @@ bool                 chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index);
+void                 chipvpn_peer_connect(chipvpn_peer_t *peer);
+void                 chipvpn_peer_disconnect(chipvpn_peer_t *peer);
 void                 chipvpn_peer_free(chipvpn_peer_t *peer);
 
 #endif

@@ -94,6 +94,10 @@ chipvpn_t *chipvpn_init(char *config) {
 	return vpn;
 }
 
+void chipvpn_wait(chipvpn_t *vpn) {
+
+}
+
 void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
 	int tun_fd  = vpn->tun->fd;
 	int sock_fd = vpn->sock->fd;
@@ -121,13 +125,9 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 	if(FD_ISSET(sock_fd, wdset)) vpn->sock_can_write = 1;
 }
 
-void chipvpn_wait(chipvpn_t *vpn) {
-
-}
-
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
-	if(vpn->sock_can_write && chipvpn_get_time() - vpn->last_update >= 1) {
+	if(chipvpn_get_time() - vpn->last_update >= 1 && vpn->sock_can_write) {
 		for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
 			chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 			if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
@@ -159,12 +159,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 	}
 
 	/* tun => sock */
-	if(vpn->tun_can_read && vpn->sock_can_write) {
+	if(vpn->tun_can_read) {
 		char buf[vpn->device->mtu];
 		int r = chipvpn_tun_read(vpn->tun, buf, sizeof(buf));
 		vpn->tun_can_read = 0;
 
-		if(r <= 0) {
+		if(r <= 0 || !vpn->sock_can_write) {
 			return 0;
 		}
 
@@ -196,7 +196,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 	}
 
 	/* sock => tun */
-	if(vpn->sock_can_read && vpn->tun_can_write) {
+	if(vpn->sock_can_read) {
 		char buffer[sizeof(chipvpn_packet_t) + vpn->device->mtu];
 		chipvpn_address_t addr;
 
@@ -210,7 +210,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
 		switch(ntohl(header->type)) {
 			case 0: {
-				if(r < sizeof(chipvpn_packet_auth_t)) {
+				if(r < sizeof(chipvpn_packet_auth_t) || !vpn->sock_can_write) {
 					break;
 				}
 
@@ -246,7 +246,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 			break;
 			case 1: {
-				if(r < sizeof(chipvpn_packet_data_t)) {
+				if(r < sizeof(chipvpn_packet_data_t) || !vpn->tun_can_write) {
 					break;
 				}
 
