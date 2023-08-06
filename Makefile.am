@@ -6,7 +6,7 @@ ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 lib_LTLIBRARIES = libchipvpn.la
 
 libchipvpn_la_LDFLAGS = -lsodium -version-info $(LIBCHIPVPN_SO_VERSION)
-libchipvpn_la_SOURCES = src/list.c src/chipvpn.c src/socket.c src/tun.c src/crypto.c src/peer.c src/address.c src/device.c src/ini.c src/sb.c
+libchipvpn_la_SOURCES = src/list.c src/chipvpn.c src/socket.c src/tun.c src/crypto.c src/peer.c src/address.c src/device.c src/ini.c
 
 libchipvpn_includedir = $(includedir)/chipvpn
 #nobase_libcircle_include_HEADERS = libcircle.h
