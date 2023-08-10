@@ -1,6 +1,11 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <sodium.h>
 
 typedef struct __attribute__((__packed__)) {
@@ -44,5 +49,9 @@ typedef union {
 	chipvpn_packet_data_t data;
 	chipvpn_packet_ping_t ping;
 } chipvpn_packet_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

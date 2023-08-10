@@ -11,6 +11,11 @@
 #ifndef LIST_H
 #define LIST_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stddef.h>
 
 typedef struct _chipvpn_list_node_t {
@@ -38,5 +43,9 @@ extern size_t                   chipvpn_list_size(chipvpn_list_t *list);
 
 #define chipvpn_list_front(list) ((void *) (list)->sentinel.next)
 #define chipvpn_list_back(list) ((void *) (list)->sentinel.previous)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

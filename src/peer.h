@@ -1,6 +1,11 @@
 #ifndef PEER_H
 #define PEER_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include "crypto.h"
 #include "address.h"
@@ -36,5 +41,9 @@ chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t i
 void                 chipvpn_peer_connect(chipvpn_peer_t *peer);
 void                 chipvpn_peer_disconnect(chipvpn_peer_t *peer);
 void                 chipvpn_peer_free(chipvpn_peer_t *peer);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
