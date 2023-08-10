@@ -16,6 +16,11 @@
 #ifndef TUN_H
 #define TUN_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "socket.h"
@@ -60,5 +65,9 @@ DWORD WINAPI            chipvpn_tun_writer(LPVOID arg);
 int                     chipvpn_tun_read(chipvpn_tun_t *tun, void *buf, int size);
 int                     chipvpn_tun_write(chipvpn_tun_t *tun, void *buf, int size);
 void                    chipvpn_tun_free(chipvpn_tun_t *tun);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

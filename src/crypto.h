@@ -1,6 +1,11 @@
 #ifndef CRYPTO_H
 #define CRYPTO_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <sodium.h>
 
@@ -14,5 +19,9 @@ void                  chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key
 void                  chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce);
 void                  chipvpn_crypto_xcrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter);
 void                  chipvpn_crypto_free(chipvpn_crypto_t *crypto);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -1,6 +1,11 @@
 #ifndef CHIPVPN_H
 #define CHIPVPN_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/select.h>
@@ -46,5 +51,9 @@ void           chipvpn_cleanup(chipvpn_t *vpn);
 char          *chipvpn_format_bytes(uint64_t bytes);
 void           chipvpn_log(const char *format, ...);
 uint32_t       chipvpn_get_time();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

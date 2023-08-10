@@ -1,6 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "address.h"
 #include "list.h"
 
@@ -26,5 +31,9 @@ chipvpn_device_t     *chipvpn_device_create(char *file);
 bool                  chipvpn_device_reload_config(chipvpn_device_t *device, char *file);
 int                   chipvpn_device_parse_handler(void* user, const char* section, const char* name, const char* value);
 void                  chipvpn_device_free(chipvpn_device_t *device);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
