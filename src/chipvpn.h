@@ -13,6 +13,7 @@ extern "C"
 #include "device.h"
 #include "tun.h"
 #include "socket.h"
+#include "peer.h"
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
