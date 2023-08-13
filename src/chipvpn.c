@@ -130,6 +130,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 	if(chipvpn_get_time() - vpn->last_update >= 1 && vpn->sock_can_write) {
 		for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
 			chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+			
+			/* check against connect/disconnect timeout timers */
+			if(chipvpn_get_time() > peer->timeout && peer->action != PEER_ACTION_NONE) {
+				peer->action = PEER_ACTION_NONE;
+				peer->state = PEER_DISCONNECTED;
+			}
+
+			/* attempt to connect to peer */
 			if(peer->state == PEER_DISCONNECTED && peer->action == PEER_ACTION_CONNECT) {
 				peer->sender_id = ++vpn->sender_id;
 
@@ -142,11 +150,21 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_socket_write(vpn->sock, &auth, sizeof(auth), &peer->address);
 				vpn->sock_can_write = 0;
 			}
+
+			/* attempt to disconnect from peer */
 			if(peer->state == PEER_CONNECTED && peer->action == PEER_ACTION_DISCONNECT) {
-				peer->state = PEER_DISCONNECTED;
+				chipvpn_packet_deauth_t deauth = {};
+				deauth.header.type = htonl(3);
+				deauth.receiver_id = htonl(peer->receiver_id);
+
+				chipvpn_socket_write(vpn->sock, &deauth, sizeof(deauth), &peer->address);
+				vpn->sock_can_write = 0;
 			}
+
+			/* ping peers and disconnect unping peers */
 			if(peer->state == PEER_CONNECTED) {
 				if(chipvpn_get_time() - peer->last_ping > 10) {
+					peer->action = PEER_ACTION_NONE;
 					peer->state = PEER_DISCONNECTED;
 				} else {
 					chipvpn_packet_ping_t ping = {};
@@ -226,6 +244,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				peer->receiver_id = ntohl(packet->sender_id);
 				peer->address = addr;
+				peer->action = PEER_ACTION_NONE;
 				peer->state = PEER_CONNECTED;
 				peer->tx = 0;
 				peer->rx = 0;
