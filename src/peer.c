@@ -17,6 +17,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->last_ping = 0;
 	peer->tx = 0;
 	peer->rx = 0;
+	peer->timeout = 0;
 	peer->action = PEER_ACTION_NONE;
 	return peer;
 }
@@ -98,6 +99,16 @@ chipvpn_peer_t *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index)
 		}
 	}
 	return NULL;
+}
+
+void chipvpn_peer_connect(chipvpn_peer_t *peer, uint32_t timeout) {
+	peer->timeout = chipvpn_get_time() + timeout;
+	peer->action = PEER_ACTION_CONNECT;
+}
+
+void chipvpn_peer_disconnect(chipvpn_peer_t *peer, uint32_t timeout) {
+	peer->timeout = chipvpn_get_time() + timeout;
+	peer->action = PEER_ACTION_DISCONNECT;
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {

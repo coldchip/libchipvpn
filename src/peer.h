@@ -33,6 +33,7 @@ typedef struct {
 	uint32_t last_ping;
 	uint64_t tx;
 	uint64_t rx;
+	uint32_t timeout;
 	chipvpn_peer_action_e action;
 } chipvpn_peer_t;
 
@@ -44,6 +45,8 @@ bool                 chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index);
+void                 chipvpn_peer_connect(chipvpn_peer_t *peer, uint32_t timeout);
+void                 chipvpn_peer_disconnect(chipvpn_peer_t *peer, uint32_t timeout);
 void                 chipvpn_peer_free(chipvpn_peer_t *peer);
 
 #ifdef __cplusplus
