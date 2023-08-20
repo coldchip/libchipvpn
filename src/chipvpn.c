@@ -95,7 +95,23 @@ chipvpn_t *chipvpn_init(char *config) {
 }
 
 void chipvpn_wait(chipvpn_t *vpn) {
+	struct timeval tv;
+	fd_set rdset, wdset, edset;
 
+	tv.tv_sec = 0;
+	tv.tv_usec = 250000;
+
+	FD_ZERO(&rdset);
+	FD_ZERO(&wdset);
+	FD_ZERO(&edset);
+
+	int max = 0;
+
+	chipvpn_fdset(vpn, &rdset, &wdset, &max);
+
+	if(select(max + 1, &rdset, &wdset, &edset, &tv) >= 0) {
+		chipvpn_isset(vpn, &rdset, &wdset);
+	}
 }
 
 void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
