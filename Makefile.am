@@ -1,22 +1,11 @@
-AM_CFLAGS = -std=gnu99 -Wall -Werror
-
 AUTOMAKE_OPTIONS = subdir-objects foreign
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
-lib_LTLIBRARIES = libchipvpn.la
+bin_PROGRAMS = chipvpn
+chipvpn_SOURCES = src/list.c src/main.c src/chipvpn.c src/socket.c src/tun.c src/crypto.c src/peer.c src/address.c src/device.c src/ini.c
 
-libchipvpn_la_LDFLAGS = -lsodium -version-info $(LIBCHIPVPN_SO_VERSION)
-libchipvpn_la_SOURCES = src/list.c src/chipvpn.c src/socket.c src/tun.c src/crypto.c src/peer.c src/address.c src/device.c src/ini.c
-
-libchipvpn_includedir = $(includedir)/chipvpn
-
-# headers to be installed in /include
-libchipvpn_include_HEADERS = src/address.h src/crypto.h src/ini.h src/packet.h src/tun.h src/chipvpn.h src/device.h src/list.h src/peer.h src/socket.h
-
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libchipvpn.pc
-
-#dist_noinst_SCRIPTS = autogen.sh
+chipvpn_CFLAGS = -Ofast -s -std=gnu99 -Wall
+chipvpn_LDADD = -lsodium
 
 MAINTAINERCLEANFILES =                                  \
         aclocal.m4 config.guess config.xml              \
@@ -26,7 +15,7 @@ MAINTAINERCLEANFILES =                                  \
 
 distclean-local:
 	-(cd $(top_srcdir) && rm -rf autom4te*.cache autoscan.*)
-	-(cd $(top_srcdir) && rm -rf $(PACKAGE)-* libchipvpn.pc)
+	-(cd $(top_srcdir) && rm -rf $(PACKAGE)-*)
 
 mrproper: distclean-local clean
 	-(cd $(top_srcdir) && rm -rf autom4te.cache config.h config.log)
@@ -37,8 +26,6 @@ mrproper: distclean-local clean
 	-(cd $(top_srcdir)/m4 && rm -f libtool.m4 ltoptions.m4)
 	-(cd $(top_srcdir)/m4 && rm -f ltsugar.m4 ltversion.m4)
 	-(cd $(top_srcdir)/m4 && rm -f lt~obsolete.m4)
-	-(cd $(top_srcdir)/doc && rm -f Doxyfile)
-	-(cd $(top_srcdir)/tests && rm -f chipvpn*.txt)
 	-find $(top_srcdir)/ -name "Makefile" -exec rm {} \;
 	-find $(top_srcdir)/ -name "Makefile.in" -exec rm {} \;
 	-find $(top_srcdir)/ -name ".dirstamp" -exec rm {} \;
