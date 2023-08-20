@@ -42,7 +42,7 @@ chipvpn_t *chipvpn_init(char *config) {
 
 	/* create tunnel socket */
 
-	tun = chipvpn_tun_create("chipvpn");
+	tun = chipvpn_tun_create(NULL);
 	if(!tun) {
 		return NULL;
 	}
