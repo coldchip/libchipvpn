@@ -99,11 +99,11 @@ int main(int argc, char const *argv[]) {
 		if(current_state != peer->state) {
 			switch(peer->state) {
 				case PEER_CONNECTED: {
-					printf("peer_connected\n");
+					printf("status: peer_connected\n");
 				}
 				break;
 				case PEER_DISCONNECTED: {
-					printf("peer_disconnected\n");
+					printf("status: peer_disconnected\n");
 				}
 				break;
 			}
