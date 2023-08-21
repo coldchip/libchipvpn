@@ -55,7 +55,7 @@
 	#include <netinet/in.h>
 #endif
 
-chipvpn_device_t *chipvpn_device_create(const char *dev) {
+chipvpn_device_t *chipvpn_device_create() {
 	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));
 	if(!device) {
 		return NULL;
@@ -116,16 +116,6 @@ chipvpn_device_t *chipvpn_device_create(const char *dev) {
 	struct ifreq ifr;
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-
-	if(dev) {
-		if(strlen(dev) > IFNAMSIZ) {
-			return NULL;
-		}
-
-		if(*dev) {
-			strcpy(ifr.ifr_name, dev);
-		}
-	}
 
 	if(ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
 		close(fd);
@@ -237,6 +227,27 @@ IP_ADAPTER_INFO *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid) {
 
 #endif
 
+bool chipvpn_device_set_name(chipvpn_device_t *device, const char* name) {
+	bool success = true;
+
+	struct ifreq ifr = {};
+
+	strcpy(ifr.ifr_name, device->dev);
+	strcpy(ifr.ifr_newname, name);
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if(ioctl(fd, SIOCSIFNAME, &ifr) == -1) {
+		success = false;
+	} else {
+		strcpy(device->dev, name);
+	}
+
+	close(fd);
+
+	return success;
+}
+
 bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, uint8_t prefix) {
 	chipvpn_address_t network;
 	if(!chipvpn_address_set_ip(&network, address)) {
@@ -292,6 +303,8 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, u
 
 	#else
 
+	bool success = true;
+
 	struct ifreq ifr;
 	ifr.ifr_addr.sa_family = AF_INET;
 
@@ -302,7 +315,10 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, u
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
 	addr->sin_addr.s_addr = network.ip;
-	ioctl(fd, SIOCSIFADDR, &ifr);
+
+	if(ioctl(fd, SIOCSIFADDR, &ifr) == -1) {
+		success = false;
+	}
 
 	if(network.prefix == 0) {
 		addr->sin_addr.s_addr = 0;
@@ -310,10 +326,14 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, u
 		addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network.prefix)) & 0xFFFFFFFFUL);
 	}
 
-	ioctl(fd, SIOCSIFNETMASK, &ifr);
+	if(ioctl(fd, SIOCSIFNETMASK, &ifr) == -1) {
+		success = false;
+	}
 
 	close(fd);
-	return true;
+
+	return success;
+
 	#endif
 }
 
@@ -346,6 +366,7 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 	return true;
 
 	#else
+	bool success = true;
 
 	struct ifreq ifr;
 	ifr.ifr_addr.sa_family = AF_INET;
@@ -355,10 +376,15 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
 	ifr.ifr_mtu = mtu;
-	ioctl(fd, SIOCSIFMTU, &ifr);
+
+	if(ioctl(fd, SIOCSIFMTU, &ifr) == -1) {
+		success = false;
+	}
 
 	close(fd);
-	return true;
+
+	return success;
+
 	#endif
 }
 
@@ -375,6 +401,8 @@ bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 
 	#else
 
+	bool success = true;
+
 	struct ifreq ifr;
 	ifr.ifr_addr.sa_family = AF_INET;
 
@@ -383,10 +411,15 @@ bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
 	ifr.ifr_flags |= IFF_UP;
-	ioctl(fd, SIOCSIFFLAGS, &ifr);
+
+	if(ioctl(fd, SIOCSIFFLAGS, &ifr) == -1) {
+		success = false;
+	}
 
 	close(fd);
-	return true;
+
+	return success;
+	
 	#endif
 }
 
@@ -403,6 +436,8 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 
 	#else
 
+	bool success = true;
+
 	struct ifreq ifr;
 	ifr.ifr_addr.sa_family = AF_INET;
 
@@ -411,10 +446,15 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
 	ifr.ifr_flags &= ~IFF_UP;
-	ioctl(fd, SIOCSIFFLAGS, &ifr);
+
+	if(ioctl(fd, SIOCSIFFLAGS, &ifr) == -1) {
+		success = false;
+	}
 
 	close(fd);
-	return true;
+
+	return success;
+
 	#endif
 }
 
@@ -491,6 +531,7 @@ int chipvpn_device_write(chipvpn_device_t *device, void *buf, int size) {
 
 void chipvpn_device_free(chipvpn_device_t *device) {
 	#ifdef _WIN32
+
 	TerminateThread(device->reader_thread, 0);
 	CloseHandle(device->reader_thread);
 	TerminateThread(device->writer_thread, 0);
@@ -502,20 +543,9 @@ void chipvpn_device_free(chipvpn_device_t *device) {
 
 	#else
 
-	if(*device->dev != '\0') {
-		struct ifreq ifr;
-		ifr.ifr_addr.sa_family = AF_INET;
-
-		strcpy(ifr.ifr_name, device->dev);
-
-		int fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-		ifr.ifr_flags = ifr.ifr_flags & ~IFF_UP;
-		ioctl(fd, SIOCSIFFLAGS, &ifr);
-
-	    close(fd);
-	}
 	close(device->fd);
+
 	#endif
+
 	free(device);
 }

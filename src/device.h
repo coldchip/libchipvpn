@@ -52,12 +52,14 @@ typedef struct {
     chipvpn_list_t peers;
 } chipvpn_device_t;
 
-chipvpn_device_t       *chipvpn_device_create(const char *dev);
+chipvpn_device_t       *chipvpn_device_create();
 #ifdef _WIN32
 char                   *chipvpn_device_regquery(char *key_name);
 IP_ADAPTER_INFO        *chipvpn_get_adapter_list();
 IP_ADAPTER_INFO        *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid);
 #endif
+
+bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char* name);
 bool                    chipvpn_device_set_address(chipvpn_device_t *tun, const char *address, uint8_t prefix);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *tun, int mtu);
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *tun);
