@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <string.h>
 #include "peer.h"
 #include "chipvpn.h"
 
