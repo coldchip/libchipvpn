@@ -237,7 +237,7 @@ IP_ADAPTER_INFO *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid) {
 
 #endif
 
-bool chipvpn_device_set_ip(chipvpn_device_t *device, const char *address, uint8_t prefix) {
+bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, uint8_t prefix) {
 	chipvpn_address_t network;
 	if(!chipvpn_address_set_ip(&network, address)) {
 		return false;
@@ -362,7 +362,7 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 	#endif
 }
 
-bool chipvpn_device_ifup(chipvpn_device_t *device) {
+bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 	#ifdef _WIN32
 
 	int one = 1;
@@ -390,7 +390,7 @@ bool chipvpn_device_ifup(chipvpn_device_t *device) {
 	#endif
 }
 
-bool chipvpn_device_ifdown(chipvpn_device_t *device) {
+bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 	#ifdef _WIN32
 
 	int zero = 0;

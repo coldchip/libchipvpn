@@ -63,9 +63,9 @@ int main(int argc, char const *argv[]) {
 		fprintf(stderr, "unable to create device\n");
 		exit(1);
 	}
-	chipvpn_device_set_ip(device, "10.128.0.4", 16);
+	chipvpn_device_set_address(device, "10.128.0.4", 16);
 	chipvpn_device_set_mtu(device, 1400);
-	chipvpn_device_ifup(device);
+	chipvpn_device_set_enabled(device);
 
 	chipvpn_peer_t *peer = chipvpn_peer_create();
 	if(!peer) {
@@ -100,11 +100,11 @@ int main(int argc, char const *argv[]) {
 		if(current_state != peer->state) {
 			switch(peer->state) {
 				case PEER_CONNECTED: {
-					printf("status: peer_connected\n");
+					printf("current status: peer_connected\n");
 				}
 				break;
 				case PEER_DISCONNECTED: {
-					printf("status: peer_disconnected\n");
+					printf("current status: peer_disconnected\n");
 				}
 				break;
 			}
