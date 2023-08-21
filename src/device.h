@@ -58,10 +58,10 @@ char                   *chipvpn_device_regquery(char *key_name);
 IP_ADAPTER_INFO        *chipvpn_get_adapter_list();
 IP_ADAPTER_INFO        *chipvpn_get_adapter(IP_ADAPTER_INFO *ai, char *guid);
 #endif
-bool                    chipvpn_device_set_ip(chipvpn_device_t *tun, const char *address, uint8_t prefix);
+bool                    chipvpn_device_set_address(chipvpn_device_t *tun, const char *address, uint8_t prefix);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *tun, int mtu);
-bool                    chipvpn_device_ifup(chipvpn_device_t *tun);
-bool                    chipvpn_device_ifdown(chipvpn_device_t *tun);
+bool                    chipvpn_device_set_enabled(chipvpn_device_t *tun);
+bool                    chipvpn_device_set_disabled(chipvpn_device_t *tun);
 #ifdef _WIN32
 DWORD WINAPI            chipvpn_device_reader(LPVOID arg);
 DWORD WINAPI            chipvpn_device_writer(LPVOID arg);
