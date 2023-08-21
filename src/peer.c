@@ -22,27 +22,19 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *value) {
-	char ip[24];
-	int prefix;
-	if(sscanf(value, "%16[^/]/%i", ip, &prefix) == 2) {
-		if(!chipvpn_address_set_ip(&peer->allow, ip)) {
-			return false;
-		}
-		peer->allow.prefix = prefix;
+bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
+	if(!chipvpn_address_set_ip(&peer->allow, address)) {
+		return false;
 	}
+	peer->allow.prefix = prefix;
 	return true;
 }
 
-bool chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *value) {
-	char ip[24];
-	int port;
-	if(sscanf(value, "%16[^:]:%i", ip, &port) == 2) {
-		if(!chipvpn_address_set_ip(&peer->address, ip)) {
-			return false;
-		}
-		peer->address.port = port;
+bool chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16_t port) {
+	if(!chipvpn_address_set_ip(&peer->address, address)) {
+		return false;
 	}
+	peer->address.port = port;
 	return true;
 }
 
@@ -99,6 +91,10 @@ chipvpn_peer_t *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index)
 		}
 	}
 	return NULL;
+}
+
+void chipvpn_peer_insert(chipvpn_device_t *device, chipvpn_peer_t *peer) {
+	chipvpn_list_insert(chipvpn_list_end(&device->peers), peer);
 }
 
 void chipvpn_peer_connect(chipvpn_peer_t *peer, uint32_t timeout) {
