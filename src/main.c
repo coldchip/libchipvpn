@@ -63,7 +63,7 @@ int main(int argc, char const *argv[]) {
 		fprintf(stderr, "unable to create device\n");
 		exit(1);
 	}
-	chipvpn_device_set_address(device, "10.128.0.5", 16);
+	chipvpn_device_set_address(device, "10.128.0.4", 16);
 	chipvpn_device_set_mtu(device, 1400);
 	chipvpn_device_set_name(device, "chipvpn");
 	chipvpn_device_set_enabled(device);
@@ -75,7 +75,7 @@ int main(int argc, char const *argv[]) {
 	}
 	chipvpn_peer_set_endpoint(peer, "157.245.205.9", 443);
 	chipvpn_peer_set_allow(peer, "0.0.0.0", 0);
-	chipvpn_peer_set_key(peer, "Pa2OzFZz1FTqTcs4zTUUBFT9foDnqmzzddTrMJSFYYYI9ZQBHNj3ovPUNptlQzdF");
+	chipvpn_peer_set_key(peer, "DQpMnJgkndkrD8wVxd5noIEcJ1wWjS6bJtL6kFUoeBHclqnS0UaPjvs5UPZB0Q2n");
 	chipvpn_peer_insert(device, peer);
 
 
