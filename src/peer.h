@@ -7,6 +7,7 @@ extern "C"
 #endif
 
 #include <stdint.h>
+#include "chipvpn.h"
 #include "crypto.h"
 #include "address.h"
 #include "list.h"
@@ -38,13 +39,14 @@ typedef struct {
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();
-bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *value);
-bool                 chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *value);
+bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
+bool                 chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
 bool                 chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *needle);
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_list_t *peers, uint32_t index);
+void                 chipvpn_peer_insert(chipvpn_device_t *device, chipvpn_peer_t *peer);
 void                 chipvpn_peer_connect(chipvpn_peer_t *peer, uint32_t timeout);
 void                 chipvpn_peer_disconnect(chipvpn_peer_t *peer, uint32_t timeout);
 void                 chipvpn_peer_free(chipvpn_peer_t *peer);

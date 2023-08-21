@@ -11,9 +11,9 @@ extern "C"
 #include <sys/select.h>
 
 #include "device.h"
-#include "tun.h"
+#include "device.h"
 #include "socket.h"
-#include "peer.h"
+#include "list.h"
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
@@ -28,29 +28,25 @@ extern "C"
 
 typedef struct {
 	chipvpn_device_t *device;
-	chipvpn_tun_t *tun;
-	chipvpn_socket_t *sock;
+	chipvpn_socket_t *socket;
 
-	int tun_can_read;
-	int tun_can_write;
-	int sock_can_read;
-	int sock_can_write;
+	int device_can_read;
+	int device_can_write;
+	int socket_can_read;
+	int socket_can_write;
 
 	uint64_t counter;
 	uint64_t sender_id;
 	uint64_t last_update;
 } chipvpn_t;
 
-chipvpn_t *    chipvpn_init(char *config);
+chipvpn_t *    chipvpn_create(chipvpn_device_t *device, chipvpn_address_t *bind);
 void           chipvpn_wait(chipvpn_t *vpn);
 void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max);
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);
 int            chipvpn_service(chipvpn_t *vpn);
-void           chipvpn_print_stats(chipvpn_t *vpn);
 void           chipvpn_cleanup(chipvpn_t *vpn);
 
-char          *chipvpn_format_bytes(uint64_t bytes);
-void           chipvpn_log(const char *format, ...);
 uint32_t       chipvpn_get_time();
 
 #ifdef __cplusplus
