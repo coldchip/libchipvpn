@@ -13,6 +13,7 @@ extern "C"
 #include "device.h"
 #include "device.h"
 #include "socket.h"
+#include "queue.h"
 #include "list.h"
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
@@ -30,6 +31,11 @@ typedef struct {
 	chipvpn_device_t *device;
 	chipvpn_socket_t *socket;
 
+	chipvpn_queue_t *device_reader;
+	chipvpn_queue_t *device_writer;
+	chipvpn_queue_t *socket_reader;
+	chipvpn_queue_t *socket_writer;
+
 	int device_can_read;
 	int device_can_write;
 	int socket_can_read;
@@ -37,7 +43,6 @@ typedef struct {
 
 	uint64_t counter;
 	uint64_t sender_id;
-	uint64_t last_update;
 } chipvpn_t;
 
 chipvpn_t *    chipvpn_create(chipvpn_device_t *device, chipvpn_address_t *bind);

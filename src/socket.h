@@ -8,10 +8,6 @@ extern "C"
 
 #include "address.h"
 
-#ifdef _WIN32
-typedef int socklen_t;
-#endif
-
 typedef struct {
 	int fd;
 } chipvpn_socket_t;
