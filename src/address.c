@@ -2,14 +2,9 @@
 #include <stddef.h>
 #include <string.h>
 #include "address.h"
-
-#ifdef _WIN32
-	#include <ws2tcpip.h>
-#else
-    #include <sys/socket.h>
-	#include <netinet/in.h>
-	#include <arpa/inet.h>
-#endif
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
 	addr->ip = inet_addr(ip);

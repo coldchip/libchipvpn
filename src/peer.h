@@ -31,9 +31,10 @@ typedef struct {
 	uint32_t receiver_id;
 	chipvpn_address_t address;
 	chipvpn_address_t allow;
-	uint32_t last_ping;
 	uint64_t tx;
 	uint64_t rx;
+	uint32_t last_check;
+	uint32_t last_ping;
 	uint32_t timeout;
 	chipvpn_peer_action_e action;
 } chipvpn_peer_t;

@@ -48,14 +48,14 @@ void terminate(int type) {
 int main(int argc, char const *argv[]) {
 	/* code */
 
+	printf("chipvpn 1.1\n");
+
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
-
-	#ifndef _WIN32
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
-	#endif
+
 
 
 	chipvpn_device_t *device = chipvpn_device_create();
@@ -92,11 +92,13 @@ int main(int argc, char const *argv[]) {
 		chipvpn_wait(vpn);
 		chipvpn_service(vpn);
 
-		//read_config("config.txt");
+		read_config("config.txt");
 
 		if(peer->state == PEER_DISCONNECTED) {
 			chipvpn_peer_connect(peer, 10);
 		}
+
+		// printf("%li %li\n", peer->tx, peer->rx);
 
 		if(current_state != peer->state) {
 			switch(peer->state) {
