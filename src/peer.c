@@ -17,7 +17,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->tx = 0;
 	peer->rx = 0;
 	peer->last_check = 0;
-	peer->last_ping = 0;
 	peer->timeout = 0;
 	peer->action = PEER_ACTION_NONE;
 	return peer;

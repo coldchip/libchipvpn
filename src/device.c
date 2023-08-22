@@ -51,6 +51,8 @@ chipvpn_device_t *chipvpn_device_create() {
 	}
 
 	device->fd = fd;
+	device->can_read = 0;
+	device->can_write = 0;
 	strcpy(device->dev, ifr.ifr_name);
 
 	chipvpn_list_clear(&device->peers);
@@ -183,12 +185,43 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 	return success;
 }
 
+void chipvpn_device_preselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset, int *max) {
+	if(chipvpn_device_can_read(device))  FD_CLR(device->fd, rdset); else FD_SET(device->fd, rdset);
+	if(chipvpn_device_can_write(device)) FD_CLR(device->fd, wdset); else FD_SET(device->fd, wdset);
+	*max = device->fd;
+}
+
+void chipvpn_device_postselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset) {
+	if(FD_ISSET(device->fd, rdset)) chipvpn_device_set_read(device, true);
+	if(FD_ISSET(device->fd, wdset)) chipvpn_device_set_write(device, true);
+}
+
+void chipvpn_device_set_read(chipvpn_device_t *device, bool status) {
+	device->can_read = status;
+}
+
+void chipvpn_device_set_write(chipvpn_device_t *device, bool status) {
+	device->can_write = status;
+}
+
+bool chipvpn_device_can_read(chipvpn_device_t *device) {
+	return device->can_read;
+}
+
+bool chipvpn_device_can_write(chipvpn_device_t *device) {
+	return device->can_write;
+}
+
 int chipvpn_device_read(chipvpn_device_t *device, void *buf, int size) {
-	return read(device->fd, buf, size);
+	int r = read(device->fd, buf, size);
+	chipvpn_device_set_read(device, false);
+	return r;
 }
 
 int chipvpn_device_write(chipvpn_device_t *device, void *buf, int size) {
-	return write(device->fd, buf, size);
+	int w = write(device->fd, buf, size);
+	chipvpn_device_set_write(device, false);
+	return w;
 }
 
 void chipvpn_device_free(chipvpn_device_t *device) {

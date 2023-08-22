@@ -48,7 +48,7 @@ void terminate(int type) {
 int main(int argc, char const *argv[]) {
 	/* code */
 
-	printf("chipvpn 1.1\n"); 
+	printf("chipvpn 1.2\n"); 
 
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
@@ -92,7 +92,7 @@ int main(int argc, char const *argv[]) {
 		chipvpn_wait(vpn);
 		chipvpn_service(vpn);
 
-		read_config("config.txt");
+		// read_config("config.txt");
 
 		if(peer->state == PEER_DISCONNECTED) {
 			chipvpn_peer_connect(peer, 10);
