@@ -47,6 +47,7 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t receiver_id;
+	bool ack;
 } chipvpn_packet_deauth_t;
 
 typedef union {
