@@ -228,11 +228,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_address_t src = {};
 				src.ip = ((ip_packet_t*)buf)->src_addr;
 
-				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) == peer) {
-					peer->rx += r - sizeof(chipvpn_packet_data_t);
-
-					chipvpn_device_write(vpn->device, buf, r - sizeof(chipvpn_packet_data_t));
+				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
+					return 0;
 				}
+
+				peer->rx += r - sizeof(chipvpn_packet_data_t);
+				chipvpn_device_write(vpn->device, buf, r - sizeof(chipvpn_packet_data_t));
 			}
 			break;
 			case 2: {
