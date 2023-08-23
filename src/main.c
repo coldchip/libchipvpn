@@ -198,7 +198,7 @@ void terminate(int type) {
 int main(int argc, char const *argv[]) {
 	/* code */
 
-	printf("chipvpn 1.5\n"); 
+	printf("chipvpn 1.6\n"); 
 
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
@@ -260,9 +260,8 @@ int main(int argc, char const *argv[]) {
 
 					src.s_addr = inet_addr("157.245.205.9");
 					mask.s_addr = inet_addr("255.255.255.255");
-					char dev[128];
-					chipvpn_get_gateway(&dst, dev);
-					add_route(src, mask, dst, dev);
+					dst.s_addr = inet_addr("192.128.10.1");
+					add_route(src, mask, dst, "eth0");
 
 					src.s_addr = inet_addr("0.0.0.0");
 					mask.s_addr = inet_addr("128.0.0.0");
