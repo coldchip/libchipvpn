@@ -198,7 +198,7 @@ void terminate(int type) {
 int main(int argc, char const *argv[]) {
 	/* code */
 
-	printf("chipvpn 1.3\n"); 
+	printf("chipvpn 1.5\n"); 
 
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
