@@ -13,13 +13,9 @@ extern "C"
 #include "list.h"
 
 typedef enum {
-	PEER_ACTION_NONE,
-	PEER_ACTION_CONNECT,
-	PEER_ACTION_DISCONNECT
-} chipvpn_peer_action_e;
-
-typedef enum {
+	PEER_DISCONNECTING,
 	PEER_DISCONNECTED,
+	PEER_CONNECTING,
 	PEER_CONNECTED
 } chipvpn_peer_state_e;
 
@@ -33,9 +29,8 @@ typedef struct {
 	chipvpn_address_t allow;
 	uint64_t tx;
 	uint64_t rx;
-	uint32_t last_check;
-	uint32_t timeout;
-	chipvpn_peer_action_e action;
+	uint64_t last_check;
+	uint64_t timeout;
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();

@@ -80,17 +80,19 @@ int chipvpn_service(chipvpn_t *vpn) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 		
-		if(chipvpn_get_time() - peer->last_check) {
+		if(chipvpn_get_time() - peer->last_check > 100) {
 			peer->last_check = chipvpn_get_time();
+
+			printf("%li %li %i\n", chipvpn_get_time(), peer->timeout, peer->state);
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(chipvpn_get_time() > peer->timeout) {
-				peer->action = PEER_ACTION_NONE;
+				printf("dd\n");
 				peer->state = PEER_DISCONNECTED;
 			}
 
 			/* attempt to connect to peer */
-			if(peer->state == PEER_DISCONNECTED && peer->action == PEER_ACTION_CONNECT) {
+			if(peer->state == PEER_CONNECTING) {
 				peer->sender_id = ++vpn->sender_id;
 
 				chipvpn_packet_auth_t auth = {};
@@ -104,7 +106,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 
 			/* attempt to disconnect from peer */
-			if(peer->state == PEER_CONNECTED && peer->action == PEER_ACTION_DISCONNECT) {
+			if(peer->state == PEER_DISCONNECTING) {
 				chipvpn_packet_deauth_t deauth = {};
 				deauth.header.type = htonl(3);
 				deauth.receiver_id = htonl(peer->receiver_id);
@@ -184,11 +186,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				peer->receiver_id = ntohl(packet->sender_id);
 				peer->address = addr;
-				peer->action = PEER_ACTION_NONE;
 				peer->state = PEER_CONNECTED;
 				peer->tx = 0;
 				peer->rx = 0;
-				peer->timeout = chipvpn_get_time() + 10;
+				peer->timeout = chipvpn_get_time() + 10000;
 
 				chipvpn_crypto_set_nonce(peer->crypto, packet->nonce);
 
@@ -251,7 +252,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				peer->timeout = chipvpn_get_time() + 10;
+				printf("ping recv\n");
+
+				peer->timeout = chipvpn_get_time() + 10000;
 			}
 			break;
 			case 3: {
@@ -269,7 +272,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				peer->action = PEER_ACTION_NONE;
 				peer->state = PEER_DISCONNECTED;
 
 				if(packet->ack == true) {
@@ -292,8 +294,8 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 	chipvpn_socket_free(vpn->socket);
 }
 
-uint32_t chipvpn_get_time() {
+uint64_t chipvpn_get_time() {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	return (tv.tv_sec * 1000 + tv.tv_usec / 1000) / 1000;
+	return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
 }

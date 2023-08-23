@@ -41,7 +41,7 @@ void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);
 int            chipvpn_service(chipvpn_t *vpn);
 void           chipvpn_cleanup(chipvpn_t *vpn);
 
-uint32_t       chipvpn_get_time();
+uint64_t       chipvpn_get_time();
 
 #ifdef __cplusplus
 }
