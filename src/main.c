@@ -211,7 +211,7 @@ int main(int argc, char const *argv[]) {
 		fprintf(stderr, "unable to create device\n");
 		exit(1);
 	}
-	chipvpn_device_set_address(device, "10.128.0.5", 16);
+	chipvpn_device_set_address(device, "10.128.0.2", 16);
 	chipvpn_device_set_mtu(device, 1400);
 	chipvpn_device_set_name(device, "chipvpn");
 	chipvpn_device_set_enabled(device);
@@ -223,7 +223,7 @@ int main(int argc, char const *argv[]) {
 	}
 	chipvpn_peer_set_endpoint(peer, "157.245.205.9", 443);
 	chipvpn_peer_set_allow(peer, "0.0.0.0", 0);
-	chipvpn_peer_set_key(peer, "AxTg6Bux918z0qCa0VvmN5h2GJAhTkhjyj3mp9ayWZt44szaSkZOZ1s0J3q2fnnm");
+	chipvpn_peer_set_key(peer, "qLG8fqA5n5JHMD2ZAFlqznWVRMBdNWcv3upcGDpPxfcHw8l25r3Rat4bygAYbzfn");
 	chipvpn_peer_insert(device, peer);
 
 	chipvpn_t *vpn = chipvpn_create(device, NULL);
@@ -260,8 +260,14 @@ int main(int argc, char const *argv[]) {
 
 					src.s_addr = inet_addr("157.245.205.9");
 					mask.s_addr = inet_addr("255.255.255.255");
-					dst.s_addr = inet_addr("192.128.10.1");
-					add_route(src, mask, dst, "eth0");
+					dst.s_addr = inet_addr("192.168.10.1");
+
+					char dev[128];
+					chipvpn_get_gateway(&dst, dev);
+
+					printf("%s\n", dev);
+
+					add_route(src, mask, dst, dev);
 
 					src.s_addr = inet_addr("0.0.0.0");
 					mask.s_addr = inet_addr("128.0.0.0");

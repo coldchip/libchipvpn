@@ -87,7 +87,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(chipvpn_get_time() > peer->timeout) {
-				printf("dd\n");
 				peer->state = PEER_DISCONNECTED;
 			}
 
