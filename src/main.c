@@ -252,6 +252,16 @@ int main(int argc, char const *argv[]) {
 					struct in_addr mask = {};
 					struct in_addr dst = {};
 
+					src.s_addr = inet_addr("0.0.0.0");
+					mask.s_addr = inet_addr("128.0.0.0");
+					dst.s_addr = inet_addr("10.128.0.1");
+					add_route(src, mask, dst, device->dev);
+
+					src.s_addr = inet_addr("128.0.0.0");
+					mask.s_addr = inet_addr("128.0.0.0");
+					dst.s_addr = inet_addr("10.128.0.1");
+					add_route(src, mask, dst, device->dev);
+
 					src.s_addr = inet_addr("157.245.205.9");
 					mask.s_addr = inet_addr("255.255.255.255");
 					dst.s_addr = inet_addr("192.168.10.1");
@@ -262,16 +272,6 @@ int main(int argc, char const *argv[]) {
 					printf("%s\n", dev);
 
 					add_route(src, mask, dst, dev);
-
-					src.s_addr = inet_addr("0.0.0.0");
-					mask.s_addr = inet_addr("128.0.0.0");
-					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, device->dev);
-
-					src.s_addr = inet_addr("128.0.0.0");
-					mask.s_addr = inet_addr("128.0.0.0");
-					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, device->dev);
 				}
 				break;
 				case PEER_DISCONNECTING: {
