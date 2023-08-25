@@ -155,7 +155,7 @@ void add_route(struct in_addr src, struct in_addr mask, struct in_addr dst, char
 	addr->sin_family = AF_INET;
 	addr->sin_addr = dst;
 
-	// entry.rt_dev = strdup(dev);
+	entry.rt_dev = strdup(dev);
 	entry.rt_flags = RTF_UP | RTF_GATEWAY;
 	entry.rt_metric = 0;
 
@@ -200,22 +200,14 @@ int main(int argc, char const *argv[]) {
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
 
-	printf("starting\n");
-
 	chipvpn_device_t *device = chipvpn_device_create();
-	printf("dddddd\n");
 	if(!device) {
 		fprintf(stderr, "unable to create device\n");
 		exit(1);
 	}
 	chipvpn_device_set_address(device, "10.128.0.2", 16);
-	printf("12343\n");
 	chipvpn_device_set_mtu(device, 1400);
-	printf("4345\n");
-	chipvpn_device_set_name(device, "chipvpn");
-	printf("4666\n");
 	chipvpn_device_set_enabled(device);
-	printf("96544\n");
 
 	chipvpn_peer_t *peer = chipvpn_peer_create();
 	if(!peer) {
@@ -236,11 +228,8 @@ int main(int argc, char const *argv[]) {
 	chipvpn_peer_state_e current_state = PEER_DISCONNECTED;
 
 	while(!quit) {
-		printf("aaa\n");
 		chipvpn_wait(vpn);
-		printf("aaa1\n");
 		chipvpn_service(vpn);
-		printf("bbb\n");
 
 		// read_config("config.txt");
 
@@ -265,17 +254,23 @@ int main(int argc, char const *argv[]) {
 					src.s_addr = inet_addr("157.245.205.9");
 					mask.s_addr = inet_addr("255.255.255.255");
 					dst.s_addr = inet_addr("192.168.10.1");
-					add_route(src, mask, dst, NULL);
+
+					char dev[128];
+					chipvpn_get_gateway(&dst, dev);
+
+					printf("%s\n", dev);
+
+					add_route(src, mask, dst, dev);
 
 					src.s_addr = inet_addr("0.0.0.0");
 					mask.s_addr = inet_addr("128.0.0.0");
 					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, NULL);
+					add_route(src, mask, dst, device->dev);
 
 					src.s_addr = inet_addr("128.0.0.0");
 					mask.s_addr = inet_addr("128.0.0.0");
 					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, NULL);
+					add_route(src, mask, dst, device->dev);
 				}
 				break;
 				case PEER_DISCONNECTING: {

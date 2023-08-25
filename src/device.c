@@ -60,29 +60,6 @@ chipvpn_device_t *chipvpn_device_create() {
 	return device;
 }
 
-bool chipvpn_device_set_name(chipvpn_device_t *device, const char* name) {
-	bool success = true;
-
-	struct ifreq ifr;
-	memset(&ifr, 0, sizeof(ifr));
-
-	strcpy(ifr.ifr_name, device->dev); 
-	strcpy(ifr.ifr_newname, name); 
-
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-	if(ioctl(fd, SIOCSIFNAME, &ifr) == -1) {
-		success = false;
-	} else {
-		printf("sss\n");
-		strcpy(device->dev, name);
-	}
-
-	close(fd);
-
-	return success;
-}
-
 bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, uint8_t prefix) {
 	chipvpn_address_t network;
 	if(!chipvpn_address_set_ip(&network, address)) {
