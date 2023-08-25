@@ -141,6 +141,7 @@ void add_route(struct in_addr src, struct in_addr mask, struct in_addr dst, char
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 
 	struct rtentry entry;
+	memset(&entry, 0, sizeof(entry));
 
 	struct sockaddr_in *addr = (struct sockaddr_in*)&(entry.rt_dst);
 	addr->sin_family = AF_INET;
@@ -157,13 +158,6 @@ void add_route(struct in_addr src, struct in_addr mask, struct in_addr dst, char
 	entry.rt_dev = strdup(dev);
 	entry.rt_flags = RTF_UP | RTF_GATEWAY;
 	entry.rt_metric = 0;
-
-	char src_c[INET_ADDRSTRLEN];
-	char mask_c[INET_ADDRSTRLEN];
-	char dst_c[INET_ADDRSTRLEN];
-	strcpy(src_c, inet_ntoa(src));
-	strcpy(mask_c, inet_ntoa(mask));
-	strcpy(dst_c, inet_ntoa(dst));
 
 	if(ioctl(fd, SIOCADDRT, &entry) < 0) {
 
