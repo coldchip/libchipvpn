@@ -2,121 +2,34 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <net/route.h>
-#include <sys/ioctl.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
 #include "peer.h"
 #include "chipvpn.h"
 
-bool chipvpn_get_gateway(struct in_addr *gateway, char *dev) {
-	int     received_bytes = 0, msg_len = 0, route_attribute_len = 0;
-	int     sock = -1, msgseq = 0;
-	struct  nlmsghdr *nlh, *nlmsg;
-	struct  rtmsg *route_entry;
-	// This struct contain route attributes (route type)
-	struct  rtattr *route_attribute;
-	char    msgbuf[4096], buffer[4096];
-	char    *ptr = buffer;
-	struct  timeval tv;
-
-	if((sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) < 0) {
-		return false;
+uint8_t mask2prefix(uint32_t mask) {
+	int cidr = 0;
+	while(mask) {
+		cidr += (mask & 0x01);
+		mask >>= 1;
 	}
+	return cidr;
+}
 
-	memset(msgbuf, 0, sizeof(msgbuf));
-	memset(buffer, 0, sizeof(buffer));
+int add_route(char *src, uint8_t mask, char *dst) {
+	char command[8192];
 
-	/* point the header and the msg structure pointers into the buffer */
-	nlmsg = (struct nlmsghdr*)msgbuf;
+	sprintf(command, "ip route add %s/%i via %s", src, mask, dst);
+	int ret = system(command);
+	printf("%s\n", command);
+	return ret;
+}
 
-	/* Fill in the nlmsg header*/
-	nlmsg->nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
-	nlmsg->nlmsg_type = RTM_GETROUTE; // Get the routes from kernel routing table .
-	nlmsg->nlmsg_flags = NLM_F_DUMP | NLM_F_REQUEST; // The message is a request for dump.
-	nlmsg->nlmsg_seq = msgseq++; // Sequence of the message packet.
-	nlmsg->nlmsg_pid = getpid(); // PID of process sending the request.
+int del_route(char *src, uint8_t mask, char *dst) {
+	char command[8192];
 
-	/* 1 Sec Timeout to avoid stall */
-	tv.tv_sec = 1;
-	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
-	/* send msg */
-	if(send(sock, nlmsg, nlmsg->nlmsg_len, 0) < 0) {
-		close(sock);
-		return false;
-	}
-
-	/* receive response */
-	do {
-		received_bytes = recv(sock, ptr, sizeof(buffer) - msg_len, 0);
-		if(received_bytes < 0) {
-			close(sock);
-			return false;
-		}
-
-		nlh = (struct nlmsghdr*) ptr;
-
-		/* Check if the header is valid */
-		if((NLMSG_OK(nlmsg, received_bytes) == 0) || (nlmsg->nlmsg_type == NLMSG_ERROR)) {
-		    close(sock);
-			return false;
-		}
-
-		/* If we received all data break */
-		if(nlh->nlmsg_type == NLMSG_DONE) {
-		    break;
-		} else {
-		    ptr += received_bytes;
-		    msg_len += received_bytes;
-		}
-
-		/* Break if its not a multi part message */
-		if((nlmsg->nlmsg_flags & NLM_F_MULTI) == 0) {
-		    break;
-		}
-	} while((nlmsg->nlmsg_seq != msgseq) || (nlmsg->nlmsg_pid != getpid()));
-
-	/* parse response */
-	for(; NLMSG_OK(nlh, received_bytes); nlh = NLMSG_NEXT(nlh, received_bytes)) {
-		/* Get the route data */
-		route_entry = (struct rtmsg*)NLMSG_DATA(nlh);
-
-		/* We are just interested in main routing table */
-		if(route_entry->rtm_table != RT_TABLE_MAIN) {
-			continue;
-		}
-
-		route_attribute = (struct rtattr*)RTM_RTA(route_entry);
-		route_attribute_len = RTM_PAYLOAD(nlh);
-
-		bool set_gateway = false;
-		bool set_dev = false;
-
-		/* Loop through all attributes */
-		for(; RTA_OK(route_attribute, route_attribute_len); route_attribute = RTA_NEXT(route_attribute, route_attribute_len)) {
-			switch(route_attribute->rta_type) {
-				case RTA_OIF: {
-					if_indextoname(*(int*)RTA_DATA(route_attribute), dev);
-					set_dev = true;
-				}
-				break;
-				case RTA_GATEWAY: {
-					*gateway = *(struct in_addr*)RTA_DATA(route_attribute);
-					set_gateway = true;
-				}
-				break;
-				default:
-				break;
-			}
-		}
-
-		if(set_gateway && set_dev) {
-			break;
-		}
-	}
-
-	close(sock);
-	return true;
+	sprintf(command, "ip route del %s/%i via %s", src, mask, dst);
+	int ret = system(command);
+	printf("%s\n", command);
+	return ret;
 }
 
 char *chipvpn_format_bytes(uint64_t bytes) {
@@ -135,34 +48,6 @@ char *chipvpn_format_bytes(uint64_t bytes) {
 	static char output[200];
 	sprintf(output, "%.02lf %s", dblBytes, suffix[i]);
 	return output;
-}
-
-void add_route(struct in_addr src, struct in_addr mask, struct in_addr dst, char *dev) {
-	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-
-	struct rtentry entry;
-	memset(&entry, 0, sizeof(entry));
-
-	struct sockaddr_in *addr = (struct sockaddr_in*)&(entry.rt_dst);
-	addr->sin_family = AF_INET;
-	addr->sin_addr = src;
-
-	addr = (struct sockaddr_in*)&(entry.rt_genmask);
-	addr->sin_family = AF_INET;
-	addr->sin_addr = mask;
-
-	addr = (struct sockaddr_in*)&(entry.rt_gateway);
-	addr->sin_family = AF_INET;
-	addr->sin_addr = dst;
-
-	entry.rt_dev = strdup(dev);
-	entry.rt_flags = RTF_UP | RTF_GATEWAY;
-	entry.rt_metric = 0;
-
-	if(ioctl(fd, SIOCADDRT, &entry) < 0) {
-
-	}
-	close(fd);
 }
 
 void read_config(const char *path) {
@@ -233,10 +118,6 @@ int main(int argc, char const *argv[]) {
 
 		// read_config("config.txt");
 
-		if(peer->state == PEER_DISCONNECTED) {
-			chipvpn_peer_connect(peer, 10000);
-		}
-
 		// printf("%li %li\n", peer->tx, peer->rx);
 
 		if(current_state != peer->state) {
@@ -247,30 +128,10 @@ int main(int argc, char const *argv[]) {
 				break;
 				case PEER_CONNECTED: {
 					printf("current status: peer_connected\n");
-					struct in_addr src = {};
-					struct in_addr mask = {};
-					struct in_addr dst = {};
 
-					src.s_addr = inet_addr("157.245.205.9");
-					mask.s_addr = inet_addr("255.255.255.255");
-					dst.s_addr = inet_addr("192.168.10.1");
-
-					char dev[128];
-					chipvpn_get_gateway(&dst, dev);
-
-					printf("%s\n", dev);
-
-					add_route(src, mask, dst, dev);
-
-					src.s_addr = inet_addr("0.0.0.0");
-					mask.s_addr = inet_addr("128.0.0.0");
-					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, device->dev);
-
-					src.s_addr = inet_addr("128.0.0.0");
-					mask.s_addr = inet_addr("128.0.0.0");
-					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, device->dev);
+					add_route("157.245.205.9", 32, "192.168.10.1");
+					add_route("0.0.0.0", 1, "10.128.0.1");
+					add_route("128.0.0.0", 1, "10.128.0.1");
 				}
 				break;
 				case PEER_DISCONNECTING: {
@@ -279,10 +140,18 @@ int main(int argc, char const *argv[]) {
 				break;
 				case PEER_DISCONNECTED: {
 					printf("current status: peer_disconnected\n");
+
+					del_route("157.245.205.9", 32, "192.168.10.1");
+					del_route("0.0.0.0", 1, "10.128.0.1");
+					del_route("128.0.0.0", 1, "10.128.0.1");
 				}
 				break;
 			}
 			current_state = peer->state;
+		}
+
+		if(peer->state == PEER_DISCONNECTED) {
+			chipvpn_peer_connect(peer, 10000);
 		}
 	}
 
