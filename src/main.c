@@ -203,14 +203,19 @@ int main(int argc, char const *argv[]) {
 	printf("starting\n");
 
 	chipvpn_device_t *device = chipvpn_device_create();
+	printf("dddddd\n");
 	if(!device) {
 		fprintf(stderr, "unable to create device\n");
 		exit(1);
 	}
 	chipvpn_device_set_address(device, "10.128.0.2", 16);
+	printf("12343\n");
 	chipvpn_device_set_mtu(device, 1400);
+	printf("4345\n");
 	chipvpn_device_set_name(device, "chipvpn");
+	printf("4666\n");
 	chipvpn_device_set_enabled(device);
+	printf("96544\n");
 
 	chipvpn_peer_t *peer = chipvpn_peer_create();
 	if(!peer) {
