@@ -200,6 +200,8 @@ int main(int argc, char const *argv[]) {
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
 
+	printf("starting\n");
+
 	chipvpn_device_t *device = chipvpn_device_create();
 	if(!device) {
 		fprintf(stderr, "unable to create device\n");
@@ -229,8 +231,11 @@ int main(int argc, char const *argv[]) {
 	chipvpn_peer_state_e current_state = PEER_DISCONNECTED;
 
 	while(!quit) {
+		printf("aaa\n");
 		chipvpn_wait(vpn);
+		printf("aaa1\n");
 		chipvpn_service(vpn);
+		printf("bbb\n");
 
 		// read_config("config.txt");
 
