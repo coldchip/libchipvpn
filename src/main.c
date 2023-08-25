@@ -155,7 +155,7 @@ void add_route(struct in_addr src, struct in_addr mask, struct in_addr dst, char
 	addr->sin_family = AF_INET;
 	addr->sin_addr = dst;
 
-	entry.rt_dev = strdup(dev);
+	// entry.rt_dev = strdup(dev);
 	entry.rt_flags = RTF_UP | RTF_GATEWAY;
 	entry.rt_metric = 0;
 
@@ -252,26 +252,20 @@ int main(int argc, char const *argv[]) {
 					struct in_addr mask = {};
 					struct in_addr dst = {};
 
+					src.s_addr = inet_addr("157.245.205.9");
+					mask.s_addr = inet_addr("255.255.255.255");
+					dst.s_addr = inet_addr("192.168.10.1");
+					add_route(src, mask, dst, NULL);
+
 					src.s_addr = inet_addr("0.0.0.0");
 					mask.s_addr = inet_addr("128.0.0.0");
 					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, device->dev);
+					add_route(src, mask, dst, NULL);
 
 					src.s_addr = inet_addr("128.0.0.0");
 					mask.s_addr = inet_addr("128.0.0.0");
 					dst.s_addr = inet_addr("10.128.0.1");
-					add_route(src, mask, dst, device->dev);
-
-					src.s_addr = inet_addr("157.245.205.9");
-					mask.s_addr = inet_addr("255.255.255.255");
-					dst.s_addr = inet_addr("192.168.10.1");
-
-					char dev[128];
-					chipvpn_get_gateway(&dst, dev);
-
-					printf("%s\n", dev);
-
-					add_route(src, mask, dst, dev);
+					add_route(src, mask, dst, NULL);
 				}
 				break;
 				case PEER_DISCONNECTING: {
