@@ -13,7 +13,6 @@ extern "C"
 #include "device.h"
 #include "device.h"
 #include "socket.h"
-#include "list.h"
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
@@ -35,7 +34,7 @@ typedef struct {
 } chipvpn_t;
 
 chipvpn_t *    chipvpn_create(chipvpn_device_t *device, chipvpn_address_t *bind);
-void           chipvpn_wait(chipvpn_t *vpn);
+void           chipvpn_wait(chipvpn_t *vpn, uint64_t timeout);
 void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max);
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);
 int            chipvpn_service(chipvpn_t *vpn);

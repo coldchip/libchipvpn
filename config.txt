@@ -1,0 +1,8 @@
+section:device
+network:10.128.0.3/16
+mtu:1400
+
+section:peer
+address:157.245.205.9:443
+allow:0.0.0.0/0
+key:k61VTOxtHEvIGlt5Y8bKC1rb78vCYmCZq62o8V0j9bUTyDYK6XTWxO5w3F80zKaU
