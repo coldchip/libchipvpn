@@ -30,6 +30,7 @@ typedef struct {
 	uint64_t timeout;
 } chipvpn_peer_t;
 
+void                 chipvpn_peer_reset(chipvpn_peer_t *peer);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);

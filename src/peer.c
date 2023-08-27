@@ -5,6 +5,16 @@
 #include "crypto.h"
 #include "peer.h"
 
+void chipvpn_peer_reset(chipvpn_peer_t *peer) {
+	peer->sender_id = 0;
+	peer->receiver_id = 0;
+	peer->state = PEER_DISCONNECTED;
+	peer->tx = 0;
+	peer->rx = 0;
+	peer->last_check = 0;
+	peer->timeout = 0;
+}
+
 bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
 	if(!chipvpn_address_set_ip(&peer->allow, address)) {
 		return false;
