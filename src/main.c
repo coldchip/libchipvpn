@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
 #include "peer.h"
 #include "chipvpn.h"
 
@@ -65,6 +66,15 @@ char *chipvpn_format_bytes(uint64_t bytes) {
 	return output;
 }
 
+int file_mtime(const char *path) {
+	struct stat file_stat;
+	int err = stat(path, &file_stat);
+	if (err != 0) {
+		return 0;
+	}
+	return file_stat.st_mtime;
+}
+
 typedef enum {
 	DEVICE_SECTION,
 	PEER_SECTION
@@ -76,6 +86,8 @@ void read_config(const char *path, chipvpn_device_t *device) {
 		fprintf(stderr, "config read failed\n");
 		exit(1);
 	}
+
+	chipvpn_peer_t *peers = malloc(sizeof(char));
 
 	int peer_index = 0;
 
@@ -96,7 +108,9 @@ void read_config(const char *path, chipvpn_device_t *device) {
 
 			if(strcmp(key, "section") == 0 && strcmp(value, "peer") == 0) {
 				section = PEER_SECTION;
-				peer = &device->peers[peer_index++];
+				peers = realloc(peers, sizeof(chipvpn_peer_t) * ++peer_index);
+				peer = &peers[peer_index - 1];
+				chipvpn_peer_reset(peer);
 				continue;
 			}
 
@@ -142,6 +156,10 @@ void read_config(const char *path, chipvpn_device_t *device) {
 
 	fclose(fp);
 
+	memcpy(device->peers, peers, sizeof(chipvpn_peer_t) * device->peer_count);
+
+	free(peers);
+
 	chipvpn_device_set_enabled(device);
 }
 
@@ -154,7 +172,7 @@ void terminate(int type) {
 int main(int argc, char const *argv[]) {
 	/* code */
 
-	printf("chipvpn 1.61\n"); 
+	printf("chipvpn 1.62\n"); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		printf("config path required\n");
@@ -167,13 +185,13 @@ int main(int argc, char const *argv[]) {
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
 
+	int mtime = 0;
+
 	chipvpn_device_t *device = chipvpn_device_create(1);
 	if(!device) {
 		fprintf(stderr, "unable to create device\n");
 		exit(1);
 	}
-
-	read_config(argv[1], device);
 
 	chipvpn_peer_t *peer = &device->peers[0];
 
@@ -188,6 +206,12 @@ int main(int argc, char const *argv[]) {
 	while(!quit) {
 		chipvpn_wait(vpn, 250);
 		chipvpn_service(vpn);
+
+		if(file_mtime(argv[1]) > mtime) {
+			printf("reload config\n");
+			read_config(argv[1], device);
+			mtime = file_mtime(argv[1]);
+		}
 
 		if(previous_state != peer->state) {
 			printf("prev state: %i\n", previous_state);

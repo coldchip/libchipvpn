@@ -42,13 +42,7 @@ chipvpn_device_t *chipvpn_device_create(int peers) {
 	}
 
 	for(chipvpn_peer_t *peer = device->peers; peer < &device->peers[peers]; ++peer) {
-		peer->sender_id = 0;
-		peer->receiver_id = 0;
-		peer->state = PEER_DISCONNECTED;
-		peer->tx = 0;
-		peer->rx = 0;
-		peer->last_check = 0;
-		peer->timeout = 0;
+		chipvpn_peer_reset(peer);
 	}
 
 	device->peer_count = peers;
