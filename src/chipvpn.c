@@ -79,7 +79,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
 
 	for(chipvpn_peer_t *peer = vpn->device->peers; peer < &vpn->device->peers[vpn->device->peer_count]; ++peer) {
-		if(chipvpn_get_time() - peer->last_check > 1000) {
+		if(chipvpn_get_time() - peer->last_check > 500) {
 			peer->last_check = chipvpn_get_time();
 
 			printf("%p says: current time: [%li] timeout: [%li] state: [%i]\n", peer, chipvpn_get_time(), peer->timeout, peer->state);
@@ -90,7 +90,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 
 			/* attempt to connect to peer */
-			if(peer->state == PEER_CONNECTING) {
+			if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
 				peer->sender_id = ++vpn->sender_id;
 
 				chipvpn_packet_auth_t auth = {};
@@ -101,16 +101,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				auth.ack = true;
 
 				chipvpn_socket_write(vpn->socket, &auth, sizeof(auth), &peer->address);
-			}
-
-			/* attempt to disconnect from peer */
-			if(peer->state == PEER_DISCONNECTING) {
-				chipvpn_packet_deauth_t deauth = {};
-				deauth.header.type = htonl(3);
-				deauth.receiver_id = htonl(peer->receiver_id);
-				deauth.ack = true;
-
-				chipvpn_socket_write(vpn->socket, &deauth, sizeof(deauth), &peer->address);
 			}
 
 			/* ping peers */
@@ -255,33 +245,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				printf("%p says: received ping from peer\n", peer);
 
 				peer->timeout = chipvpn_get_time() + 10000;
-			}
-			break;
-			case 3: {
-				if(r < sizeof(chipvpn_packet_deauth_t)) {
-					return 0;
-				}
-
-				chipvpn_packet_deauth_t *packet = (chipvpn_packet_deauth_t*)buffer;
-
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_index(vpn->device->peers, vpn->device->peer_count, ntohl(packet->receiver_id));
-				if(!peer || peer->state != PEER_CONNECTED) {
-					return 0;
-				}
-				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
-					return 0;
-				}
-
-				peer->state = PEER_DISCONNECTED;
-
-				if(packet->ack == true) {
-					chipvpn_packet_deauth_t deauth = {};
-					deauth.header.type = htonl(3);
-					deauth.receiver_id = htonl(peer->receiver_id);
-					deauth.ack = false;
-
-					chipvpn_socket_write(vpn->socket, &deauth, sizeof(deauth), &addr);
-				}
 			}
 			break;
 		}

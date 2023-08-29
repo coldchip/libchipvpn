@@ -239,19 +239,13 @@ int main(int argc, char const *argv[]) {
 	}
 
 	while(!quit) {
-		chipvpn_wait(vpn, 250);
+		chipvpn_wait(vpn, 100);
 		chipvpn_service(vpn);
 
 		if(file_mtime(argv[1]) > mtime) {
 			printf("reload config\n");
 			read_peer_config(argv[1], device);
 			mtime = file_mtime(argv[1]);
-		}
-
-		for(chipvpn_peer_t *peer = device->peers; peer < &device->peers[device->peer_count]; ++peer) {
-			if(peer->connect && peer->state == PEER_DISCONNECTED) {
-				chipvpn_peer_connect(peer, 10000);
-			}
 		}
 	}
 
