@@ -87,13 +87,3 @@ chipvpn_peer_t *chipvpn_peer_get_by_index(chipvpn_peer_t *peers, int peer_count,
 	}
 	return NULL;
 }
-
-void chipvpn_peer_connect(chipvpn_peer_t *peer, uint32_t timeout) {
-	peer->timeout = chipvpn_get_time() + timeout;
-	peer->state = PEER_CONNECTING;
-}
-
-void chipvpn_peer_disconnect(chipvpn_peer_t *peer, uint32_t timeout) {
-	peer->timeout = chipvpn_get_time() + timeout;
-	peer->state = PEER_DISCONNECTING;
-}

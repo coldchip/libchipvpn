@@ -11,9 +11,7 @@ extern "C"
 #include "address.h"
 
 typedef enum {
-	PEER_DISCONNECTING,
 	PEER_DISCONNECTED,
-	PEER_CONNECTING,
 	PEER_CONNECTED
 } chipvpn_peer_state_e;
 
@@ -40,8 +38,6 @@ chipvpn_peer_t      *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_cou
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_peer_t *peers, int peer_count, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_peer_t *peers, int peer_count, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_peer_t *peers, int peer_count, uint32_t index);
-void                 chipvpn_peer_connect(chipvpn_peer_t *peer, uint32_t timeout);
-void                 chipvpn_peer_disconnect(chipvpn_peer_t *peer, uint32_t timeout);
 
 #ifdef __cplusplus
 }
