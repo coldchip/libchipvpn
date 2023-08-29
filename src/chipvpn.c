@@ -82,7 +82,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		if(chipvpn_get_time() - peer->last_check > 1000) {
 			peer->last_check = chipvpn_get_time();
 
-			printf("%li %li %i\n", chipvpn_get_time(), peer->timeout, peer->state);
+			printf("%p says: current time: [%li] timeout: [%li] state: [%i]\n", peer, chipvpn_get_time(), peer->timeout, peer->state);
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(chipvpn_get_time() > peer->timeout) {
@@ -191,6 +191,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_crypto_set_nonce(&peer->crypto, packet->nonce);
 
+				printf("%p says: i'm authenticated and connected\n", peer);
+
 				if(packet->ack == true) {
 					peer->sender_id = ++vpn->sender_id;
 
@@ -250,7 +252,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				printf("ping recv\n");
+				printf("%p says: received ping from peer\n", peer);
 
 				peer->timeout = chipvpn_get_time() + 10000;
 			}
