@@ -80,7 +80,49 @@ typedef enum {
 	PEER_SECTION
 } section_e;
 
-void read_config(const char *path, chipvpn_device_t *device) {
+void read_device_config(const char *path, chipvpn_device_t *device) {
+	FILE *fp = fopen(path, "r");
+	if(!fp) {
+		fprintf(stderr, "config read failed\n");
+		exit(1);
+	}
+
+	section_e section = DEVICE_SECTION;
+
+	char line[8192];
+	while(fgets(line, sizeof(line), fp)) {
+		line[strcspn(line, "\n")] = 0;
+		char key[32];
+		char value[4096];
+		if(sscanf(line, "%24[^:]:%s", key, value) == 2) {
+			if(strcmp(key, "section") == 0 && strcmp(value, "device") == 0) {
+				section = DEVICE_SECTION;
+				continue;
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "network") == 0) {
+				char address[24];
+				int prefix;
+				if(sscanf(value, "%24[^/]/%i", address, &prefix) == 2) {
+					chipvpn_device_set_address(device, address, prefix);
+				}
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "mtu") == 0) {
+				int mtu;
+				if(sscanf(value, "%i", &mtu) == 1) {
+					chipvpn_device_set_mtu(device, mtu);
+				}
+			}
+		}
+	}
+
+	fclose(fp);
+
+	chipvpn_device_set_enabled(device);
+}
+
+void read_peer_config(const char *path, chipvpn_device_t *device) {
 	FILE *fp = fopen(path, "r");
 	if(!fp) {
 		fprintf(stderr, "config read failed\n");
@@ -101,11 +143,6 @@ void read_config(const char *path, chipvpn_device_t *device) {
 		char key[32];
 		char value[4096];
 		if(sscanf(line, "%24[^:]:%s", key, value) == 2) {
-			if(strcmp(key, "section") == 0 && strcmp(value, "device") == 0) {
-				section = DEVICE_SECTION;
-				continue;
-			}
-
 			if(strcmp(key, "section") == 0 && strcmp(value, "peer") == 0) {
 				section = PEER_SECTION;
 				peers = realloc(peers, sizeof(chipvpn_peer_t) * ++peer_index);
@@ -114,26 +151,12 @@ void read_config(const char *path, chipvpn_device_t *device) {
 				continue;
 			}
 
-			if(section == DEVICE_SECTION && strcmp(key, "network") == 0) {
-				char address[24];
-				int prefix;
-				if(sscanf(value, "%24[^/]/%i", address, &prefix) == 2) {
-					chipvpn_device_set_address(device, address, prefix);
-				}
-			}
-
-			if(section == DEVICE_SECTION && strcmp(key, "mtu") == 0) {
-				int mtu;
-				if(sscanf(value, "%i", &mtu) == 1) {
-					chipvpn_device_set_mtu(device, mtu);
-				}
-			}
-
 			if(section == PEER_SECTION && strcmp(key, "address") == 0) {
 				char address[24];
 				int port;
 				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
 					chipvpn_peer_set_address(peer, address, port);
+					peer->connect = true;
 				}
 			}
 
@@ -156,11 +179,16 @@ void read_config(const char *path, chipvpn_device_t *device) {
 
 	fclose(fp);
 
-	memcpy(device->peers, peers, sizeof(chipvpn_peer_t) * device->peer_count);
+	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_index]; ++peer) {
+		chipvpn_peer_t *online = chipvpn_peer_get_by_key(device->peers, device->peer_count, peer->crypto.key);
+		if(online) {
+			memcpy(peer, online, sizeof(chipvpn_peer_t));
+		}
+	}
+
+	memcpy(device->peers, peers, peer_index * sizeof(chipvpn_peer_t));
 
 	free(peers);
-
-	chipvpn_device_set_enabled(device);
 }
 
 volatile sig_atomic_t quit = 0;
@@ -193,7 +221,7 @@ int main(int argc, char const *argv[]) {
 		exit(1);
 	}
 
-	chipvpn_peer_t *peer = &device->peers[0];
+	read_device_config(argv[1], device);
 
 	chipvpn_t *vpn = chipvpn_create(device, NULL);
 	if(!vpn) {
@@ -201,7 +229,14 @@ int main(int argc, char const *argv[]) {
 		exit(1);
 	}
 
-	chipvpn_peer_state_e previous_state = peer->state;
+	printf("adding routes\n");
+
+	char gateway[21];
+	if(get_gateway(gateway)) {
+		add_route("157.245.205.9", 32, gateway);
+		add_route("0.0.0.0", 1, "10.128.0.1");
+		add_route("128.0.0.0", 1, "10.128.0.1");
+	}
 
 	while(!quit) {
 		chipvpn_wait(vpn, 250);
@@ -209,56 +244,29 @@ int main(int argc, char const *argv[]) {
 
 		if(file_mtime(argv[1]) > mtime) {
 			printf("reload config\n");
-			read_config(argv[1], device);
+			read_peer_config(argv[1], device);
 			mtime = file_mtime(argv[1]);
 		}
 
-		if(previous_state != peer->state) {
-			printf("prev state: %i\n", previous_state);
-			switch(peer->state) {
-				case PEER_CONNECTING: {
-					printf("current status: peer_connectING\n");
-				}
-				break;
-				case PEER_CONNECTED: {
-					printf("current status: peer_connected\n");
-
-					char gateway[21];
-					if(get_gateway(gateway)) {
-						add_route("157.245.205.9", 32, gateway);
-						add_route("0.0.0.0", 1, "10.128.0.1");
-						add_route("128.0.0.0", 1, "10.128.0.1");
-					}
-				}
-				break;
-				case PEER_DISCONNECTING: {
-					printf("current status: peer_disconnectING\n");
-				}
-				break;
-				case PEER_DISCONNECTED: {
-					printf("current status: peer_disconnected\n");
-
-					char gateway[21];
-					if(get_gateway(gateway)) {
-						del_route("157.245.205.9", 32, gateway);
-						del_route("0.0.0.0", 1, "10.128.0.1");
-						del_route("128.0.0.0", 1, "10.128.0.1");
-					}
-				}
-				break;
+		for(chipvpn_peer_t *peer = device->peers; peer < &device->peers[device->peer_count]; ++peer) {
+			if(peer->connect && peer->state == PEER_DISCONNECTED) {
+				chipvpn_peer_connect(peer, 10000);
 			}
-			previous_state = peer->state;
-		}
-
-		if(peer->state == PEER_DISCONNECTED) {
-			chipvpn_peer_connect(peer, 10000);
 		}
 	}
+
+	printf("deleting routes\n");
+
+	del_route("157.245.205.9", 32, gateway);
+	del_route("0.0.0.0", 1, "10.128.0.1");
+	del_route("128.0.0.0", 1, "10.128.0.1");
 
 	printf("cleanup\n");
 
 	chipvpn_device_free(device);
 	chipvpn_cleanup(vpn);
+
+	printf("goodbye\n");
 
 	return 0;
 }

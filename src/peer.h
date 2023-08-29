@@ -28,6 +28,7 @@ typedef struct {
 	uint64_t rx;
 	uint64_t last_check;
 	uint64_t timeout;
+	bool connect;
 } chipvpn_peer_t;
 
 void                 chipvpn_peer_reset(chipvpn_peer_t *peer);
@@ -35,6 +36,7 @@ bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *ad
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
 bool                 chipvpn_peer_exists(chipvpn_peer_t *peers, int peer_count, chipvpn_peer_t *needle);
+chipvpn_peer_t      *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_count, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_peer_t *peers, int peer_count, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_peer_t *peers, int peer_count, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_peer_t *peers, int peer_count, uint32_t index);
