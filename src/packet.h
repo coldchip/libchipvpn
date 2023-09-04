@@ -28,6 +28,7 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t version;
+	uint32_t session;
 	char keyhash[crypto_hash_sha256_BYTES];
 	char nonce[crypto_stream_xchacha20_NONCEBYTES];
 	char rsb[32];
@@ -37,7 +38,6 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t version;
-	char keyhash[crypto_hash_sha256_BYTES];
 	uint32_t session;
 } chipvpn_packet_auth_reply_t;
 
