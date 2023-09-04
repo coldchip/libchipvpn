@@ -161,6 +161,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(!peer) {
 					return 0;
 				}
+				if(chipvpn_peer_get_by_session(vpn->device->peers, vpn->device->peer_count, ntohl(packet->session))) {
+					return 0;
+				}
 
 				peer->state = PEER_CONNECTED;
 				peer->session = ntohl(packet->session);
