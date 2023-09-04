@@ -3,7 +3,7 @@ network:10.128.0.2/16
 mtu:1400
 
 section:peer
-address:0.0.0.0:4433
+address:157.245.205.9:4433
 allow:0.0.0.0/0
 key:hXYTGSnq0Pl21dsA4iMQUcmh6tw7oJQ4kXNiAXkp6biTsQuqF9YfsiV3MrgLkre0
 
