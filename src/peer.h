@@ -19,7 +19,9 @@ typedef enum {
 typedef struct {
 	chipvpn_peer_state_e state;
 	chipvpn_crypto_t crypto;
+	chipvpn_crypto_t crypto2;
 	uint32_t session;
+	uint32_t session2;
 	chipvpn_address_t address;
 	chipvpn_address_t allow;
 	uint64_t tx;
@@ -30,7 +32,7 @@ typedef struct {
 } chipvpn_peer_t;
 
 void                 chipvpn_peer_reset(chipvpn_peer_t *peer);
-void                 chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer);
+void                 chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
