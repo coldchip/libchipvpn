@@ -97,7 +97,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			if(peer->state == PEER_CONNECTED) {
 				chipvpn_packet_ping_t ping = {};
 				ping.header.type = htonl(2);
-				ping.session = htonl(peer->session2);
+				ping.session = htonl(peer->outbound_session);
 
 				chipvpn_socket_write(vpn->socket, &ping, sizeof(ping), &peer->address);
 			}
@@ -124,10 +124,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_packet_data_t data = {};
 		data.header.type = htonl(1);
-		data.session = htonl(peer->session2);
+		data.session = htonl(peer->outbound_session);
 		data.counter = htonll(vpn->counter);
 
-		chipvpn_crypto_xcrypt(&peer->crypto2, buf, r, vpn->counter);
+		chipvpn_crypto_xcrypt(&peer->outbound_crypto, buf, r, vpn->counter);
 		memcpy(buffer, &data, sizeof(data));
 		memcpy(buffer + sizeof(data), buf, r);
 
@@ -166,24 +166,17 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				peer->state = PEER_CONNECTED;
-				peer->session2 = ntohl(packet->session);
+				peer->outbound_session = ntohl(packet->session);
 				peer->address = addr;
 				peer->tx = 0;
 				peer->rx = 0;
 				peer->timeout = chipvpn_get_time() + 10000;
-				chipvpn_crypto_set_nonce(&peer->crypto2, packet->nonce);
+				chipvpn_crypto_set_nonce(&peer->outbound_crypto, packet->nonce);
 
-				printf("%p says: i'm authenticated and session is %i\n", peer, peer->session);
+				printf("%p says: i'm authenticated and peer's session is %i\n", peer, peer->outbound_session);
 
-				/* auth reply */
-
-				// chipvpn_packet_auth_reply_t auth = {};
-				// auth.header.type = htonl(1);
-				// auth.session = packet->session;
-				// chipvpn_socket_write(vpn->socket, &auth, sizeof(auth), &peer->address);
-			
 				if(packet->ack) {
-					printf("%p requested acknowledgement\n", peer);
+					printf("%p says: peer requested auth acknowledgement\n", peer);
 					chipvpn_peer_connect(vpn->socket, peer, 0);
 				}
 			}
@@ -205,7 +198,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				char *buf = buffer + sizeof(chipvpn_packet_data_t);
 
-				chipvpn_crypto_xcrypt(&peer->crypto, buf, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
+				chipvpn_crypto_xcrypt(&peer->inbound_crypto, buf, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 
 				chipvpn_address_t src = {};
 				src.ip = ((ip_packet_t*)buf)->src_addr;
