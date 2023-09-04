@@ -27,34 +27,35 @@ typedef struct __attribute__((__packed__)) {
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
-	uint32_t sender_id;
-	char nonce[crypto_stream_xchacha20_NONCEBYTES];
+	uint32_t version;
 	char keyhash[crypto_hash_sha256_BYTES];
-	bool ack;
+	char nonce[crypto_stream_xchacha20_NONCEBYTES];
+	char rsb[32];
+	char totp[crypto_hash_sha256_BYTES];
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
-	uint32_t receiver_id;
+	uint32_t version;
+	char keyhash[crypto_hash_sha256_BYTES];
+	uint32_t session;
+} chipvpn_packet_auth_reply_t;
+
+typedef struct __attribute__((__packed__)) {
+	chipvpn_packet_header_t header;
+	uint32_t session;
 	uint64_t counter;
 } chipvpn_packet_data_t;
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
-	uint32_t receiver_id;
+	uint32_t session;
 } chipvpn_packet_ping_t;
-
-typedef struct __attribute__((__packed__)) {
-	chipvpn_packet_header_t header;
-	uint32_t receiver_id;
-	bool ack;
-} chipvpn_packet_deauth_t;
 
 typedef union {
 	chipvpn_packet_auth_t auth;
 	chipvpn_packet_data_t data;
 	chipvpn_packet_ping_t ping;
-	chipvpn_packet_deauth_t deauth;
 } chipvpn_packet_t;
 
 #ifdef __cplusplus

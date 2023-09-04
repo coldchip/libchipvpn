@@ -223,20 +223,29 @@ int main(int argc, char const *argv[]) {
 
 	read_device_config(argv[1], device);
 
-	chipvpn_t *vpn = chipvpn_create(device, NULL);
+	chipvpn_t *vpn = NULL;
+	if(argc > 2 && strcmp(argv[2], "server") == 0) {
+		chipvpn_address_t bind;
+		chipvpn_address_set_ip(&bind, "0.0.0.0");
+		bind.port = 4433;
+		vpn = chipvpn_create(device, &bind);
+	} else {
+		vpn = chipvpn_create(device, NULL);
+	}
+
 	if(!vpn) {
 		fprintf(stderr, "unable to create vpn\n");
 		exit(1);
 	}
 
-	printf("adding routes\n");
+	// printf("adding routes\n");
 
-	char gateway[21];
-	if(get_gateway(gateway)) {
-		add_route("157.245.205.9", 32, gateway);
-		add_route("0.0.0.0", 1, "10.128.0.1");
-		add_route("128.0.0.0", 1, "10.128.0.1");
-	}
+	// char gateway[21];
+	// if(get_gateway(gateway)) {
+	// 	add_route("157.245.205.9", 32, gateway);
+	// 	add_route("0.0.0.0", 1, "10.128.0.1");
+	// 	add_route("128.0.0.0", 1, "10.128.0.1");
+	// }
 
 	while(!quit) {
 		chipvpn_wait(vpn, 100);
@@ -249,18 +258,18 @@ int main(int argc, char const *argv[]) {
 		}
 	}
 
-	printf("deleting routes\n");
+	// printf("deleting routes\n");
 
-	del_route("157.245.205.9", 32, gateway);
-	del_route("0.0.0.0", 1, "10.128.0.1");
-	del_route("128.0.0.0", 1, "10.128.0.1");
+	// del_route("157.245.205.9", 32, gateway);
+	// del_route("0.0.0.0", 1, "10.128.0.1");
+	// del_route("128.0.0.0", 1, "10.128.0.1");
 
 	printf("cleanup\n");
 
 	chipvpn_device_free(device);
 	chipvpn_cleanup(vpn);
 
-	printf("goodbye\n");
+	printf("goodbye\n"); 
 
 	return 0;
 }
