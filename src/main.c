@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <time.h>
 #include "peer.h"
 #include "chipvpn.h"
 
@@ -199,6 +200,7 @@ void terminate(int type) {
 
 int main(int argc, char const *argv[]) {
 	/* code */
+	srand(time(NULL));
 
 	printf("chipvpn 1.62\n"); 
 
