@@ -127,7 +127,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		data.session = htonl(peer->session2);
 		data.counter = htonll(vpn->counter);
 
-		chipvpn_crypto_xcrypt(&peer->crypto, buf, r, vpn->counter);
+		chipvpn_crypto_xcrypt(&peer->crypto2, buf, r, vpn->counter);
 		memcpy(buffer, &data, sizeof(data));
 		memcpy(buffer + sizeof(data), buf, r);
 
