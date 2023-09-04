@@ -16,9 +16,13 @@ void chipvpn_peer_reset(chipvpn_peer_t *peer) {
 }
 
 void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
+	peer->session = rand();
+	randombytes_buf((unsigned char*)peer->crypto.nonce, sizeof(peer->crypto.nonce));
+
 	chipvpn_packet_auth_t auth = {};
 	auth.header.type = htonl(0);
-	randombytes_buf(auth.nonce, sizeof(auth.nonce));
+	auth.session = htonl(peer->session);
+	memcpy(auth.nonce, peer->crypto.nonce, sizeof(auth.nonce));
 	crypto_hash_sha256((unsigned char*)auth.keyhash, (unsigned char*)peer->crypto.key, sizeof(peer->crypto.key));
 
 	chipvpn_socket_write(socket, &auth, sizeof(auth), &peer->address);
