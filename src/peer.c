@@ -15,13 +15,14 @@ void chipvpn_peer_reset(chipvpn_peer_t *peer) {
 	peer->connect = false;
 }
 
-void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
+void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
 	peer->session = rand();
 	randombytes_buf((unsigned char*)peer->crypto.nonce, sizeof(peer->crypto.nonce));
 
 	chipvpn_packet_auth_t auth = {};
 	auth.header.type = htonl(0);
 	auth.session = htonl(peer->session);
+	auth.ack = ack;
 	memcpy(auth.nonce, peer->crypto.nonce, sizeof(auth.nonce));
 	crypto_hash_sha256((unsigned char*)auth.keyhash, (unsigned char*)peer->crypto.key, sizeof(peer->crypto.key));
 
@@ -48,6 +49,7 @@ bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 	char keyhash[crypto_hash_sha256_BYTES];
 	crypto_hash_sha256((unsigned char*)keyhash, (unsigned char*)key, strlen(key));
 	chipvpn_crypto_set_key(&peer->crypto, keyhash);
+	chipvpn_crypto_set_key(&peer->crypto2, keyhash);
 	return true;
 }
 
