@@ -8,6 +8,7 @@ extern "C"
 
 #include <stdint.h>
 #include "crypto.h"
+#include "socket.h"
 #include "address.h"
 
 typedef enum {
@@ -18,8 +19,7 @@ typedef enum {
 typedef struct {
 	chipvpn_peer_state_e state;
 	chipvpn_crypto_t crypto;
-	uint32_t sender_id;
-	uint32_t receiver_id;
+	uint32_t session;
 	chipvpn_address_t address;
 	chipvpn_address_t allow;
 	uint64_t tx;
@@ -30,6 +30,7 @@ typedef struct {
 } chipvpn_peer_t;
 
 void                 chipvpn_peer_reset(chipvpn_peer_t *peer);
+void                 chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
@@ -37,7 +38,7 @@ bool                 chipvpn_peer_exists(chipvpn_peer_t *peers, int peer_count, 
 chipvpn_peer_t      *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_count, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_peer_t *peers, int peer_count, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_peer_t *peers, int peer_count, chipvpn_address_t *ip);
-chipvpn_peer_t      *chipvpn_peer_get_by_index(chipvpn_peer_t *peers, int peer_count, uint32_t index);
+chipvpn_peer_t      *chipvpn_peer_get_by_session(chipvpn_peer_t *peers, int peer_count, uint32_t session);
 
 #ifdef __cplusplus
 }

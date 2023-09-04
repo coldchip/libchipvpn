@@ -1,9 +1,8 @@
 section:device
-network:10.128.0.2/16
+network:10.128.0.1/16
 mtu:1400
 
 section:peer
-address:0.0.0.0:4433
-allow:0.0.0.0/0
+allow:10.128.0.2/32
 key:hXYTGSnq0Pl21dsA4iMQUcmh6tw7oJQ4kXNiAXkp6biTsQuqF9YfsiV3MrgLkre0
 

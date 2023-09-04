@@ -30,7 +30,6 @@ typedef struct {
 	chipvpn_socket_t *socket;
 
 	uint64_t counter;
-	uint64_t sender_id;
 } chipvpn_t;
 
 chipvpn_t *    chipvpn_create(chipvpn_device_t *device, chipvpn_address_t *bind);
