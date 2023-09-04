@@ -183,6 +183,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				// chipvpn_socket_write(vpn->socket, &auth, sizeof(auth), &peer->address);
 			
 				if(packet->ack) {
+					printf("%p requested acknowledgement\n", peer);
 					chipvpn_peer_connect(vpn->socket, peer, 0);
 				}
 			}
