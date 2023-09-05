@@ -181,7 +181,7 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 	fclose(fp);
 
 	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_index]; ++peer) {
-		chipvpn_peer_t *online = chipvpn_peer_get_by_key(device->peers, device->peer_count, peer->inbound_crypto.key);
+		chipvpn_peer_t *online = chipvpn_peer_get_by_key(device->peers, device->peer_count, peer->key);
 		if(online) {
 			memcpy(peer, online, sizeof(chipvpn_peer_t));
 		}

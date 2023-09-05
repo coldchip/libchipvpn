@@ -161,16 +161,23 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(!peer) {
 					return 0;
 				}
+				if(ntohll(packet->timestamp) <= peer->timestamp) {
+					return 0;
+				}
 				if(chipvpn_peer_get_by_session(vpn->device->peers, vpn->device->peer_count, ntohl(packet->session))) {
 					return 0;
 				}
 
+				printf("%li\n", ntohll(packet->timestamp));
+
 				peer->state = PEER_CONNECTED;
 				peer->outbound_session = ntohl(packet->session);
 				peer->address = addr;
+				peer->timestamp = ntohll(packet->timestamp);
 				peer->tx = 0;
 				peer->rx = 0;
 				peer->timeout = chipvpn_get_time() + 10000;
+				chipvpn_crypto_set_key(&peer->outbound_crypto, packet->key);
 				chipvpn_crypto_set_nonce(&peer->outbound_crypto, packet->nonce);
 
 				printf("%p says: i'm authenticated and peer's session is %i\n", peer, peer->outbound_session);

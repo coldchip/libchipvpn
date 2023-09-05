@@ -8,6 +8,7 @@
 
 void chipvpn_peer_reset(chipvpn_peer_t *peer) {
 	peer->state = PEER_DISCONNECTED;
+	peer->timestamp = 0;
 	peer->tx = 0;
 	peer->rx = 0;
 	peer->last_check = 0;
@@ -17,14 +18,23 @@ void chipvpn_peer_reset(chipvpn_peer_t *peer) {
 
 void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
 	peer->inbound_session = rand();
-	randombytes_buf((unsigned char*)peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+
+	char key[crypto_stream_xchacha20_KEYBYTES];
+	char nonce[crypto_stream_xchacha20_NONCEBYTES];
+	randombytes_buf((unsigned char*)key, sizeof(key));
+	randombytes_buf((unsigned char*)nonce, sizeof(nonce));
+
+	chipvpn_crypto_set_key(&peer->inbound_crypto, key);
+	chipvpn_crypto_set_nonce(&peer->inbound_crypto, nonce);
 
 	chipvpn_packet_auth_t auth = {};
 	auth.header.type = htonl(0);
 	auth.session = htonl(peer->inbound_session);
+	auth.timestamp = htonll(chipvpn_get_time());
 	auth.ack = ack;
-	memcpy(auth.nonce, peer->inbound_crypto.nonce, sizeof(auth.nonce));
-	crypto_hash_sha256((unsigned char*)auth.keyhash, (unsigned char*)peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
+	memcpy(auth.key, key, sizeof(key));
+	memcpy(auth.nonce, nonce, sizeof(nonce));
+	crypto_hash_sha256((unsigned char*)auth.keyhash, (unsigned char*)peer->key, sizeof(peer->key));
 
 	chipvpn_socket_write(socket, &auth, sizeof(auth), &peer->address);
 }
@@ -46,10 +56,7 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 }
 
 bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
-	char keyhash[crypto_hash_sha256_BYTES];
-	crypto_hash_sha256((unsigned char*)keyhash, (unsigned char*)key, strlen(key));
-	chipvpn_crypto_set_key(&peer->inbound_crypto, keyhash);
-	chipvpn_crypto_set_key(&peer->outbound_crypto, keyhash);
+	crypto_hash_sha256((unsigned char*)peer->key, (unsigned char*)key, strlen(key));
 	return true;
 }
 
@@ -64,7 +71,7 @@ bool chipvpn_peer_exists(chipvpn_peer_t *peers, int peer_count, chipvpn_peer_t *
 
 chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_count, char *key) {
 	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_count]; ++peer) {
-		if(memcmp(key, peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key)) == 0) {
+		if(memcmp(key, peer->key, sizeof(peer->key)) == 0) {
 			return peer;
 		}
 	}
@@ -74,7 +81,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_count, c
 chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_peer_t *peers, int peer_count, char *key) {
 	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_count]; ++peer) {
 		char current[crypto_hash_sha256_BYTES];
-		crypto_hash_sha256((unsigned char*)current, (unsigned char*)peer->inbound_crypto.key, sizeof(current));
+		crypto_hash_sha256((unsigned char*)current, (unsigned char*)peer->key, sizeof(current));
 
 		if(memcmp(key, current, sizeof(current)) == 0) {
 			return peer;
