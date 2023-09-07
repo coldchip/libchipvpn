@@ -172,7 +172,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				unsigned char computed_totp[crypto_hash_sha256_BYTES];
 				crypto_hash_sha256_state state;
 				crypto_hash_sha256_init(&state);
-				crypto_hash_sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
+				crypto_hash_sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_auth_t));
 				crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
 				crypto_hash_sha256_final(&state, computed_totp);
 
