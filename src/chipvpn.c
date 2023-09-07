@@ -168,7 +168,20 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				printf("%li\n", ntohll(packet->timestamp));
+				char nonce2[crypto_stream_xchacha20_NONCEBYTES] = {
+					0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+					0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+					0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+				};
+
+				crypto_stream_xchacha20_xor_ic(
+					(unsigned char*)&packet->crypto, 
+					(unsigned char*)&packet->crypto, 
+					sizeof(packet->crypto), 
+					(unsigned char*)nonce2, 
+					1024, 
+					(unsigned char*)peer->key
+				);
 
 				peer->state = PEER_CONNECTED;
 				peer->outbound_session = ntohl(packet->session);
@@ -177,8 +190,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->tx = 0;
 				peer->rx = 0;
 				peer->timeout = chipvpn_get_time() + 10000;
-				chipvpn_crypto_set_key(&peer->outbound_crypto, packet->key);
-				chipvpn_crypto_set_nonce(&peer->outbound_crypto, packet->nonce);
+				chipvpn_crypto_set_key(&peer->outbound_crypto, packet->crypto.key);
+				chipvpn_crypto_set_nonce(&peer->outbound_crypto, packet->crypto.nonce);
 
 				printf("%p says: i'm authenticated and peer's session is %i\n", peer, peer->outbound_session);
 

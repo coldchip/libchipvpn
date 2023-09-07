@@ -30,8 +30,7 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t version;
 	uint32_t session;
 	char keyhash[crypto_hash_sha256_BYTES];
-	char key[crypto_stream_xchacha20_KEYBYTES];
-	char nonce[crypto_stream_xchacha20_NONCEBYTES];
+	chipvpn_crypto_t crypto;
 	uint64_t timestamp;
 	bool ack;
 	char totp[crypto_hash_sha256_BYTES];
