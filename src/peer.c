@@ -43,6 +43,15 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	);
 	memset(packet.totp, 0, sizeof(packet.totp));
 
+	unsigned char totp[crypto_hash_sha256_BYTES];
+	crypto_hash_sha256_state state;
+	crypto_hash_sha256_init(&state);
+	crypto_hash_sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
+	crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
+	crypto_hash_sha256_final(&state, totp);
+
+	memcpy(packet.totp, totp, sizeof(packet.totp));
+
 	chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
 }
 
