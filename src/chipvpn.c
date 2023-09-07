@@ -165,6 +165,21 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
+				char totp[crypto_hash_sha256_BYTES];
+				memcpy(totp, packet->totp, sizeof(totp));
+				memset(packet->totp, 0, sizeof(packet->totp));
+
+				unsigned char computed_totp[crypto_hash_sha256_BYTES];
+				crypto_hash_sha256_state state;
+				crypto_hash_sha256_init(&state);
+				crypto_hash_sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
+				crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
+				crypto_hash_sha256_final(&state, computed_totp);
+
+				if(memcmp(totp, computed_totp, sizeof(computed_totp)) != 0) {
+					return 0;
+				}
+
 				peer->state = PEER_CONNECTED;
 				peer->outbound_session = ntohl(packet->session);
 				peer->address = addr;
