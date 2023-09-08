@@ -22,12 +22,11 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	randombytes_buf((unsigned char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
 	chipvpn_packet_auth_t packet = {};
-	packet.header.type = htonl(0);
+	packet.header.type = 0;
 	packet.session = htonl(peer->inbound_session);
 	packet.timestamp = htonll(chipvpn_get_time());
 	packet.ack = ack;
 	crypto_hash_sha256((unsigned char*)packet.keyhash, (unsigned char*)peer->key, sizeof(peer->key));
-	
 	randombytes_buf((unsigned char*)packet.nonce, sizeof(packet.nonce));
 
 	crypto_stream_xchacha20_xor_ic(
@@ -38,7 +37,7 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 		1024, 
 		(unsigned char*)peer->key
 	);
-	
+
 	memset(packet.sign, 0, sizeof(packet.sign));
 
 	unsigned char sign[crypto_hash_sha256_BYTES];
@@ -49,6 +48,14 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	crypto_hash_sha256_final(&state, sign);
 
 	memcpy(packet.sign, sign, sizeof(packet.sign));
+
+	chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
+}
+
+void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
+	chipvpn_packet_ping_t packet = {};
+	packet.header.type = 2;
+	packet.session = htonl(peer->outbound_session);
 
 	chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
 }

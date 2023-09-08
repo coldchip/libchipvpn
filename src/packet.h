@@ -22,7 +22,7 @@ typedef struct __attribute__((__packed__)) {
 } ip_packet_t;
 
 typedef struct __attribute__((__packed__)) {
-	uint32_t type;
+	uint8_t type;
 } chipvpn_packet_header_t;
 
 typedef struct __attribute__((__packed__)) {

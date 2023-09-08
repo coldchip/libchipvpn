@@ -36,6 +36,7 @@ typedef struct {
 
 void                 chipvpn_peer_reset(chipvpn_peer_t *peer);
 void                 chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack);
+void                 chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
