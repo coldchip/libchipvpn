@@ -33,7 +33,7 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_crypto_t crypto;
 	uint64_t timestamp;
 	bool ack;
-	char totp[crypto_hash_sha256_BYTES];
+	char sign[crypto_hash_sha256_BYTES];
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {

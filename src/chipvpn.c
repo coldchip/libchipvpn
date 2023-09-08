@@ -164,10 +164,16 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(ntohll(packet->timestamp) <= peer->timestamp) {
 					return 0;
 				}
+				if(
+					chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
+					chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
+				) {
+					return 0;
+				}
 
 				char totp[crypto_hash_sha256_BYTES];
-				memcpy(totp, packet->totp, sizeof(totp));
-				memset(packet->totp, 0, sizeof(packet->totp));
+				memcpy(totp, packet->sign, sizeof(totp));
+				memset(packet->sign, 0, sizeof(packet->sign));
 
 				unsigned char computed_totp[crypto_hash_sha256_BYTES];
 				crypto_hash_sha256_state state;
@@ -203,7 +209,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					(unsigned char*)peer->key
 				);
 
-				printf("%p says: i'm authenticated and peer's session is %i\n", peer, peer->outbound_session);
+				printf("%p says: i'm authenticated valid signed packet\n", peer);
 
 				if(packet->ack) {
 					printf("%p says: peer requested auth acknowledgement\n", peer);
