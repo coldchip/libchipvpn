@@ -27,20 +27,18 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	packet.timestamp = htonll(chipvpn_get_time());
 	packet.ack = ack;
 	crypto_hash_sha256((unsigned char*)packet.keyhash, (unsigned char*)peer->key, sizeof(peer->key));
-	char nonce2[crypto_stream_xchacha20_NONCEBYTES] = {
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
-	};
+	
+	randombytes_buf((unsigned char*)packet.nonce, sizeof(packet.nonce));
 
 	crypto_stream_xchacha20_xor_ic(
 		(unsigned char*)&packet.crypto, 
 		(unsigned char*)&peer->inbound_crypto, 
 		sizeof(packet.crypto), 
-		(unsigned char*)nonce2, 
+		(unsigned char*)packet.nonce, 
 		1024, 
 		(unsigned char*)peer->key
 	);
+	
 	memset(packet.sign, 0, sizeof(packet.sign));
 
 	unsigned char sign[crypto_hash_sha256_BYTES];
