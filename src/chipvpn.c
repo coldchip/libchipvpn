@@ -95,11 +95,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 			/* ping peers */
 			if(peer->state == PEER_CONNECTED) {
-				chipvpn_packet_ping_t ping = {};
-				ping.header.type = htonl(2);
-				ping.session = htonl(peer->outbound_session);
-
-				chipvpn_socket_write(vpn->socket, &ping, sizeof(ping), &peer->address);
+				chipvpn_peer_ping(vpn->socket, peer);
 			}
 		}
 	}
@@ -123,7 +119,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		char buffer[sizeof(chipvpn_packet_data_t) + r];
 
 		chipvpn_packet_data_t data = {};
-		data.header.type = htonl(1);
+		data.header.type = 1;
 		data.session = htonl(peer->outbound_session);
 		data.counter = htonll(vpn->counter);
 
@@ -149,7 +145,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
-		switch(ntohl(header->type)) {
+		switch(header->type) {
 			case 0: {
 				if(r < sizeof(chipvpn_packet_auth_t)) {
 					return 0;
