@@ -81,7 +81,7 @@ typedef enum {
 	PEER_SECTION
 } section_e;
 
-void read_device_config(const char *path, chipvpn_device_t *device) {
+void read_device_config(const char *path, chipvpn_config_t *config) {
 	FILE *fp = fopen(path, "r");
 	if(!fp) {
 		fprintf(stderr, "config read failed\n");
@@ -105,22 +105,37 @@ void read_device_config(const char *path, chipvpn_device_t *device) {
 				char address[24];
 				int prefix;
 				if(sscanf(value, "%24[^/]/%i", address, &prefix) == 2) {
-					chipvpn_device_set_address(device, address, prefix);
+					if(!chipvpn_address_set_ip(&config->network, address)) {
+						fprintf(stderr, "invalid address from config\n");
+						exit(1);
+					}
+					config->network.prefix = prefix;
 				}
 			}
 
 			if(section == DEVICE_SECTION && strcmp(key, "mtu") == 0) {
 				int mtu;
 				if(sscanf(value, "%i", &mtu) == 1) {
-					chipvpn_device_set_mtu(device, mtu);
+					config->mtu = mtu;
+				}
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "bind") == 0) {
+				char address[24];
+				int port;
+				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
+					if(!chipvpn_address_set_ip(&config->bind, address)) {
+						fprintf(stderr, "invalid address from config\n");
+						exit(1);
+					}
+					config->bind.port = port;
+					config->is_bind = true;
 				}
 			}
 		}
 	}
 
 	fclose(fp);
-
-	chipvpn_device_set_enabled(device);
 }
 
 void read_peer_config(const char *path, chipvpn_device_t *device) {
@@ -217,24 +232,10 @@ int main(int argc, char const *argv[]) {
 
 	int mtime = 0;
 
-	chipvpn_device_t *device = chipvpn_device_create(1);
-	if(!device) {
-		fprintf(stderr, "unable to create device\n");
-		exit(1);
-	}
+	chipvpn_config_t config = {};
+	read_device_config(argv[1], &config);
 
-	read_device_config(argv[1], device);
-
-	chipvpn_t *vpn = NULL;
-	if(argc > 2 && strcmp(argv[2], "server") == 0) {
-		chipvpn_address_t bind;
-		chipvpn_address_set_ip(&bind, "0.0.0.0");
-		bind.port = 4433;
-		vpn = chipvpn_create(device, &bind);
-	} else {
-		vpn = chipvpn_create(device, NULL);
-	}
-
+	chipvpn_t *vpn = chipvpn_create(&config);
 	if(!vpn) {
 		fprintf(stderr, "unable to create vpn\n");
 		exit(1);
@@ -255,7 +256,7 @@ int main(int argc, char const *argv[]) {
 
 		if(file_mtime(argv[1]) > mtime) {
 			printf("reload config\n");
-			read_peer_config(argv[1], device);
+			read_peer_config(argv[1], vpn->device);
 			mtime = file_mtime(argv[1]);
 		}
 	}
@@ -268,7 +269,6 @@ int main(int argc, char const *argv[]) {
 
 	printf("cleanup\n");
 
-	chipvpn_device_free(device);
 	chipvpn_cleanup(vpn);
 
 	printf("goodbye\n"); 

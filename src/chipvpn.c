@@ -14,11 +14,17 @@
 #include "address.h"
 #include "peer.h"
 
-chipvpn_t *chipvpn_create(chipvpn_device_t *device, chipvpn_address_t *bind) {
+chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
 	if(sodium_init() == -1) {
+		return NULL;
+	}
+
+	/* create vpn device */
+	chipvpn_device_t *device = chipvpn_device_create(1);
+	if(!device) {
 		return NULL;
 	}
 
@@ -28,8 +34,21 @@ chipvpn_t *chipvpn_create(chipvpn_device_t *device, chipvpn_address_t *bind) {
 		return NULL;
 	}
 
-	if(bind) {
-		if(!chipvpn_socket_bind(socket, bind)) {
+	if(!chipvpn_device_set_address(device, &config->network)) {
+		return NULL;
+	}
+
+	if(!chipvpn_device_set_mtu(device, config->mtu)) {
+		return NULL;
+	}
+	
+	if(!chipvpn_device_set_enabled(device)) {
+		return NULL;
+	}
+
+	if(config->is_bind) {
+		printf("device has bind set\n");
+		if(!chipvpn_socket_bind(socket, &config->bind)) {
 			return NULL;
 		}
 	}
@@ -76,7 +95,6 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
-
 	for(chipvpn_peer_t *peer = vpn->device->peers; peer < &vpn->device->peers[vpn->device->peer_count]; ++peer) {
 		if(chipvpn_get_time() - peer->last_check > 500) {
 			peer->last_check = chipvpn_get_time();
@@ -85,6 +103,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(chipvpn_get_time() > peer->timeout) {
+				printf("%p says: i'm disconnected\n", peer);
 				peer->state = PEER_DISCONNECTED;
 			}
 
@@ -108,8 +127,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
-		chipvpn_address_t dst = {};
-		dst.ip = ((ip_packet_t*)buf)->dst_addr;
+		ip_packet_t *ip_hdr = (ip_packet_t *)buf;
+
+		chipvpn_address_t dst = {
+			.ip = ip_hdr->dst_addr
+		};
 
 		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(vpn->device->peers, vpn->device->peer_count, &dst);
 		if(!peer || peer->state != PEER_CONNECTED) {
@@ -199,7 +221,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 					(unsigned char*)peer->key
 				);
 
-				printf("%p says: i'm authenticated valid signed packet\n", peer);
+				struct in_addr ip_addr;
+				ip_addr.s_addr = addr.ip;
+
+				printf("%p says: peer connected from [%s:%i]\n", peer, inet_ntoa(ip_addr), addr.port);
 
 				if(packet->ack) {
 					printf("%p says: peer requested auth acknowledgement\n", peer);
@@ -264,6 +289,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 }
 
 void chipvpn_cleanup(chipvpn_t *vpn) {
+	chipvpn_device_free(vpn->device);
 	chipvpn_socket_free(vpn->socket);
 }
 

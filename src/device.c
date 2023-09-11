@@ -69,13 +69,7 @@ chipvpn_device_t *chipvpn_device_create(int peers) {
 	return device;
 }
 
-bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, uint8_t prefix) {
-	chipvpn_address_t network;
-	if(!chipvpn_address_set_ip(&network, address)) {
-		return false;
-	}
-	network.prefix = prefix;
-
+bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network) {
 	bool success = true;
 
 	struct ifreq ifr;
@@ -87,16 +81,16 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const char *address, u
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-	addr->sin_addr.s_addr = network.ip;
+	addr->sin_addr.s_addr = network->ip;
 
 	if(ioctl(fd, SIOCSIFADDR, &ifr) == -1) {
 		success = false;
 	}
 
-	if(network.prefix == 0) {
+	if(network->prefix == 0) {
 		addr->sin_addr.s_addr = 0;
 	} else {
-		addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network.prefix)) & 0xFFFFFFFFUL);
+		addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
 	}
 
 	if(ioctl(fd, SIOCSIFNETMASK, &ifr) == -1) {
