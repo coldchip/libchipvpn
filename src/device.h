@@ -41,7 +41,7 @@ typedef struct {
 } chipvpn_device_t;
 
 chipvpn_device_t       *chipvpn_device_create(int peers);
-bool                    chipvpn_device_set_address(chipvpn_device_t *tun, const char *address, uint8_t prefix);
+bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *tun, int mtu);
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *tun);
 bool                    chipvpn_device_set_disabled(chipvpn_device_t *tun);
