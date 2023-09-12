@@ -250,6 +250,10 @@ int main(int argc, char const *argv[]) {
 	// 	add_route("128.0.0.0", 1, "10.128.0.1");
 	// }
 
+	// if(system("echo nameserver 10.128.0.1 | resolvconf -a tun0 -m 0 -x HAVE_SET_DNS=1") == 0) {
+	// 	printf("added DNS\n");
+	// }
+
 	while(!quit) {
 		chipvpn_wait(vpn, 100);
 		chipvpn_service(vpn);
@@ -262,6 +266,10 @@ int main(int argc, char const *argv[]) {
 	}
 
 	// printf("deleting routes\n");
+
+	// if(system("resolvconf -d tun0 -f") == 0) {
+	// 	printf("removed DNS\n");
+	// }
 
 	// del_route("157.245.205.9", 32, gateway);
 	// del_route("0.0.0.0", 1, "10.128.0.1");

@@ -23,7 +23,7 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	}
 
 	/* create vpn device */
-	chipvpn_device_t *device = chipvpn_device_create(1);
+	chipvpn_device_t *device = chipvpn_device_create(1024);
 	if(!device) {
 		return NULL;
 	}
@@ -99,10 +99,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 		if(chipvpn_get_time() - peer->last_check > 500) {
 			peer->last_check = chipvpn_get_time();
 
-			printf("%p says: current time: [%li] timeout: [%li] state: [%i]\n", peer, chipvpn_get_time(), peer->timeout, peer->state);
-
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
-			if(chipvpn_get_time() > peer->timeout) {
+			if(peer->state != PEER_DISCONNECTED && chipvpn_get_time() > peer->timeout) {
 				printf("%p says: i'm disconnected\n", peer);
 				peer->state = PEER_DISCONNECTED;
 			}
