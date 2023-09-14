@@ -7,6 +7,8 @@
 #include "peer.h"
 #include "chipvpn.h"
 
+char dns[128] = {0};
+
 bool get_gateway(char *ip) {
 	bool success = true;
 
@@ -81,7 +83,10 @@ typedef enum {
 	PEER_SECTION
 } section_e;
 
-void read_device_config(const char *path, chipvpn_config_t *config) {
+void read_device_config(const char *path, chipvpn_config_t *config, char *postup, char *postdown) {
+	strcpy(postup, "");
+	strcpy(postdown, "");
+
 	FILE *fp = fopen(path, "r");
 	if(!fp) {
 		fprintf(stderr, "config read failed\n");
@@ -95,7 +100,7 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 		line[strcspn(line, "\n")] = 0;
 		char key[32];
 		char value[4096];
-		if(sscanf(line, "%24[^:]:%s", key, value) == 2) {
+		if(sscanf(line, "%24[^:]:%1024[^\n]", key, value) == 2) {
 			if(strcmp(key, "section") == 0 && strcmp(value, "device") == 0) {
 				section = DEVICE_SECTION;
 				continue;
@@ -131,6 +136,21 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 					config->bind.port = port;
 					config->is_bind = true;
 				}
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "dns") == 0) {
+				if(sscanf(value, "%s", dns) != 1) {
+					fprintf(stderr, "invalid dns from config\n");
+					exit(1);
+				}
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "postup") == 0) {
+				strcpy(postup, value);
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "postdown") == 0) {
+				strcpy(postdown, value);
 			}
 		}
 	}
@@ -202,6 +222,10 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 		}
 	}
 
+	for(chipvpn_peer_t *peer = device->peers; peer < &device->peers[device->peer_count]; ++peer) {
+		chipvpn_peer_reset(peer);
+	}
+
 	memcpy(device->peers, peers, peer_index * sizeof(chipvpn_peer_t));
 
 	free(peers);
@@ -210,6 +234,7 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 volatile sig_atomic_t quit = 0;
 
 void terminate(int type) {
+	printf("interrupt received\n");
 	quit = 1;
 }
 
@@ -232,8 +257,11 @@ int main(int argc, char const *argv[]) {
 
 	int mtime = 0;
 
+	char postup[8192];
+	char postdown[8192];
+
 	chipvpn_config_t config = {};
-	read_device_config(argv[1], &config);
+	read_device_config(argv[1], &config, postup, postdown);
 
 	chipvpn_t *vpn = chipvpn_create(&config);
 	if(!vpn) {
@@ -241,18 +269,11 @@ int main(int argc, char const *argv[]) {
 		exit(1);
 	}
 
-	// printf("adding routes\n");
-
-	// char gateway[21];
-	// if(get_gateway(gateway)) {
-	// 	add_route("157.245.205.9", 32, gateway);
-	// 	add_route("0.0.0.0", 1, "10.128.0.1");
-	// 	add_route("128.0.0.0", 1, "10.128.0.1");
-	// }
-
-	// if(system("echo nameserver 10.128.0.1 | resolvconf -a tun0 -m 0 -x HAVE_SET_DNS=1") == 0) {
-	// 	printf("added DNS\n");
-	// }
+	if(strlen(postup) > 0) {
+		if(system(postup) == 0) {
+			printf("executed postup command\n");
+		}
+	}
 
 	while(!quit) {
 		chipvpn_wait(vpn, 100);
@@ -265,15 +286,11 @@ int main(int argc, char const *argv[]) {
 		}
 	}
 
-	// printf("deleting routes\n");
-
-	// if(system("resolvconf -d tun0 -f") == 0) {
-	// 	printf("removed DNS\n");
-	// }
-
-	// del_route("157.245.205.9", 32, gateway);
-	// del_route("0.0.0.0", 1, "10.128.0.1");
-	// del_route("128.0.0.0", 1, "10.128.0.1");
+	if(strlen(postdown) > 0) {
+		if(system(postdown) == 0) {
+			printf("executed postdown command\n");
+		}
+	}
 
 	printf("cleanup\n");
 

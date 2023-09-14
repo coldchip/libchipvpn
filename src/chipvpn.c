@@ -136,6 +136,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
+		if(ip_hdr->ip_p != 1 && ip_hdr->ip_p != 6 && ip_hdr->ip_p != 17) {
+			return 0;
+		}
+
 		char buffer[sizeof(chipvpn_packet_data_t) + r];
 
 		chipvpn_packet_data_t data = {};
@@ -249,10 +253,16 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_crypto_xcrypt(&peer->inbound_crypto, buf, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 
+				ip_packet_t *ip_hdr = (ip_packet_t*)buf;
+
 				chipvpn_address_t src = {};
-				src.ip = ((ip_packet_t*)buf)->src_addr;
+				src.ip = ip_hdr->src_addr;
 
 				if(chipvpn_peer_get_by_allowip(vpn->device->peers, vpn->device->peer_count, &src) != peer) {
+					return 0;
+				}
+
+				if(ip_hdr->ip_p != 1 && ip_hdr->ip_p != 6 && ip_hdr->ip_p != 17) {
 					return 0;
 				}
 
