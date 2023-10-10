@@ -7,50 +7,6 @@
 #include "peer.h"
 #include "chipvpn.h"
 
-char dns[128] = {0};
-
-bool get_gateway(char *ip) {
-	bool success = true;
-
-	char cmd[] = "ip route show default | awk '/default/ {print $3}'";
-	FILE* fp = popen(cmd, "r");
-
-	if(fgets(ip, 16, fp) == NULL){
-		success = false;
-	}
-
-	ip[15] = '\0';
-
-	int i = 0;
-	while((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.') {
-		i++;
-	}
-
-	ip[i] = 0;
-
-	pclose(fp);
-
-	return success;
-}
-
-int add_route(char *src, uint8_t mask, char *dst) {
-	char command[8192];
-
-	sprintf(command, "ip route add %s/%i via %s", src, mask, dst);
-	int ret = system(command);
-	printf("%s\n", command);
-	return ret;
-}
-
-int del_route(char *src, uint8_t mask, char *dst) {
-	char command[8192];
-
-	sprintf(command, "ip route del %s/%i via %s", src, mask, dst);
-	int ret = system(command);
-	printf("%s\n", command);
-	return ret;
-}
-
 char *chipvpn_format_bytes(uint64_t bytes) {
 	char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
 	char length = sizeof(suffix) / sizeof(suffix[0]);
@@ -135,13 +91,6 @@ void read_device_config(const char *path, chipvpn_config_t *config, char *postup
 					}
 					config->bind.port = port;
 					config->is_bind = true;
-				}
-			}
-
-			if(section == DEVICE_SECTION && strcmp(key, "dns") == 0) {
-				if(sscanf(value, "%s", dns) != 1) {
-					fprintf(stderr, "invalid dns from config\n");
-					exit(1);
 				}
 			}
 
