@@ -96,7 +96,7 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
 	for(chipvpn_peer_t *peer = vpn->device->peers; peer < &vpn->device->peers[vpn->device->peer_count]; ++peer) {
-		if(chipvpn_get_time() - peer->last_check > 500) {
+		if(chipvpn_get_time() - peer->last_check > 5000) {
 			peer->last_check = chipvpn_get_time();
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
@@ -212,7 +212,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->timestamp = ntohll(packet->timestamp);
 				peer->tx = 0;
 				peer->rx = 0;
-				peer->timeout = chipvpn_get_time() + 10000;
+				peer->timeout = chipvpn_get_time() + 60000;
 
 				crypto_stream_xchacha20_xor_ic(
 					(unsigned char*)&peer->outbound_crypto, 
@@ -287,7 +287,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				printf("%p says: received ping from peer\n", peer);
 
-				peer->timeout = chipvpn_get_time() + 10000;
+				peer->timeout = chipvpn_get_time() + 60000;
 			}
 			break;
 		}
