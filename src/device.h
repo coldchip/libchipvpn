@@ -27,6 +27,7 @@ extern "C"
 #include "socket.h"
 #include "address.h"
 #include "peer.h"
+#include "list.h"
 #include <netinet/in.h>
 #include <net/if.h>
 
@@ -36,11 +37,10 @@ typedef struct {
     int can_write;
 	char dev[IFNAMSIZ + 1];
     int mtu;
-    chipvpn_peer_t *peers;
-    int peer_count;
+    chipvpn_list_t peers;
 } chipvpn_device_t;
 
-chipvpn_device_t       *chipvpn_device_create(int peers);
+chipvpn_device_t       *chipvpn_device_create();
 bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *tun, int mtu);
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *tun);

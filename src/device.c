@@ -30,22 +30,13 @@
 #include <netinet/in.h>
 
 
-chipvpn_device_t *chipvpn_device_create(int peers) {
+chipvpn_device_t *chipvpn_device_create() {
 	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));
 	if(!device) {
 		return NULL;
 	}
 
-	device->peers = malloc(sizeof(chipvpn_peer_t) * peers);
-	if(!device->peers) {
-		return NULL;
-	}
-
-	for(chipvpn_peer_t *peer = device->peers; peer < &device->peers[peers]; ++peer) {
-		chipvpn_peer_reset(peer);
-	}
-
-	device->peer_count = peers;
+	chipvpn_list_clear(&device->peers);
 
 	int fd = open("/dev/net/tun", O_RDWR);
 	if(fd < 0) {
@@ -208,6 +199,11 @@ int chipvpn_device_write(chipvpn_device_t *device, void *buf, int size) {
 
 void chipvpn_device_free(chipvpn_device_t *device) {
 	close(device->fd);
-	free(device->peers);
+
+	while(!chipvpn_list_empty(&device->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&device->peers));
+		chipvpn_peer_free(peer);
+	}
+
 	free(device);
 }

@@ -11,6 +11,7 @@ extern "C"
 #include "crypto.h"
 #include "socket.h"
 #include "address.h"
+#include "list.h"
 
 typedef enum {
 	PEER_DISCONNECTED,
@@ -18,6 +19,7 @@ typedef enum {
 } chipvpn_peer_state_e;
 
 typedef struct {
+	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
 	chipvpn_crypto_t outbound_crypto;
 	chipvpn_crypto_t inbound_crypto;
@@ -34,17 +36,19 @@ typedef struct {
 	bool connect;
 } chipvpn_peer_t;
 
+chipvpn_peer_t      *chipvpn_peer_create();
 void                 chipvpn_peer_reset(chipvpn_peer_t *peer);
 void                 chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack);
 void                 chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
-bool                 chipvpn_peer_exists(chipvpn_peer_t *peers, int peer_count, chipvpn_peer_t *needle);
-chipvpn_peer_t      *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_count, char *key);
-chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_peer_t *peers, int peer_count, char *key);
-chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_peer_t *peers, int peer_count, chipvpn_address_t *ip);
-chipvpn_peer_t      *chipvpn_peer_get_by_session(chipvpn_peer_t *peers, int peer_count, uint32_t session);
+bool                 chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *needle);
+chipvpn_peer_t      *chipvpn_peer_get_by_key(chipvpn_list_t *peers, char *key);
+chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key);
+chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
+chipvpn_peer_t      *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t session);
+void                 chipvpn_peer_free(chipvpn_peer_t *peer);
 
 #ifdef __cplusplus
 }
