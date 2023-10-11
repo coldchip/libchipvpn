@@ -114,11 +114,17 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 		exit(1);
 	}
 
-	chipvpn_peer_t *peers = malloc(sizeof(char));
+	chipvpn_list_t temp;
+	chipvpn_list_clear(&temp);
 
-	int peer_index = 0;
+	// move every peer from device to temp
+	while(!chipvpn_list_empty(&device->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&device->peers));
+		chipvpn_list_insert(chipvpn_list_end(&temp), peer);
+	}
 
-	chipvpn_peer_t *peer = NULL;
+	// clear device peers
+	chipvpn_list_clear(&device->peers);
 
 	section_e section = DEVICE_SECTION;
 
@@ -130,11 +136,13 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 		if(sscanf(line, "%24[^:]:%s", key, value) == 2) {
 			if(strcmp(key, "section") == 0 && strcmp(value, "peer") == 0) {
 				section = PEER_SECTION;
-				peers = realloc(peers, sizeof(chipvpn_peer_t) * ++peer_index);
-				peer = &peers[peer_index - 1];
-				chipvpn_peer_reset(peer);
+
+				chipvpn_peer_t *peer = chipvpn_peer_create();
+				chipvpn_list_insert(chipvpn_list_end(&device->peers), peer);
 				continue;
 			}
+
+			chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&device->peers);
 
 			if(section == PEER_SECTION && strcmp(key, "address") == 0) {
 				char address[24];
@@ -164,20 +172,32 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 
 	fclose(fp);
 
-	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_index]; ++peer) {
-		chipvpn_peer_t *online = chipvpn_peer_get_by_key(device->peers, device->peer_count, peer->key);
-		if(online) {
-			memcpy(peer, online, sizeof(chipvpn_peer_t));
+	// move connected peers from temp to device
+	chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers);
+	while(p != chipvpn_list_end(&device->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+		p = chipvpn_list_next(p);
+
+		chipvpn_list_node_t *t = chipvpn_list_begin(&temp);
+		while(t != chipvpn_list_end(&temp)) {
+			chipvpn_peer_t *peer1 = (chipvpn_peer_t*)t;
+			t = chipvpn_list_next(t);
+
+			if(memcmp(peer->key, peer1->key, sizeof(peer->key)) == 0) {
+				chipvpn_list_remove(&peer->node);
+				chipvpn_peer_free(peer);
+
+				chipvpn_list_remove(&peer1->node);
+				chipvpn_list_insert(chipvpn_list_end(&device->peers), peer1);
+			}
 		}
 	}
 
-	for(chipvpn_peer_t *peer = device->peers; peer < &device->peers[device->peer_count]; ++peer) {
-		chipvpn_peer_reset(peer);
+	// remove deleted peers from temp
+	while(!chipvpn_list_empty(&temp)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&temp));
+		chipvpn_peer_free(peer);
 	}
-
-	memcpy(device->peers, peers, peer_index * sizeof(chipvpn_peer_t));
-
-	free(peers);
 }
 
 volatile sig_atomic_t quit = 0;

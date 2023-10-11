@@ -95,7 +95,9 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
-	for(chipvpn_peer_t *peer = vpn->device->peers; peer < &vpn->device->peers[vpn->device->peer_count]; ++peer) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
 		if(chipvpn_get_time() - peer->last_check > 5000) {
 			peer->last_check = chipvpn_get_time();
 
@@ -131,7 +133,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			.ip = ip_hdr->dst_addr
 		};
 
-		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(vpn->device->peers, vpn->device->peer_count, &dst);
+		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(&vpn->device->peers, &dst);
 		if(!peer || peer->state != PEER_CONNECTED) {
 			return 0;
 		}
@@ -177,7 +179,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(vpn->device->peers, vpn->device->peer_count, packet->keyhash);
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
 				if(!peer) {
 					return 0;
 				}
@@ -241,7 +243,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_data_t *packet = (chipvpn_packet_data_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_session(vpn->device->peers, vpn->device->peer_count, ntohl(packet->session));
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session));
 				if(!peer || peer->state != PEER_CONNECTED) {
 					return 0;
 				}
@@ -258,7 +260,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_address_t src = {};
 				src.ip = ip_hdr->src_addr;
 
-				if(chipvpn_peer_get_by_allowip(vpn->device->peers, vpn->device->peer_count, &src) != peer) {
+				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
 					return 0;
 				}
 
@@ -277,7 +279,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_ping_t *packet = (chipvpn_packet_ping_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_session(vpn->device->peers, vpn->device->peer_count, ntohl(packet->session));
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session));
 				if(!peer || peer->state != PEER_CONNECTED) {
 					return 0;
 				}

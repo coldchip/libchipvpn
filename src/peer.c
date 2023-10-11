@@ -6,6 +6,15 @@
 #include "crypto.h"
 #include "peer.h"
 
+chipvpn_peer_t *chipvpn_peer_create() {
+	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
+	if(!peer) {
+		return NULL;
+	}
+	chipvpn_peer_reset(peer);
+	return peer;
+}
+
 void chipvpn_peer_reset(chipvpn_peer_t *peer) {
 	peer->state = PEER_DISCONNECTED;
 	peer->timestamp = 0;
@@ -81,8 +90,10 @@ bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 	return true;
 }
 
-bool chipvpn_peer_exists(chipvpn_peer_t *peers, int peer_count, chipvpn_peer_t *needle) {
-	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_count]; ++peer) {
+bool chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *needle) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
 		if(peer == needle) {
 			return true;
 		}
@@ -90,8 +101,10 @@ bool chipvpn_peer_exists(chipvpn_peer_t *peers, int peer_count, chipvpn_peer_t *
 	return false;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_count, char *key) {
-	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_count]; ++peer) {
+chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_list_t *peers, char *key) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
 		if(memcmp(key, peer->key, sizeof(peer->key)) == 0) {
 			return peer;
 		}
@@ -99,8 +112,10 @@ chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_peer_t *peers, int peer_count, c
 	return NULL;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_peer_t *peers, int peer_count, char *key) {
-	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_count]; ++peer) {
+chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
 		char current[crypto_hash_sha256_BYTES];
 		crypto_hash_sha256((unsigned char*)current, (unsigned char*)peer->key, sizeof(current));
 
@@ -111,8 +126,10 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_peer_t *peers, int peer_coun
 	return NULL;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_peer_t *peers, int peer_count, chipvpn_address_t *ip) {
-	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_count]; ++peer) {
+chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
 		if(chipvpn_address_cidr_match(ip, &peer->allow)) {
 			return peer;
 		}
@@ -120,11 +137,17 @@ chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_peer_t *peers, int peer_coun
 	return NULL;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_peer_t *peers, int peer_count, uint32_t session) {
-	for(chipvpn_peer_t *peer = peers; peer < &peers[peer_count]; ++peer) {
+chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t session) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+		
 		if(session == peer->inbound_session) {
 			return peer;
 		}
 	}
 	return NULL;
+}
+
+void chipvpn_peer_free(chipvpn_peer_t *peer) {
+	free(peer);
 }
