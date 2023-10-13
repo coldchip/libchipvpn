@@ -7,9 +7,18 @@ extern "C"
 #endif
 
 #include <sodium.h>
+#include "crypto.h"
 
 typedef struct __attribute__((__packed__)) {
-	uint8_t	version:4, ihl:4;
+# if __BYTE_ORDER == __LITTLE_ENDIAN
+    uint8_t ihl:4;
+    uint8_t version:4;
+# elif __BYTE_ORDER == __BIG_ENDIAN
+    uint8_t version:4;
+    uint8_t ihl:4;
+# else
+#	error "Please fix <bits/endian.h>"
+# endif
 	uint8_t  ip_tos;
 	uint16_t ip_len;
 	uint16_t ip_id;
@@ -19,7 +28,58 @@ typedef struct __attribute__((__packed__)) {
 	uint16_t ip_sum;
 	uint32_t src_addr;
 	uint32_t dst_addr;
-} ip_packet_t;
+} ip_hdr_t;
+
+typedef struct __attribute__((__packed__)) {
+	uint16_t src;
+	uint16_t dst;
+	uint32_t seq;
+	uint32_t ack_seq;
+#  if __BYTE_ORDER == __LITTLE_ENDIAN
+	uint16_t res1:4;
+	uint16_t doff:4;
+	uint16_t fin:1;
+	uint16_t syn:1;
+	uint16_t rst:1;
+	uint16_t psh:1;
+	uint16_t ack:1;
+	uint16_t urg:1;
+	uint16_t res2:2;
+#  elif __BYTE_ORDER == __BIG_ENDIAN
+	uint16_t doff:4;
+	uint16_t res1:4;
+	uint16_t res2:2;
+	uint16_t urg:1;
+	uint16_t ack:1;
+	uint16_t psh:1;
+	uint16_t rst:1;
+	uint16_t syn:1;
+	uint16_t fin:1;
+#  else
+#	error "Please fix <bits/endian.h>"
+#  endif
+	uint16_t window;
+	uint16_t check;
+	uint16_t urg_ptr;
+} tcp_hdr_t;
+
+typedef struct {
+	uint16_t src;
+	uint16_t dst;
+	uint16_t len;
+	uint16_t check;
+} udp_hdr_t;
+
+typedef struct {
+	uint16_t src;
+	uint16_t dst;
+} udp_tcp_port_t;
+
+typedef enum {
+	CHIPVPN_PACKET_AUTH,
+	CHIPVPN_PACKET_DATA,
+	CHIPVPN_PACKET_PING
+} chipvpn_packet_type_e;
 
 typedef struct __attribute__((__packed__)) {
 	uint8_t type;

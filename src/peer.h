@@ -11,6 +11,7 @@ extern "C"
 #include "crypto.h"
 #include "socket.h"
 #include "address.h"
+#include "firewall.h"
 #include "list.h"
 
 typedef enum {
@@ -21,6 +22,7 @@ typedef enum {
 typedef struct {
 	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
+	chipvpn_firewall_t *firewall;
 	chipvpn_crypto_t outbound_crypto;
 	chipvpn_crypto_t inbound_crypto;
 	uint32_t outbound_session;
@@ -37,7 +39,6 @@ typedef struct {
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();
-void                 chipvpn_peer_reset(chipvpn_peer_t *peer);
 void                 chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack);
 void                 chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
