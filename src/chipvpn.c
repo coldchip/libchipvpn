@@ -13,6 +13,7 @@
 #include "packet.h"
 #include "address.h"
 #include "peer.h"
+#include "firewall.h"
 
 chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
@@ -127,7 +128,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
-		ip_packet_t *ip_hdr = (ip_packet_t *)buf;
+		ip_hdr_t *ip_hdr = (ip_hdr_t*)buf;
 
 		chipvpn_address_t dst = {
 			.ip = ip_hdr->dst_addr
@@ -138,14 +139,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
-		if(ip_hdr->ip_p != 1 && ip_hdr->ip_p != 6 && ip_hdr->ip_p != 17) {
+		if(!chipvpn_firewall_validate_outbound(peer->firewall, buf)) {
 			return 0;
 		}
 
 		char buffer[sizeof(chipvpn_packet_data_t) + r];
 
 		chipvpn_packet_data_t data = {};
-		data.header.type = 1;
+		data.header.type = CHIPVPN_PACKET_DATA;
 		data.session = htonl(peer->outbound_session);
 		data.counter = htonll(vpn->counter);
 
@@ -172,7 +173,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
 		switch(header->type) {
-			case 0: {
+			case CHIPVPN_PACKET_AUTH: {
 				if(r < sizeof(chipvpn_packet_auth_t)) {
 					return 0;
 				}
@@ -236,7 +237,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 			}
 			break;
-			case 1: {
+			case CHIPVPN_PACKET_DATA: {
 				if(r < sizeof(chipvpn_packet_data_t)) {
 					return 0;
 				}
@@ -255,7 +256,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_crypto_xcrypt(&peer->inbound_crypto, buf, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 
-				ip_packet_t *ip_hdr = (ip_packet_t*)buf;
+				ip_hdr_t *ip_hdr = (ip_hdr_t*)buf;
 
 				chipvpn_address_t src = {};
 				src.ip = ip_hdr->src_addr;
@@ -264,7 +265,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(ip_hdr->ip_p != 1 && ip_hdr->ip_p != 6 && ip_hdr->ip_p != 17) {
+				if(!chipvpn_firewall_validate_inbound(peer->firewall, buf)) {
 					return 0;
 				}
 
@@ -272,7 +273,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_device_write(vpn->device, buf, r - sizeof(chipvpn_packet_data_t));
 			}
 			break;
-			case 2: {
+			case CHIPVPN_PACKET_PING: {
 				if(r < sizeof(chipvpn_packet_ping_t)) {
 					return 0;
 				}

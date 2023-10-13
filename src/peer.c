@@ -4,6 +4,7 @@
 #include "chipvpn.h"
 #include "packet.h"
 #include "crypto.h"
+#include "firewall.h"
 #include "peer.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
@@ -11,18 +12,29 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	if(!peer) {
 		return NULL;
 	}
-	chipvpn_peer_reset(peer);
-	return peer;
-}
 
-void chipvpn_peer_reset(chipvpn_peer_t *peer) {
 	peer->state = PEER_DISCONNECTED;
+	peer->firewall = chipvpn_firewall_create();
 	peer->timestamp = 0;
 	peer->tx = 0;
 	peer->rx = 0;
 	peer->last_check = 0;
 	peer->timeout = 0;
 	peer->connect = false;
+
+	chipvpn_firewall_rule_t *in = malloc(sizeof(chipvpn_firewall_rule_t));
+	chipvpn_address_set_ip(&in->address, "0.0.0.0");
+	in->address.prefix = 0;
+	in->protocol = 255;
+	chipvpn_list_insert(chipvpn_list_end(&peer->firewall->outbound), in);
+
+	chipvpn_firewall_rule_t *out = malloc(sizeof(chipvpn_firewall_rule_t));
+	chipvpn_address_set_ip(&out->address, "0.0.0.0");
+	out->address.prefix = 0;
+	out->protocol = 255;
+	chipvpn_list_insert(chipvpn_list_end(&peer->firewall->inbound), out);
+
+	return peer;
 }
 
 void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
@@ -31,7 +43,7 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	randombytes_buf((unsigned char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
 	chipvpn_packet_auth_t packet = {};
-	packet.header.type = 0;
+	packet.header.type = CHIPVPN_PACKET_AUTH;
 	packet.session = htonl(peer->inbound_session);
 	packet.timestamp = htonll(chipvpn_get_time());
 	packet.ack = ack;
@@ -63,7 +75,7 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 
 void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 	chipvpn_packet_ping_t packet = {};
-	packet.header.type = 2;
+	packet.header.type = CHIPVPN_PACKET_PING;
 	packet.session = htonl(peer->outbound_session);
 
 	chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
@@ -149,5 +161,6 @@ chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t sess
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
+	chipvpn_firewall_free(peer->firewall);
 	free(peer);
 }
