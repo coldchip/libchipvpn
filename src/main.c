@@ -28,11 +28,71 @@ char *chipvpn_format_bytes(uint64_t bytes) {
 int file_mtime(const char *path) {
 	struct stat file_stat;
 	int err = stat(path, &file_stat);
-	if (err != 0) {
+	if(err != 0) {
 		return 0;
 	}
 	return file_stat.st_mtime;
 }
+
+bool get_gateway(char *ip) {
+	bool success = true;
+
+	char cmd[] = "ip route show default | awk '/default/ {print $3}'";
+	FILE* fp = popen(cmd, "r");
+
+	if(fgets(ip, 16, fp) == NULL){
+		success = false;
+	}
+
+	ip[15] = '\0';
+
+	int i = 0;
+	while((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.') {
+		i++;
+	}
+
+	ip[i] = 0;
+
+	pclose(fp);
+
+	return success;
+}
+
+char* str_replace(const char* s, const char* oldW, const char* newW) { 
+    char* result; 
+    int i, cnt = 0; 
+    int newWlen = strlen(newW); 
+    int oldWlen = strlen(oldW); 
+ 
+    // Counting the number of times old word 
+    // occur in the string 
+    for (i = 0; s[i] != '\0'; i++) { 
+        if (strstr(&s[i], oldW) == &s[i]) { 
+            cnt++; 
+ 
+            // Jumping to index after the old word. 
+            i += oldWlen - 1; 
+        } 
+    } 
+ 
+    // Making new string of enough length 
+    result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1); 
+ 
+    i = 0; 
+    while (*s) { 
+        // compare the substring with the result 
+        if (strstr(s, oldW) == s) { 
+            strcpy(&result[i], newW); 
+            i += newWlen; 
+            s += oldWlen; 
+        } 
+        else
+            result[i++] = *s++; 
+    } 
+ 
+    result[i] = '\0'; 
+    return result; 
+} 
 
 typedef enum {
 	DEVICE_SECTION,
@@ -95,11 +155,25 @@ void read_device_config(const char *path, chipvpn_config_t *config, char *postup
 			}
 
 			if(section == DEVICE_SECTION && strcmp(key, "postup") == 0) {
-				strcpy(postup, value);
+				char gateway[16];
+				if(!get_gateway(gateway)) {
+
+				}
+
+				char *result = str_replace(value, "%gateway%", gateway);
+				strcpy(postup, result);
+				free(result);
 			}
 
 			if(section == DEVICE_SECTION && strcmp(key, "postdown") == 0) {
-				strcpy(postdown, value);
+				char gateway[16];
+				if(!get_gateway(gateway)) {
+
+				}
+
+				char *result = str_replace(value, "%gateway%", gateway);
+				strcpy(postdown, result);
+				free(result);
 			}
 		}
 	}
