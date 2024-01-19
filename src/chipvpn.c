@@ -258,8 +258,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)buf;
 
-				chipvpn_address_t src = {};
-				src.ip = ip_hdr->src_addr;
+				chipvpn_address_t src = {
+					.ip = ip_hdr->src_addr
+				};
 
 				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
 					return 0;
