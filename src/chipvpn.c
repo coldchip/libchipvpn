@@ -215,7 +215,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->timestamp = ntohll(packet->timestamp);
 				peer->tx = 0;
 				peer->rx = 0;
-				peer->timeout = chipvpn_get_time() + 60000;
+				peer->timeout = chipvpn_get_time() + 10000;
 
 				crypto_stream_xchacha20_xor_ic(
 					(unsigned char*)&peer->outbound_crypto, 
@@ -262,7 +262,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 					.ip = ip_hdr->src_addr
 				};
 
-				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
+				if(
+					chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
 					return 0;
 				}
 
@@ -291,7 +292,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				printf("%p says: received ping from peer\n", peer);
 
-				peer->timeout = chipvpn_get_time() + 60000;
+				peer->timeout = chipvpn_get_time() + 10000;
 			}
 			break;
 		}

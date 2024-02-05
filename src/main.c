@@ -308,7 +308,7 @@ int main(int argc, char const *argv[]) {
 
 	chipvpn_t *vpn = chipvpn_create(&config);
 	if(!vpn) {
-		fprintf(stderr, "unable to create vpn\n");
+		fprintf(stderr, "unable to create vpn tunnel interface\n");
 		exit(1);
 	}
 
@@ -339,7 +339,7 @@ int main(int argc, char const *argv[]) {
 
 	chipvpn_cleanup(vpn);
 
-	printf("goodbye\n"); 
+	printf("shutting down\n"); 
 
 	return 0;
 }
