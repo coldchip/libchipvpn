@@ -210,13 +210,16 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				chipvpn_peer_set_status(peer, PEER_CONNECTED);
+				chipvpn_peer_set_status(peer, PEER_DISCONNECTED);
+
 				peer->outbound_session = ntohl(packet->session);
 				peer->address = addr;
 				peer->timestamp = ntohll(packet->timestamp);
 				peer->tx = 0;
 				peer->rx = 0;
 				peer->timeout = chipvpn_get_time() + 10000;
+
+				chipvpn_peer_set_status(peer, PEER_CONNECTED);
 
 				crypto_stream_xchacha20_xor_ic(
 					(unsigned char*)&peer->outbound_crypto, 
