@@ -4,6 +4,15 @@
 #include <stdbool.h>
 #include <string.h>
 
+char *strdup(const char *s) {
+	size_t len = strlen(s) + 1;
+	void *new = malloc(len);
+	if (new == NULL) {
+		return NULL;
+	}
+	return (char *) memcpy(new, s, len);
+}
+
 char* str_replace(const char* s, const char* oldW, const char* newW) { 
     char* result; 
     int i, cnt = 0; 
