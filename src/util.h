@@ -3,7 +3,8 @@
 
 #include <stdbool.h>
 
-char*        str_replace(const char* s, const char* oldW, const char* newW);
+char        *strdup(const char *s);
+char        *str_replace(const char* s, const char* oldW, const char* newW);
 bool         get_gateway(char *ip);
 
 #endif

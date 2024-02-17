@@ -186,16 +186,18 @@ void chipvpn_peer_set_status(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 			break;
 		}
 
-		char gateway[16];
-		if(!get_gateway(gateway)) {
+		if(command) {
+			char gateway[16];
+			if(!get_gateway(gateway)) {
 
-		}
+			}
 
-		char *result = str_replace(command, "%gateway%", gateway);
-		if(system(result) == 0) {
-			printf("executed command\n");
+			char *result = str_replace(command, "%gateway%", gateway);
+			if(system(result) == 0) {
+				printf("executed command\n");
+			}
+			free(result);
 		}
-		free(result);
 
 		peer->state = state;
 	}
