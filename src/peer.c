@@ -6,6 +6,7 @@
 #include "crypto.h"
 #include "firewall.h"
 #include "peer.h"
+#include "util.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -102,6 +103,16 @@ bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 	return true;
 }
 
+bool chipvpn_peer_set_postup(chipvpn_peer_t *peer, const char *postup) {
+	peer->postup = strdup(postup);
+	return true;
+}
+
+bool chipvpn_peer_set_postdown(chipvpn_peer_t *peer, const char *postdown) {
+	peer->postdown = strdup(postdown);
+	return true;
+}
+
 bool chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *needle) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
@@ -160,7 +171,46 @@ chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t sess
 	return NULL;
 }
 
+void chipvpn_peer_set_status(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
+	if(peer->state != state) {
+		char *command = NULL;
+
+		switch(state) {
+			case PEER_CONNECTED: {
+				command = peer->postup;
+			}
+			break;
+			case PEER_DISCONNECTED: {
+				command = peer->postdown;
+			}
+			break;
+		}
+
+		char gateway[16];
+		if(!get_gateway(gateway)) {
+
+		}
+
+		char *result = str_replace(command, "%gateway%", gateway);
+		if(system(result) == 0) {
+			printf("executed command\n");
+		}
+		free(result);
+
+		peer->state = state;
+	}
+}
+
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
 	chipvpn_firewall_free(peer->firewall);
+
+	if(peer->postup) {
+		free(peer->postup);
+	}
+
+	if(peer->postdown) {
+		free(peer->postdown);
+	}
+
 	free(peer);
 }

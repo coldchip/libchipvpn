@@ -34,75 +34,12 @@ int file_mtime(const char *path) {
 	return file_stat.st_mtime;
 }
 
-bool get_gateway(char *ip) {
-	bool success = true;
-
-	char cmd[] = "ip route show default | awk '/default/ {print $3}'";
-	FILE* fp = popen(cmd, "r");
-
-	if(fgets(ip, 16, fp) == NULL){
-		success = false;
-	}
-
-	ip[15] = '\0';
-
-	int i = 0;
-	while((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.') {
-		i++;
-	}
-
-	ip[i] = 0;
-
-	pclose(fp);
-
-	return success;
-}
-
-char* str_replace(const char* s, const char* oldW, const char* newW) { 
-    char* result; 
-    int i, cnt = 0; 
-    int newWlen = strlen(newW); 
-    int oldWlen = strlen(oldW); 
- 
-    // Counting the number of times old word 
-    // occur in the string 
-    for (i = 0; s[i] != '\0'; i++) { 
-        if (strstr(&s[i], oldW) == &s[i]) { 
-            cnt++; 
- 
-            // Jumping to index after the old word. 
-            i += oldWlen - 1; 
-        } 
-    } 
- 
-    // Making new string of enough length 
-    result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1); 
- 
-    i = 0; 
-    while (*s) { 
-        // compare the substring with the result 
-        if (strstr(s, oldW) == s) { 
-            strcpy(&result[i], newW); 
-            i += newWlen; 
-            s += oldWlen; 
-        } 
-        else
-            result[i++] = *s++; 
-    } 
- 
-    result[i] = '\0'; 
-    return result; 
-} 
-
 typedef enum {
 	DEVICE_SECTION,
 	PEER_SECTION
 } section_e;
 
-void read_device_config(const char *path, chipvpn_config_t *config, char *postup, char *postdown) {
-	strcpy(postup, "");
-	strcpy(postdown, "");
-
+void read_device_config(const char *path, chipvpn_config_t *config) {
 	FILE *fp = fopen(path, "r");
 	if(!fp) {
 		fprintf(stderr, "config read failed\n");
@@ -153,28 +90,6 @@ void read_device_config(const char *path, chipvpn_config_t *config, char *postup
 					config->is_bind = true;
 				}
 			}
-
-			if(section == DEVICE_SECTION && strcmp(key, "postup") == 0) {
-				char gateway[16];
-				if(!get_gateway(gateway)) {
-
-				}
-
-				char *result = str_replace(value, "%gateway%", gateway);
-				strcpy(postup, result);
-				free(result);
-			}
-
-			if(section == DEVICE_SECTION && strcmp(key, "postdown") == 0) {
-				char gateway[16];
-				if(!get_gateway(gateway)) {
-
-				}
-
-				char *result = str_replace(value, "%gateway%", gateway);
-				strcpy(postdown, result);
-				free(result);
-			}
 		}
 	}
 
@@ -207,7 +122,7 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 		line[strcspn(line, "\n")] = 0;
 		char key[32];
 		char value[4096];
-		if(sscanf(line, "%24[^:]:%s", key, value) == 2) {
+		if(sscanf(line, "%24[^:]:%1024[^\n]", key, value) == 2) {
 			if(strcmp(key, "section") == 0 && strcmp(value, "peer") == 0) {
 				section = PEER_SECTION;
 
@@ -240,6 +155,14 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 				if(sscanf(value, "%1023s", key) == 1) {
 					chipvpn_peer_set_key(peer, key);
 				}
+			}
+
+			if(section == PEER_SECTION && strcmp(key, "postup") == 0) {
+				chipvpn_peer_set_postup(peer, value);
+			}
+
+			if(section == PEER_SECTION && strcmp(key, "postdown") == 0) {
+				chipvpn_peer_set_postdown(peer, value);
 			}
 		}
 	}
@@ -300,22 +223,13 @@ int main(int argc, char const *argv[]) {
 
 	int mtime = 0;
 
-	char postup[8192];
-	char postdown[8192];
-
 	chipvpn_config_t config = {};
-	read_device_config(argv[1], &config, postup, postdown);
+	read_device_config(argv[1], &config);
 
 	chipvpn_t *vpn = chipvpn_create(&config);
 	if(!vpn) {
 		fprintf(stderr, "unable to create vpn tunnel interface\n");
 		exit(1);
-	}
-
-	if(strlen(postup) > 0) {
-		if(system(postup) == 0) {
-			printf("executed postup command\n");
-		}
 	}
 
 	while(!quit) {
@@ -326,12 +240,6 @@ int main(int argc, char const *argv[]) {
 			printf("reload config\n");
 			read_peer_config(argv[1], vpn->device);
 			mtime = file_mtime(argv[1]);
-		}
-	}
-
-	if(strlen(postdown) > 0) {
-		if(system(postdown) == 0) {
-			printf("executed postdown command\n");
 		}
 	}
 
