@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = subdir-objects foreign
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 bin_PROGRAMS = chipvpn
-chipvpn_SOURCES = src/main.c src/chipvpn.c src/socket.c src/crypto.c src/peer.c src/address.c src/device.c src/list.c src/list.h src/firewall.c
+chipvpn_SOURCES = src/main.c src/chipvpn.c src/socket.c src/crypto.c src/peer.c src/address.c src/device.c src/list.c src/list.h src/firewall.c src/util.c
 
 chipvpn_CFLAGS = -Ofast -s -std=gnu99 -Wall -Werror
 chipvpn_LDADD = -lsodium
