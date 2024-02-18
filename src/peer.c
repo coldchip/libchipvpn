@@ -22,6 +22,9 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->last_check = 0;
 	peer->timeout = 0;
 	peer->connect = false;
+	peer->onconnect = NULL;
+	peer->onping = NULL;
+	peer->ondisconnect = NULL;
 
 	chipvpn_firewall_rule_t *in = malloc(sizeof(chipvpn_firewall_rule_t));
 	chipvpn_address_set_ip(&in->address, "0.0.0.0");
@@ -79,6 +82,10 @@ void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 	packet.header.type = CHIPVPN_PACKET_PING;
 	packet.session = htonl(peer->outbound_session);
 
+	if(peer->onping) {
+		chipvpn_peer_run_command(peer, peer->onping);
+	}
+
 	chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
 }
 
@@ -103,13 +110,18 @@ bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 	return true;
 }
 
-bool chipvpn_peer_set_postup(chipvpn_peer_t *peer, const char *postup) {
-	peer->postup = strdup(postup);
+bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *onconnect) {
+	peer->onconnect = strdup(onconnect);
 	return true;
 }
 
-bool chipvpn_peer_set_postdown(chipvpn_peer_t *peer, const char *postdown) {
-	peer->postdown = strdup(postdown);
+bool chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *onping) {
+	peer->onping = strdup(onping);
+	return true;
+}
+
+bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *ondisconnect) {
+	peer->ondisconnect = strdup(ondisconnect);
 	return true;
 }
 
@@ -173,55 +185,60 @@ chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t sess
 
 void chipvpn_peer_set_status(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 	if(peer->state != state) {
-		char *command = NULL;
-
 		switch(state) {
 			case PEER_CONNECTED: {
-				command = peer->postup;
+				if(peer->onconnect) {
+					chipvpn_peer_run_command(peer, peer->onconnect);
+				}
 			}
 			break;
 			case PEER_DISCONNECTED: {
-				command = peer->postdown;
+				if(peer->ondisconnect) {
+					chipvpn_peer_run_command(peer, peer->ondisconnect);
+				}
 			}
 			break;
 		}
-
-		if(command) {
-			char gateway[16];
-			if(!get_gateway(gateway)) {
-
-			}
-
-			char tx[16];
-			char rx[16];
-
-			sprintf(tx, "%li", peer->tx);
-			sprintf(rx, "%li", peer->rx);
-
-			char *result1 = str_replace(command, "%gateway%", gateway);
-			char *result2 = str_replace(result1, "%tx%", tx);
-			char *result3 = str_replace(result2, "%rx%", rx);
-			if(system(result3) == 0) {
-				printf("executed command\n");
-			}
-			free(result1);
-			free(result2);
-			free(result3);
-		}
-
 		peer->state = state;
 	}
+}
+
+void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
+	char gateway[16];
+	if(!get_gateway(gateway)) {
+
+	}
+
+	char tx[16];
+	char rx[16];
+
+	sprintf(tx, "%li", peer->tx);
+	sprintf(rx, "%li", peer->rx);
+
+	char *result1 = str_replace(command, "%gateway%", gateway);
+	char *result2 = str_replace(result1, "%tx%", tx);
+	char *result3 = str_replace(result2, "%rx%", rx);
+	if(system(result3) == 0) {
+		printf("executed command\n");
+	}
+	free(result1);
+	free(result2);
+	free(result3);
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
 	chipvpn_firewall_free(peer->firewall);
 
-	if(peer->postup) {
-		free(peer->postup);
+	if(peer->onconnect) {
+		free(peer->onconnect);
 	}
 
-	if(peer->postdown) {
-		free(peer->postdown);
+	if(peer->onping) {
+		free(peer->onping);
+	}
+
+	if(peer->ondisconnect) {
+		free(peer->ondisconnect);
 	}
 
 	free(peer);

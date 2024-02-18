@@ -123,13 +123,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* tunnel => socket */
 	if(chipvpn_device_can_read(vpn->device) && chipvpn_socket_can_write(vpn->socket)) {
-		char buf[vpn->device->mtu];
-		int r = chipvpn_device_read(vpn->device, buf, sizeof(buf));
+		char buffer[vpn->device->mtu];
+		int r = chipvpn_device_read(vpn->device, buffer, sizeof(buffer));
 		if(r <= 0) {
 			return 0;
 		}
 
-		ip_hdr_t *ip_hdr = (ip_hdr_t*)buf;
+		ip_hdr_t *ip_hdr = (ip_hdr_t*)buffer;
 
 		chipvpn_address_t dst = {
 			.ip = ip_hdr->dst_addr
@@ -140,26 +140,26 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
-		if(!chipvpn_firewall_validate_outbound(peer->firewall, buf)) {
+		if(!chipvpn_firewall_validate_outbound(peer->firewall, buffer)) {
 			return 0;
 		}
 
-		char buffer[sizeof(chipvpn_packet_data_t) + r];
+		char packet[sizeof(chipvpn_packet_data_t) + r];
 
 		chipvpn_packet_data_t data = {};
 		data.header.type = CHIPVPN_PACKET_DATA;
 		data.session = htonl(peer->outbound_session);
 		data.counter = htonll(vpn->counter);
 
-		chipvpn_crypto_xcrypt(&peer->outbound_crypto, buf, r, vpn->counter);
-		memcpy(buffer, &data, sizeof(data));
-		memcpy(buffer + sizeof(data), buf, r);
+		chipvpn_crypto_xcrypt(&peer->outbound_crypto, buffer, r, vpn->counter);
+		memcpy(packet, &data, sizeof(data));
+		memcpy(packet + sizeof(data), buffer, r);
 
 		vpn->counter++;
 
 		peer->tx += r;
 
-		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
+		chipvpn_socket_write(vpn->socket, packet, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
 
 	/* socket => tunnel */
