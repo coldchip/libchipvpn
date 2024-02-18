@@ -157,12 +157,16 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 				}
 			}
 
-			if(section == PEER_SECTION && strcmp(key, "postup") == 0) {
-				chipvpn_peer_set_postup(peer, value);
+			if(section == PEER_SECTION && strcmp(key, "onconnect") == 0) {
+				chipvpn_peer_set_onconnect(peer, value);
 			}
 
-			if(section == PEER_SECTION && strcmp(key, "postdown") == 0) {
-				chipvpn_peer_set_postdown(peer, value);
+			if(section == PEER_SECTION && strcmp(key, "onping") == 0) {
+				chipvpn_peer_set_onping(peer, value);
+			}
+
+			if(section == PEER_SECTION && strcmp(key, "ondisconnect") == 0) {
+				chipvpn_peer_set_ondisconnect(peer, value);
 			}
 		}
 	}

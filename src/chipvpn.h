@@ -28,8 +28,8 @@ extern "C"
 typedef struct {
 	chipvpn_address_t network;
 	int mtu;
-	chipvpn_address_t bind;
 	bool is_bind;
+	chipvpn_address_t bind;
 } chipvpn_config_t;
 
 typedef struct {

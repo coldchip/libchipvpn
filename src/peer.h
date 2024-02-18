@@ -30,8 +30,9 @@ typedef struct {
 	chipvpn_address_t address;
 	chipvpn_address_t allow;
 	char key[crypto_hash_sha256_BYTES];
-	char *postup;
-	char *postdown;
+	char *onconnect;
+	char *onping;
+	char *ondisconnect;
 	uint64_t timestamp;
 	uint64_t tx;
 	uint64_t rx;
@@ -46,14 +47,16 @@ void                 chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
-bool                 chipvpn_peer_set_postup(chipvpn_peer_t *peer, const char *postup);
-bool                 chipvpn_peer_set_postdown(chipvpn_peer_t *peer, const char *postdown);
+bool                 chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *onconnect);
+bool                 chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *onping);
+bool                 chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *ondisconnect);
 bool                 chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *needle);
 chipvpn_peer_t      *chipvpn_peer_get_by_key(chipvpn_list_t *peers, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t session);
 void                 chipvpn_peer_set_status(chipvpn_peer_t *peer, chipvpn_peer_state_e state);
+void                 chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command);
 void                 chipvpn_peer_free(chipvpn_peer_t *peer);
 
 #ifdef __cplusplus
