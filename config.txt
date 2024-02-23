@@ -5,4 +5,4 @@ mtu:1400
 section:peer
 address:127.0.0.1:4433
 allow:0.0.0.0/0
-key:63wVlVONZ4KwrZEzE0pD8jt78uJ6WOHRCuhht93bmMM=
+key:hello

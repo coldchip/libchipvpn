@@ -14,6 +14,7 @@
 #include "address.h"
 #include "peer.h"
 #include "firewall.h"
+#include "util.h"
 
 chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
@@ -185,9 +186,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(!peer) {
 					return 0;
 				}
+
+				if(chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session))) {
+					return 0;
+				}
+
 				if(ntohll(packet->timestamp) <= peer->timestamp) {
 					return 0;
 				}
+
 				if(
 					chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
 					chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
@@ -195,18 +202,18 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				char totp[crypto_hash_sha256_BYTES];
-				memcpy(totp, packet->sign, sizeof(totp));
+				char sign[crypto_hash_sha256_BYTES];
+				memcpy(sign, packet->sign, sizeof(sign));
 				memset(packet->sign, 0, sizeof(packet->sign));
 
-				unsigned char computed_totp[crypto_hash_sha256_BYTES];
+				unsigned char computed_sign[crypto_hash_sha256_BYTES];
 				crypto_hash_sha256_state state;
 				crypto_hash_sha256_init(&state);
 				crypto_hash_sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_auth_t));
 				crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
-				crypto_hash_sha256_final(&state, computed_totp);
+				crypto_hash_sha256_final(&state, computed_sign);
 
-				if(memcmp(totp, computed_totp, sizeof(computed_totp)) != 0) {
+				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 					return 0;
 				}
 
@@ -230,9 +237,18 @@ int chipvpn_service(chipvpn_t *vpn) {
 					(unsigned char*)peer->key
 				);
 
+				printf("%p says: session id: %i\n", peer, ntohl(packet->session));
+
+				char keyhash_hex[crypto_hash_sha256_BYTES * 2 + 1];
+				sodium_bin2hex(keyhash_hex, sizeof(keyhash_hex), (unsigned char*)&packet->keyhash, sizeof(packet->keyhash));
+				printf("%p says: keyhash: %s\n", peer, keyhash_hex);
+
+				char sign_hex[crypto_hash_sha256_BYTES * 2 + 1];
+				sodium_bin2hex(sign_hex, sizeof(sign_hex), (unsigned char*)&sign, sizeof(sign));
+				printf("%p says: sign: %s\n", peer, sign_hex);
+
 				struct in_addr ip_addr;
 				ip_addr.s_addr = addr.ip;
-
 				printf("%p says: peer connected from [%s:%i]\n", peer, inet_ntoa(ip_addr), addr.port);
 
 				if(packet->ack) {
@@ -252,31 +268,31 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(!peer || peer->state != PEER_CONNECTED) {
 					return 0;
 				}
+
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
 					return 0;
 				}
 
-				char *buf = buffer + sizeof(chipvpn_packet_data_t);
+				char *data = buffer + sizeof(chipvpn_packet_data_t);
 
-				chipvpn_crypto_xcrypt(&peer->inbound_crypto, buf, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
+				chipvpn_crypto_xcrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 
-				ip_hdr_t *ip_hdr = (ip_hdr_t*)buf;
+				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
 				chipvpn_address_t src = {
 					.ip = ip_hdr->src_addr
 				};
 
-				if(
-					chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
+				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
 					return 0;
 				}
 
-				if(!chipvpn_firewall_validate_inbound(peer->firewall, buf)) {
+				if(!chipvpn_firewall_validate_inbound(peer->firewall, data)) {
 					return 0;
 				}
 
 				peer->rx += r - sizeof(chipvpn_packet_data_t);
-				chipvpn_device_write(vpn->device, buf, r - sizeof(chipvpn_packet_data_t));
+				chipvpn_device_write(vpn->device, data, r - sizeof(chipvpn_packet_data_t));
 			}
 			break;
 			case CHIPVPN_PACKET_PING: {
@@ -290,11 +306,19 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(!peer || peer->state != PEER_CONNECTED) {
 					return 0;
 				}
+				
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
 					return 0;
 				}
 
 				printf("%p says: received ping from peer\n", peer);
+
+				char tx[128];
+				char rx[128];
+				strcpy(tx, chipvpn_format_bytes(peer->tx));
+				strcpy(rx, chipvpn_format_bytes(peer->rx));
+
+				printf("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
 				peer->timeout = chipvpn_get_time() + 10000;
 			}
@@ -313,10 +337,4 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 
 	chipvpn_device_free(vpn->device);
 	chipvpn_socket_free(vpn->socket);
-}
-
-uint64_t chipvpn_get_time() {
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
 }

@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdint.h>
+#include <sys/time.h>
 
 char *strdup(const char *s) {
 	size_t len = strlen(s) + 1;
@@ -71,4 +73,28 @@ bool get_gateway(char *ip) {
 	pclose(fp);
 
 	return success;
+}
+
+char *chipvpn_format_bytes(uint64_t bytes) {
+    char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
+    char length = sizeof(suffix) / sizeof(suffix[0]);
+
+    int i = 0;
+    double dblBytes = bytes;
+
+    if (bytes > 1024) {
+        for (i = 0; (bytes / 1024) > 0 && i < length - 1; i++, bytes /= 1024) {
+            dblBytes = bytes / 1024.0;
+        }
+    }
+
+    static char output[200];
+    sprintf(output, "%.02lf %s", dblBytes, suffix[i]);
+    return output;
+}
+
+uint64_t chipvpn_get_time() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
 }
