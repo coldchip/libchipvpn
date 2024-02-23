@@ -7,24 +7,6 @@
 #include "peer.h"
 #include "chipvpn.h"
 
-char *chipvpn_format_bytes(uint64_t bytes) {
-	char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
-	char length = sizeof(suffix) / sizeof(suffix[0]);
-
-	int i = 0;
-	double dblBytes = bytes;
-
-	if(bytes > 1024) {
-		for (i = 0; (bytes / 1024) > 0 && i < length - 1; i++, bytes /= 1024) {
-			dblBytes = bytes / 1024.0;
-		}
-	}
-
-	static char output[200];
-	sprintf(output, "%.02lf %s", dblBytes, suffix[i]);
-	return output;
-}
-
 int file_mtime(const char *path) {
 	struct stat file_stat;
 	int err = stat(path, &file_stat);
@@ -88,6 +70,19 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 					}
 					config->bind.port = port;
 					config->is_bind = true;
+				}
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "auth") == 0) {
+				char address[24];
+				int port;
+				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
+					if(!chipvpn_address_set_ip(&config->auth, address)) {
+						fprintf(stderr, "invalid address from config\n");
+						exit(1);
+					}
+					config->auth.port = port;
+					config->is_auth = true;
 				}
 			}
 		}

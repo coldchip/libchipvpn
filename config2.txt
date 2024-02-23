@@ -2,21 +2,11 @@ section:device
 network:10.128.0.1/16
 bind:0.0.0.0:4433
 mtu:1400
+auth:127.0.0.1:5044
+
 section:peer
-key:J2TIW3/PA7/AxzxMOk7F8wcn+HC429hGlSaWeyw9OSY=
-allow:10.128.0.2/32
-onconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=1&action=connect&tx=%tx%&rx=%rx%"
-onping:curl -X GET "http://127.0.0.1:3000/accounting/?id=1&action=ping&tx=%tx%&rx=%rx%"
-ondisconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=1&action=disconnect&tx=%tx%&rx=%rx%"
-section:peer
-key:Eq64YP41Z8QUH3J2WHS7VnHxqZaVISUOt0IVG7AoLr8=
-allow:10.128.0.3/32
-onconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=2&action=connect&tx=%tx%&rx=%rx%"
-onping:curl -X GET "http://127.0.0.1:3000/accounting/?id=2&action=ping&tx=%tx%&rx=%rx%"
-ondisconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=2&action=disconnect&tx=%tx%&rx=%rx%"
-section:peer
-key:63wVlVONZ4KwrZEzE0pD8jt78uJ6WOHRCuhht93bmMM=
+key:hello
 allow:10.128.0.4/32
-onconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=3&action=connect&tx=%tx%&rx=%rx%"
-onping:curl -X GET "http://127.0.0.1:3000/accounting/?id=3&action=ping&tx=%tx%&rx=%rx%"
-ondisconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=3&action=disconnect&tx=%tx%&rx=%rx%"
+#onconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=3&action=connect&tx=%tx%&rx=%rx%"
+#onping:curl -X GET "http://127.0.0.1:3000/accounting/?id=3&action=ping&tx=%tx%&rx=%rx%"
+#ondisconnect:curl -X GET "http://127.0.0.1:3000/accounting/?id=3&action=disconnect&tx=%tx%&rx=%rx%"

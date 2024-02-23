@@ -30,6 +30,8 @@ typedef struct {
 	int mtu;
 	bool is_bind;
 	chipvpn_address_t bind;
+	bool is_auth;
+	chipvpn_address_t auth;
 } chipvpn_config_t;
 
 typedef struct {
@@ -45,8 +47,6 @@ void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);
 int            chipvpn_service(chipvpn_t *vpn);
 void           chipvpn_cleanup(chipvpn_t *vpn);
-
-uint64_t       chipvpn_get_time();
 
 #ifdef __cplusplus
 }

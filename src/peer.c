@@ -46,11 +46,13 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	randombytes_buf((unsigned char*)&peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
 	randombytes_buf((unsigned char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
-	chipvpn_packet_auth_t packet = {};
-	packet.header.type = CHIPVPN_PACKET_AUTH;
-	packet.session = htonl(peer->inbound_session);
-	packet.timestamp = htonll(chipvpn_get_time());
-	packet.ack = ack;
+	chipvpn_packet_auth_t packet = {
+		.version = 170,
+		.header.type = CHIPVPN_PACKET_AUTH,
+		.session = htonl(peer->inbound_session),
+		.timestamp = htonll(chipvpn_get_time()),
+		.ack = ack
+	};
 	crypto_hash_sha256((unsigned char*)packet.keyhash, (unsigned char*)peer->key, sizeof(peer->key));
 	randombytes_buf((unsigned char*)packet.nonce, sizeof(packet.nonce));
 
