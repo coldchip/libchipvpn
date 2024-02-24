@@ -214,8 +214,8 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	char tx[16];
 	char rx[16];
 
-	sprintf(tx, "%li", peer->tx);
-	sprintf(rx, "%li", peer->rx);
+	sprintf(tx, "%llu", peer->tx);
+	sprintf(rx, "%llu", peer->rx);
 
 	char *result1 = str_replace(command, "%gateway%", gateway);
 	char *result2 = str_replace(result1, "%tx%", tx);
