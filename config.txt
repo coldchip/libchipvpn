@@ -1,4 +1,5 @@
 section:device
+name:cv-client
 network:10.128.0.4/16
 mtu:1400
 

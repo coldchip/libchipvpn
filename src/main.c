@@ -41,6 +41,13 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 				continue;
 			}
 
+			if(section == DEVICE_SECTION && strcmp(key, "name") == 0) {
+				char name[IFNAMSIZ + 1];
+				if(sscanf(value, "%16[^\n]", name) == 1) {
+					strcpy(config->name, name);
+				}
+			}
+
 			if(section == DEVICE_SECTION && strcmp(key, "network") == 0) {
 				char address[24];
 				int prefix;
@@ -207,7 +214,7 @@ int main(int argc, char const *argv[]) {
 	/* code */
 	srand(time(NULL));
 
-	printf("chipvpn 1.7.0\n"); 
+	printf("chipvpn 1.7.1\n"); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		printf("config path required\n");
@@ -222,7 +229,10 @@ int main(int argc, char const *argv[]) {
 
 	int mtime = 0;
 
-	chipvpn_config_t config = {};
+	chipvpn_config_t config = {
+		.name = "chipvpn",
+		.mtu = 1400
+	};
 	read_device_config(argv[1], &config);
 
 	chipvpn_t *vpn = chipvpn_create(&config);
