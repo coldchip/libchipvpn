@@ -36,8 +36,6 @@ chipvpn_device_t *chipvpn_device_create() {
 		return NULL;
 	}
 
-	chipvpn_list_clear(&device->peers);
-
 	int fd = open("/dev/net/tun", O_RDWR);
 	if(fd < 0) {
 		return NULL;
@@ -47,7 +45,7 @@ chipvpn_device_t *chipvpn_device_create() {
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
 
-	if(ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
+	if(ioctl(fd, TUNSETIFF, &ifr) < 0) {
 		close(fd);
 		return NULL;
 	}
@@ -57,7 +55,29 @@ chipvpn_device_t *chipvpn_device_create() {
 	device->can_write = 0;
 	strcpy(device->dev, ifr.ifr_name);
 
+	chipvpn_list_clear(&device->peers);
+
 	return device;
+}
+
+bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {
+	bool success = false;
+
+	struct ifreq ifr;
+
+	strcpy(ifr.ifr_name, device->dev);
+	strcpy(ifr.ifr_newname, name);
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if(ioctl(fd, SIOCSIFNAME, &ifr) != -1) {
+		strcpy(device->dev, name);
+		success = true;
+	}
+
+	close(fd);
+
+	return success;
 }
 
 bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network) {

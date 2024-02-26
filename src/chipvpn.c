@@ -25,7 +25,7 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	}
 
 	/* create vpn device */
-	chipvpn_device_t *device = chipvpn_device_create(1024);
+	chipvpn_device_t *device = chipvpn_device_create();
 	if(!device) {
 		return NULL;
 	}
@@ -33,6 +33,10 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	/* create vpn socket */
 	chipvpn_socket_t *socket = chipvpn_socket_create();
 	if(!socket) {
+		return NULL;
+	}
+
+	if(!chipvpn_device_set_name(device, config->name)) {
 		return NULL;
 	}
 
@@ -50,7 +54,7 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 
 	if(config->is_bind) {
 		printf("device has bind set\n");
-		if(!chipvpn_socket_bind(socket, &config->bind)) {
+		if(config->is_bind && !chipvpn_socket_bind(socket, &config->bind)) {
 			return NULL;
 		}
 	}
@@ -237,7 +241,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					(unsigned char*)peer->key
 				);
 
-				printf("%p says: session id: %i\n", peer, ntohl(packet->session));
+				printf("%p says: session id: %u\n", peer, ntohl(packet->session));
 
 				char keyhash_hex[crypto_hash_sha256_BYTES * 2 + 1];
 				sodium_bin2hex(keyhash_hex, sizeof(keyhash_hex), (unsigned char*)&packet->keyhash, sizeof(packet->keyhash));

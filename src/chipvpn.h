@@ -26,6 +26,7 @@ extern "C"
 #endif
 
 typedef struct {
+	char name[IFNAMSIZ + 1];
 	chipvpn_address_t network;
 	int mtu;
 	bool is_bind;
