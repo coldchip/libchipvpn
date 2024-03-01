@@ -330,8 +330,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				printf("%lu\n", ntohll(packet->counter));
-
 				printf("%p says: received ping from peer\n", peer);
 
 				char tx[128];
