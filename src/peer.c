@@ -25,6 +25,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->onconnect = NULL;
 	peer->onping = NULL;
 	peer->ondisconnect = NULL;
+	peer->counter = 0l;
 
 	chipvpn_firewall_rule_t *in = malloc(sizeof(chipvpn_firewall_rule_t));
 	chipvpn_address_set_ip(&in->address, "0.0.0.0");
@@ -84,6 +85,18 @@ void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 	chipvpn_packet_ping_t packet = {};
 	packet.header.type = CHIPVPN_PACKET_PING;
 	packet.session = htonl(peer->outbound_session);
+	packet.counter = htonll(peer->counter++);
+
+	memset(packet.sign, 0, sizeof(packet.sign));
+
+	unsigned char sign[crypto_hash_sha256_BYTES];
+	crypto_hash_sha256_state state;
+	crypto_hash_sha256_init(&state);
+	crypto_hash_sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
+	crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
+	crypto_hash_sha256_final(&state, sign);
+
+	memcpy(packet.sign, sign, sizeof(packet.sign));
 
 	if(peer->onping) {
 		chipvpn_peer_run_command(peer, peer->onping);
