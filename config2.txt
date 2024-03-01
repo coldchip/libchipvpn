@@ -3,7 +3,6 @@ name:cv-server
 network:10.128.0.1/16
 bind:0.0.0.0:4433
 mtu:1400
-auth:127.0.0.1:5044
 
 section:peer
 key:hello

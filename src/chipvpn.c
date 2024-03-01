@@ -116,7 +116,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			/* attempt to connect to peer */
 			if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
 				printf("%p says: connecting\n", peer);
-				chipvpn_peer_connect(vpn->socket, peer, 1);
+				chipvpn_peer_connect(vpn->socket, peer, true);
 			}
 
 			/* ping peers */
@@ -314,6 +314,23 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
 					return 0;
 				}
+
+				char sign[crypto_hash_sha256_BYTES];
+				memcpy(sign, packet->sign, sizeof(sign));
+				memset(packet->sign, 0, sizeof(packet->sign));
+
+				unsigned char computed_sign[crypto_hash_sha256_BYTES];
+				crypto_hash_sha256_state state;
+				crypto_hash_sha256_init(&state);
+				crypto_hash_sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_ping_t));
+				crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
+				crypto_hash_sha256_final(&state, computed_sign);
+
+				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+					return 0;
+				}
+
+				printf("%lu\n", ntohll(packet->counter));
 
 				printf("%p says: received ping from peer\n", peer);
 

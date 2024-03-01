@@ -106,6 +106,8 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t session;
+	uint64_t counter;
+	char sign[crypto_hash_sha256_BYTES];
 } chipvpn_packet_ping_t;
 
 typedef union {

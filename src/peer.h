@@ -39,6 +39,7 @@ typedef struct {
 	uint64_t last_check;
 	uint64_t timeout;
 	bool connect;
+	uint64_t counter;
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();
