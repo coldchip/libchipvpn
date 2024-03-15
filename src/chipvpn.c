@@ -52,6 +52,8 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 		return NULL;
 	}
 
+	chipvpn_socket_set_key(socket, config->xor, strlen(config->xor));
+
 	if(config->is_bind) {
 		printf("device has bind set\n");
 		if(config->is_bind && !chipvpn_socket_bind(socket, &config->bind)) {
@@ -156,7 +158,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		data.session = htonl(peer->outbound_session);
 		data.counter = htonll(vpn->counter);
 
-		chipvpn_crypto_xcrypt(&peer->outbound_crypto, buffer, r, vpn->counter);
+		chipvpn_crypto_xchacha20(&peer->outbound_crypto, buffer, r, vpn->counter);
 		memcpy(packet, &data, sizeof(data));
 		memcpy(packet + sizeof(data), buffer, r);
 
@@ -279,7 +281,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				char *data = buffer + sizeof(chipvpn_packet_data_t);
 
-				chipvpn_crypto_xcrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
+				chipvpn_crypto_xchacha20(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 

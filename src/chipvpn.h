@@ -31,8 +31,7 @@ typedef struct {
 	int mtu;
 	bool is_bind;
 	chipvpn_address_t bind;
-	bool is_auth;
-	chipvpn_address_t auth;
+	char xor[1024];
 } chipvpn_config_t;
 
 typedef struct {

@@ -48,7 +48,7 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	randombytes_buf((unsigned char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
 	chipvpn_packet_auth_t packet = {
-		.version = 171,
+		.version = 172,
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.session = htonl(peer->inbound_session),
 		.timestamp = htonll(chipvpn_get_time()),
@@ -85,7 +85,9 @@ void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 	chipvpn_packet_ping_t packet = {};
 	packet.header.type = CHIPVPN_PACKET_PING;
 	packet.session = htonl(peer->outbound_session);
-	packet.counter = htonll(peer->counter++);
+	packet.counter = htonll(peer->counter);
+
+	peer->counter += 1;
 
 	memset(packet.sign, 0, sizeof(packet.sign));
 

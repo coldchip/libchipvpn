@@ -80,16 +80,10 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 				}
 			}
 
-			if(section == DEVICE_SECTION && strcmp(key, "auth") == 0) {
-				char address[24];
-				int port;
-				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
-					if(!chipvpn_address_set_ip(&config->auth, address)) {
-						fprintf(stderr, "invalid address from config\n");
-						exit(1);
-					}
-					config->auth.port = port;
-					config->is_auth = true;
+			if(section == DEVICE_SECTION && strcmp(key, "xor") == 0) {
+				char xor[1024];
+				if(sscanf(value, "%1023s", xor) == 1) {
+					strcpy(config->xor, xor);
 				}
 			}
 		}
@@ -231,7 +225,8 @@ int main(int argc, char const *argv[]) {
 
 	chipvpn_config_t config = {
 		.name = "chipvpn",
-		.mtu = 1400
+		.mtu = 1400,
+		.xor = ""
 	};
 	read_device_config(argv[1], &config);
 
