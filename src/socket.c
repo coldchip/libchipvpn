@@ -7,6 +7,7 @@
 #include "socket.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include "crypto.h"
 
 chipvpn_socket_t *chipvpn_socket_create() {
 	chipvpn_socket_t *sock = malloc(sizeof(chipvpn_socket_t));
@@ -22,6 +23,7 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	sock->fd = fd;
 	sock->can_read = 0;
 	sock->can_write = 0;
+	sock->key_length = 0;
 
 	return sock;
 }
@@ -37,6 +39,11 @@ bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
 		return false;
 	}
 	return true;
+}
+
+void chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length) {
+	memcpy(sock->key, key, length);
+	sock->key_length = length;
 }
 
 void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max) {
@@ -78,6 +85,10 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 		addr->port = ntohs(sa.sin_port);
 	}
 
+	if(r > 0 && sock->key_length > 0) {
+		chipvpn_crypto_xor(data, data, r, sock->key, sock->key_length);
+	}
+
 	return r;
 }
 
@@ -88,6 +99,10 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_family = AF_INET;
 	sa.sin_addr.s_addr = addr->ip;
 	sa.sin_port = htons(addr->port);
+
+	if(size > 0 && sock->key_length > 0) {
+		chipvpn_crypto_xor(data, data, size, sock->key, sock->key_length);
+	}
 
 	int w = sendto(sock->fd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
 	chipvpn_socket_set_write(sock, false);
