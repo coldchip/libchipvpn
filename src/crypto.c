@@ -25,6 +25,6 @@ void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, ui
 
 void chipvpn_crypto_xor(char *dst, char *src, int size, char *key, int klen) {
 	for(int i = 0; i < size; i++) {
-		*(dst + i) = *(src + i) ^ *(key + (i % klen));
+		dst[i] = src[i] ^ key[i % klen];
 	}
 }

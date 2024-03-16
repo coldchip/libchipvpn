@@ -8,6 +8,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include "crypto.h"
+#include "packet.h"
+#include "chipvpn.h"
 
 chipvpn_socket_t *chipvpn_socket_create() {
 	chipvpn_socket_t *sock = malloc(sizeof(chipvpn_socket_t));
@@ -44,6 +46,9 @@ bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
 void chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length) {
 	memcpy(sock->key, key, length);
 	sock->key_length = length;
+
+	crypto_hash_sha256((unsigned char*)sock->crypto.key, (unsigned char*)key, length);
+	memset(sock->crypto.nonce, 0, sizeof(sock->crypto.nonce));
 }
 
 void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max) {
@@ -86,7 +91,29 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	}
 
 	if(r > 0 && sock->key_length > 0) {
-		chipvpn_crypto_xor(data, data, r, sock->key, sock->key_length);
+		if(size > sizeof(chipvpn_packet_header_t)) {
+			chipvpn_packet_header_t h = *(chipvpn_packet_header_t*)data;
+			chipvpn_crypto_xchacha20(&sock->crypto, (char*)&h, sizeof(chipvpn_packet_header_t), 1024);
+			
+			int dr = 0;
+
+			switch(h.type) {
+				case CHIPVPN_PACKET_AUTH: {
+					dr = sizeof(chipvpn_packet_auth_t);
+				}
+				break;
+				case CHIPVPN_PACKET_DATA: {
+					dr = sizeof(chipvpn_packet_data_t);
+				}
+				break;
+				case CHIPVPN_PACKET_PING: {
+					dr = sizeof(chipvpn_packet_ping_t);
+				}
+				break;
+			}
+
+			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dr, size), 1024);
+		}
 	}
 
 	return r;
@@ -101,7 +128,28 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_port = htons(addr->port);
 
 	if(size > 0 && sock->key_length > 0) {
-		chipvpn_crypto_xor(data, data, size, sock->key, sock->key_length);
+		if(size > sizeof(chipvpn_packet_header_t)) {
+			chipvpn_packet_header_t h = *(chipvpn_packet_header_t*)data;
+			
+			int dw = 0;
+			switch(h.type) {
+				case CHIPVPN_PACKET_AUTH: {
+					dw = sizeof(chipvpn_packet_auth_t);
+				}
+				break;
+				case CHIPVPN_PACKET_DATA: {
+					dw = sizeof(chipvpn_packet_data_t);
+				}
+				break;
+				case CHIPVPN_PACKET_PING: {
+					dw = sizeof(chipvpn_packet_ping_t);
+				}
+				break;
+			}
+
+
+			chipvpn_crypto_xchacha20(&sock->crypto, data, MAX(dw, size), 1024);
+		}
 	}
 
 	int w = sendto(sock->fd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
