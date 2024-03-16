@@ -147,8 +147,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 				break;
 			}
 
-
-			chipvpn_crypto_xchacha20(&sock->crypto, data, MAX(dw, size), 1024);
+			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dw, size), 1024);
 		}
 	}
 
