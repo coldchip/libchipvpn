@@ -243,13 +243,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 					(unsigned char*)peer->key
 				);
 
+				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - ntohll(packet->timestamp));
+
 				printf("%p says: session id: %u\n", peer, ntohl(packet->session));
 
-				char keyhash_hex[crypto_hash_sha256_BYTES * 2 + 1];
+				char keyhash_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
 				sodium_bin2hex(keyhash_hex, sizeof(keyhash_hex), (unsigned char*)&packet->keyhash, sizeof(packet->keyhash));
 				printf("%p says: keyhash: %s\n", peer, keyhash_hex);
 
-				char sign_hex[crypto_hash_sha256_BYTES * 2 + 1];
+				char sign_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
 				sodium_bin2hex(sign_hex, sizeof(sign_hex), (unsigned char*)&sign, sizeof(sign));
 				printf("%p says: sign: %s\n", peer, sign_hex);
 

@@ -8,6 +8,7 @@ extern "C"
 
 #include <sys/select.h>
 #include "address.h"
+#include "crypto.h"
 
 typedef struct {
 	int fd;
@@ -15,6 +16,7 @@ typedef struct {
 	int can_write;
 	char key[1024];
 	int key_length;
+	chipvpn_crypto_t crypto;
 } chipvpn_socket_t;
 
 chipvpn_socket_t    *chipvpn_socket_create();
