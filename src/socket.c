@@ -95,14 +95,13 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 	uint32_t ctr = ntohl(a);
 
-	unsigned char key[crypto_hash_sha256_BYTES];
-	crypto_hash_sha256_state state;
-	crypto_hash_sha256_init(&state);
-	crypto_hash_sha256_update(&state, (unsigned char*)&sock->key, sock->key_length);
-	crypto_hash_sha256_update(&state, (unsigned char*)&ctr, sizeof(ctr));
-	crypto_hash_sha256_final(&state, key);
+	uint32_t state;
+	chipvpn_crypto_crc32_init(&state);
+	chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
+	chipvpn_crypto_crc32_update(&state, (unsigned char*)&ctr, sizeof(ctr));
+	uint32_t key = chipvpn_crypto_crc32_final(&state);
 
-	chipvpn_crypto_xor(data, data, r - sizeof(uint32_t), (char*)key, sizeof(key));
+	chipvpn_crypto_xor(data, data, r - sizeof(uint32_t), (char*)&key, sizeof(key));
 
 	if(addr) {
 		addr->ip = sa.sin_addr.s_addr;
@@ -122,14 +121,13 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 
 	uint32_t r = randombytes_random();
 
-	unsigned char key[crypto_hash_sha256_BYTES];
-	crypto_hash_sha256_state state;
-	crypto_hash_sha256_init(&state);
-	crypto_hash_sha256_update(&state, (unsigned char*)&sock->key, sock->key_length);
-	crypto_hash_sha256_update(&state, (unsigned char*)&r, sizeof(r));
-	crypto_hash_sha256_final(&state, key);
+	uint32_t state;
+	chipvpn_crypto_crc32_init(&state);
+	chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
+	chipvpn_crypto_crc32_update(&state, (unsigned char*)&r, sizeof(r));
+	uint32_t key = chipvpn_crypto_crc32_final(&state);
 
-	chipvpn_crypto_xor(data, data, size, (char*)key, sizeof(key));
+	chipvpn_crypto_xor(data, data, size, (char*)&key, sizeof(key));
 
 	uint32_t a = htonl(r);
 
