@@ -82,41 +82,29 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	struct sockaddr_in sa;
 	int len = sizeof(sa);
 
-	int r = recvfrom(sock->fd, data, size, 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+	char p[4 + size];
+
+	int r = recvfrom(sock->fd, p, sizeof(p), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 	chipvpn_socket_set_read(sock, false);
+
+	if(r <= 4) {
+		return 0;
+	}
+
+	int a = 0;
+
+	memcpy(&a, p, 4);
+	memcpy(data, p + 4, r - 4);
+	chipvpn_crypto_xchacha20(&sock->crypto, data, r - 4, ntohl(a));
 
 	if(addr) {
 		addr->ip = sa.sin_addr.s_addr;
 		addr->port = ntohs(sa.sin_port);
 	}
 
-	if(r > 0 && sock->key_length > 0) {
-		if(size > sizeof(chipvpn_packet_header_t)) {
-			chipvpn_packet_header_t h = *(chipvpn_packet_header_t*)data;
-			chipvpn_crypto_xchacha20(&sock->crypto, (char*)&h, sizeof(chipvpn_packet_header_t), r);
-			
-			int dr = 0;
+	
 
-			switch(h.type) {
-				case CHIPVPN_PACKET_AUTH: {
-					dr = sizeof(chipvpn_packet_auth_t);
-				}
-				break;
-				case CHIPVPN_PACKET_DATA: {
-					dr = sizeof(chipvpn_packet_data_t);
-				}
-				break;
-				case CHIPVPN_PACKET_PING: {
-					dr = sizeof(chipvpn_packet_ping_t);
-				}
-				break;
-			}
-
-			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dr, size), r);
-		}
-	}
-
-	return r;
+	return r - 4;
 }
 
 int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
@@ -127,34 +115,21 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_addr.s_addr = addr->ip;
 	sa.sin_port = htons(addr->port);
 
-	if(size > 0 && sock->key_length > 0) {
-		if(size > sizeof(chipvpn_packet_header_t)) {
-			chipvpn_packet_header_t h = *(chipvpn_packet_header_t*)data;
-			
-			int dw = 0;
-			switch(h.type) {
-				case CHIPVPN_PACKET_AUTH: {
-					dw = sizeof(chipvpn_packet_auth_t);
-				}
-				break;
-				case CHIPVPN_PACKET_DATA: {
-					dw = sizeof(chipvpn_packet_data_t);
-				}
-				break;
-				case CHIPVPN_PACKET_PING: {
-					dw = sizeof(chipvpn_packet_ping_t);
-				}
-				break;
-			}
+	int r = randombytes_random();
 
-			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dw, size), size);
-		}
-	}
+	chipvpn_crypto_xchacha20(&sock->crypto, data, size, r);
 
-	int w = sendto(sock->fd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
+	int a = htonl(r);
+
+	char p[4 + size];
+	memcpy(p, &a, 4);
+	memcpy(p + 4, data, size);
+
+
+	int w = sendto(sock->fd, p, sizeof(p), 0, (struct sockaddr*)&sa, sizeof(sa));
 	chipvpn_socket_set_write(sock, false);
 	
-	return w;
+	return w - 4;
 }
 
 void chipvpn_socket_free(chipvpn_socket_t *sock) {
