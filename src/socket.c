@@ -82,27 +82,27 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	struct sockaddr_in sa;
 	int len = sizeof(sa);
 
-	char p[sizeof(int) + size];
+	char p[sizeof(uint32_t) + size];
 
 	int r = recvfrom(sock->fd, p, sizeof(p), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 	chipvpn_socket_set_read(sock, false);
 
-	if(r <= sizeof(int)) {
+	if(r <= sizeof(uint32_t)) {
 		return 0;
 	}
 
-	int a = 0;
+	uint32_t a = 0;
 
-	memcpy(&a, p, sizeof(int));
-	memcpy(data, sizeof(int) + p, r - sizeof(int));
-	chipvpn_crypto_xchacha20(&sock->crypto, data, r - sizeof(int), ntohl(a));
+	memcpy(&a, p, sizeof(uint32_t));
+	memcpy(data, sizeof(uint32_t) + p, r - sizeof(uint32_t));
+	chipvpn_crypto_xchacha20(&sock->crypto, data, r - sizeof(uint32_t), ntohl(a));
 
 	if(addr) {
 		addr->ip = sa.sin_addr.s_addr;
 		addr->port = ntohs(sa.sin_port);
 	}
 
-	return r - sizeof(int);
+	return r - sizeof(uint32_t);
 }
 
 int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
@@ -113,21 +113,21 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_addr.s_addr = addr->ip;
 	sa.sin_port = htons(addr->port);
 
-	int r = randombytes_random();
+	uint32_t r = randombytes_random();
 
 	chipvpn_crypto_xchacha20(&sock->crypto, data, size, r);
 
-	int a = htonl(r);
+	uint32_t a = htonl(r);
 
-	char p[sizeof(int) + size];
-	memcpy(p, &a, sizeof(int));
-	memcpy(sizeof(int) + p, data, size);
+	char p[sizeof(uint32_t) + size];
+	memcpy(p, &a, sizeof(uint32_t));
+	memcpy(sizeof(uint32_t) + p, data, size);
 
 
-	int w = sendto(sock->fd, p, sizeof(int) + size, 0, (struct sockaddr*)&sa, sizeof(sa));
+	int w = sendto(sock->fd, p, sizeof(uint32_t) + size, 0, (struct sockaddr*)&sa, sizeof(sa));
 	chipvpn_socket_set_write(sock, false);
 
-	return w - sizeof(int);
+	return w - sizeof(uint32_t);
 }
 
 void chipvpn_socket_free(chipvpn_socket_t *sock) {
