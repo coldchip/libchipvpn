@@ -46,9 +46,6 @@ bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
 void chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length) {
 	memcpy(sock->key, key, length);
 	sock->key_length = length;
-
-	crypto_hash_sha256((unsigned char*)sock->crypto.key, (unsigned char*)key, length);
-	memset(sock->crypto.nonce, 0, sizeof(sock->crypto.nonce));
 }
 
 void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max) {
@@ -95,7 +92,17 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 	memcpy(&a, p, sizeof(uint32_t));
 	memcpy(data, sizeof(uint32_t) + p, r - sizeof(uint32_t));
-	chipvpn_crypto_xchacha20(&sock->crypto, data, r - sizeof(uint32_t), ntohl(a));
+
+	uint32_t ctr = ntohl(a);
+
+	unsigned char key[crypto_hash_sha256_BYTES];
+	crypto_hash_sha256_state state;
+	crypto_hash_sha256_init(&state);
+	crypto_hash_sha256_update(&state, (unsigned char*)&sock->key, sock->key_length);
+	crypto_hash_sha256_update(&state, (unsigned char*)&ctr, sizeof(ctr));
+	crypto_hash_sha256_final(&state, key);
+
+	chipvpn_crypto_xor(data, data, r - sizeof(uint32_t), (char*)key, sizeof(key));
 
 	if(addr) {
 		addr->ip = sa.sin_addr.s_addr;
@@ -115,7 +122,14 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 
 	uint32_t r = randombytes_random();
 
-	chipvpn_crypto_xchacha20(&sock->crypto, data, size, r);
+	unsigned char key[crypto_hash_sha256_BYTES];
+	crypto_hash_sha256_state state;
+	crypto_hash_sha256_init(&state);
+	crypto_hash_sha256_update(&state, (unsigned char*)&sock->key, sock->key_length);
+	crypto_hash_sha256_update(&state, (unsigned char*)&r, sizeof(r));
+	crypto_hash_sha256_final(&state, key);
+
+	chipvpn_crypto_xor(data, data, size, (char*)key, sizeof(key));
 
 	uint32_t a = htonl(r);
 

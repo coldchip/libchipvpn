@@ -18,7 +18,6 @@ void                  chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key
 void                  chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce);
 void                  chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter);
 void                  chipvpn_crypto_xor(char *dst, char *src, int size, char *key, int klen);
-void                  chipvpn_crypto_xor2(char *dst, char *src, int size, char *key, int klen);
 
 #ifdef __cplusplus
 }
