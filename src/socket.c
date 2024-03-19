@@ -93,7 +93,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	if(r > 0 && sock->key_length > 0) {
 		if(size > sizeof(chipvpn_packet_header_t)) {
 			chipvpn_packet_header_t h = *(chipvpn_packet_header_t*)data;
-			chipvpn_crypto_xchacha20(&sock->crypto, (char*)&h, sizeof(chipvpn_packet_header_t), 1024);
+			chipvpn_crypto_xchacha20(&sock->crypto, (char*)&h, sizeof(chipvpn_packet_header_t), r);
 			
 			int dr = 0;
 
@@ -112,7 +112,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 				break;
 			}
 
-			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dr, size), 1024);
+			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dr, size), r);
 		}
 	}
 
@@ -147,7 +147,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 				break;
 			}
 
-			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dw, size), 1024);
+			chipvpn_crypto_xchacha20(&sock->crypto, data, MIN(dw, size), size);
 		}
 	}
 
