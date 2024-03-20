@@ -271,6 +271,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_packet_data_t *packet = (chipvpn_packet_data_t*)buffer;
+				char                  *data   = buffer + sizeof(chipvpn_packet_data_t);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session));
 				if(!peer || peer->state != PEER_CONNECTED) {
@@ -280,8 +281,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
 					return 0;
 				}
-
-				char *data = buffer + sizeof(chipvpn_packet_data_t);
 
 				chipvpn_crypto_xchacha20(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 

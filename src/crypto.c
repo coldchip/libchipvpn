@@ -30,7 +30,7 @@ void chipvpn_crypto_xor(char *dst, char *src, int size, char *key, int klen) {
 }
 
 
-const uint32_t crc32_tab[] = {
+const uint32_t crc32_table[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
 	0xe963a535, 0x9e6495a3,	0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
 	0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
@@ -82,8 +82,8 @@ void chipvpn_crypto_crc32_init(uint32_t *state) {
 
 void chipvpn_crypto_crc32_update(uint32_t *state, const void *buf, size_t size) {
 	const uint8_t *p = buf;
-	while (size--) {
-		*state = crc32_tab[(*state ^ *p++) & 0xFF] ^ (*state >> 8);
+	while(size--) {
+		*state = crc32_table[(*state ^ *p++) & 0xFF] ^ (*state >> 8);
 	}
 }
 
