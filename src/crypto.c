@@ -23,12 +23,18 @@ void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, ui
 	);
 }
 
-void chipvpn_crypto_xor(char *dst, char *src, int size, char *key, int klen) {
-	for(int i = 0; i < size; i++) {
+void chipvpn_crypto_xor(char *dst, char *src, int size, char *key, int klen, int test) {
+	int blocks = size / sizeof(int);
+	for(int i = 0; i < blocks; i++) {
+		((int*)dst)[i] = ((int*)src)[i] ^ *(int*)key;
+	}
+
+	int remaining = blocks * sizeof(int);
+
+	for(int i = remaining; i < size; i++) {
 		dst[i] = src[i] ^ key[i % klen];
 	}
 }
-
 
 const uint32_t crc32_table[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,

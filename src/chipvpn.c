@@ -165,6 +165,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		vpn->counter++;
 
 		peer->tx += r;
+		peer->tx_packet += 1;
 
 		chipvpn_socket_write(vpn->socket, packet, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
@@ -230,6 +231,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->timestamp = ntohll(packet->timestamp);
 				peer->tx = 0;
 				peer->rx = 0;
+				peer->tx_packet = 0;
+				peer->rx_packet = 0;
 				peer->timeout = chipvpn_get_time() + 10000;
 
 				chipvpn_peer_set_status(peer, PEER_CONNECTED);
@@ -242,6 +245,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 					1024, 
 					(unsigned char*)peer->key
 				);
+
+				printf("%p says: hello\n", peer);
 
 				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - ntohll(packet->timestamp));
 
@@ -299,6 +304,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				peer->rx += r - sizeof(chipvpn_packet_data_t);
+				peer->rx_packet += 1;
 				chipvpn_device_write(vpn->device, data, r - sizeof(chipvpn_packet_data_t));
 			}
 			break;
@@ -340,7 +346,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				strcpy(tx, chipvpn_format_bytes(peer->tx));
 				strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-				printf("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
+				printf("%p says: tx: [%s] packets: [%lu] rx: [%s] packets: [%lu]\n", peer, tx, peer->tx_packet, rx, peer->rx_packet);
 
 				peer->timeout = chipvpn_get_time() + 10000;
 			}
