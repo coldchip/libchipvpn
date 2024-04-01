@@ -100,7 +100,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	chipvpn_crypto_crc32_update(&state, (unsigned char*)&counter, sizeof(counter));
 	uint32_t key = chipvpn_crypto_crc32_final(&state);
 
-	chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key), 1);
+	chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key));
 
 	if(addr) {
 		addr->ip = sa.sin_addr.s_addr;
@@ -127,7 +127,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	chipvpn_crypto_crc32_update(&state, (unsigned char*)&counter, sizeof(counter));
 	uint32_t key = chipvpn_crypto_crc32_final(&state);
 
-	chipvpn_crypto_xor(data, data, size, (char*)&key, sizeof(key), 0);
+	chipvpn_crypto_xor(data, data, size, (char*)&key, sizeof(key));
 
 	uint32_t header = htonl(counter);
 
