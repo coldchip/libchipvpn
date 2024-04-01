@@ -346,7 +346,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				strcpy(tx, chipvpn_format_bytes(peer->tx));
 				strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-				printf("%p says: tx: [%s] packets: [] rx: [%s] packets: []\n", peer, tx, rx);
+				printf("%p says: tx: [%s] packets: [%lu] rx: [%s] packets: [%lu]\n", peer, tx, peer->tx_packet, rx, peer->rx_packet);
 
 				peer->timeout = chipvpn_get_time() + 10000;
 			}
