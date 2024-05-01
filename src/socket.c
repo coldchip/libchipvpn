@@ -44,6 +44,7 @@ bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
 }
 
 void chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length) {
+	memset(sock->key, 0, sizeof(sock->key));
 	memcpy(sock->key, key, length);
 	sock->key_length = length;
 }
@@ -81,9 +82,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 	int r = 0;
 
-	printf("startr\n");
-
-	if(sock->key[0] != 0) {
+	if(sock->key_length > 0) {
 		char packet[sizeof(uint32_t) + size];
 
 		r = recvfrom(sock->fd, packet, sizeof(packet), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
@@ -106,7 +105,6 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 		chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key));
 	} else {
-		printf("yay\n");
 		r = recvfrom(sock->fd, data, size, 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 	}
 
@@ -130,9 +128,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 
 	int w = 0;
 
-	printf("startw\n");
-
-	if(sock->key[0] != 0) {
+	if(sock->key_length > 0) {
 
 		uint32_t counter = randombytes_random();
 
@@ -159,7 +155,6 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 			return 0;
 		}
 	} else {
-		printf("yay\n");
 		w = sendto(sock->fd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
 	}
 
