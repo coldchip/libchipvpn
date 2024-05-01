@@ -241,8 +241,8 @@ int main(int argc, char const *argv[]) {
 		.name = "chipvpn",
 		.mtu = 1400,
 		.xor = {0},
-		.sendbuf = 65535,
-		.recvbuf = 65535
+		.sendbuf = 0,
+		.recvbuf = 0
 	};
 	read_device_config(argv[1], &config);
 
