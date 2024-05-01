@@ -4,8 +4,6 @@
 #include "chipvpn.h"
 #include "packet.h"
 #include "crypto.h"
-#include "firewall.h"
-#include "peer.h"
 #include "util.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
@@ -15,7 +13,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	}
 
 	peer->state = PEER_DISCONNECTED;
-	peer->firewall = chipvpn_firewall_create();
 	peer->timestamp = 0;
 	peer->tx = 0;
 	peer->rx = 0;
@@ -28,18 +25,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->onping = NULL;
 	peer->ondisconnect = NULL;
 	peer->counter = 0l;
-
-	chipvpn_firewall_rule_t *in = malloc(sizeof(chipvpn_firewall_rule_t));
-	chipvpn_address_set_ip(&in->address, "0.0.0.0");
-	in->address.prefix = 0;
-	in->protocol = 255;
-	chipvpn_list_insert(chipvpn_list_end(&peer->firewall->outbound), in);
-
-	chipvpn_firewall_rule_t *out = malloc(sizeof(chipvpn_firewall_rule_t));
-	chipvpn_address_set_ip(&out->address, "0.0.0.0");
-	out->address.prefix = 0;
-	out->protocol = 255;
-	chipvpn_list_insert(chipvpn_list_end(&peer->firewall->inbound), out);
 
 	return peer;
 }
@@ -252,8 +237,6 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
-	chipvpn_firewall_free(peer->firewall);
-
 	if(peer->onconnect) {
 		free(peer->onconnect);
 	}

@@ -13,7 +13,6 @@
 #include "packet.h"
 #include "address.h"
 #include "peer.h"
-#include "firewall.h"
 #include "util.h"
 
 chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
@@ -144,10 +143,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(&vpn->device->peers, &dst);
 		if(!peer || peer->state != PEER_CONNECTED) {
-			return 0;
-		}
-
-		if(!chipvpn_firewall_validate_outbound(peer->firewall, buffer)) {
 			return 0;
 		}
 
@@ -296,10 +291,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				};
 
 				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
-					return 0;
-				}
-
-				if(!chipvpn_firewall_validate_inbound(peer->firewall, data)) {
 					return 0;
 				}
 
