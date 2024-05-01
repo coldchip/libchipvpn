@@ -86,6 +86,20 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 					strcpy(config->xor, xor);
 				}
 			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "sendbuf") == 0) {
+				int sendbuf;
+				if(sscanf(value, "%i", sendbuf) == 1) {
+					config->sendbuf = sendbuf;
+				}
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "recvbuf") == 0) {
+				int recvbuf;
+				if(sscanf(value, "%i", recvbuf) == 1) {
+					config->recvbuf = recvbuf;
+				}
+			}
 		}
 	}
 
