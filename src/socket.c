@@ -31,14 +31,14 @@ chipvpn_socket_t *chipvpn_socket_create() {
 }
 
 bool chipvpn_socket_set_sendbuf(chipvpn_socket_t *sock, int size) {
-	if(setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) < 0) {
+	if(size > 0 && setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) < 0) {
 		return false;
 	}
 	return true;
 }
 
 bool chipvpn_socket_set_recvbuf(chipvpn_socket_t *sock, int size) {
-	if(setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0) {
+	if(size > 0 && setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0) {
 		return false;
 	}
 	return true;
