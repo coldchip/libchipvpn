@@ -51,26 +51,52 @@ char* str_replace(const char* s, const char* oldW, const char* newW) {
     return result; 
 }
 
-bool get_gateway(char *ip) {
+bool get_gateway(char *ip, char *dev) {
 	bool success = true;
 
-	char cmd[] = "ip route show default | awk '/default/ {print $3}'";
-	FILE* fp = popen(cmd, "r");
+    if(ip) {
+        char cmd[] = "ip route show default | awk '/default/ {print $3}'";
 
-	if(fgets(ip, 16, fp) == NULL){
-		success = false;
-	}
+        FILE* fp = popen(cmd, "r");
 
-	ip[15] = '\0';
+        if(fgets(ip, 16, fp) == NULL){
+        	success = false;
+        }
 
-	int i = 0;
-	while((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.') {
-		i++;
-	}
+        ip[15] = '\0';
 
-	ip[i] = 0;
+        int i = 0;
+        while((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.') {
+        	i++;
+        }
 
-	pclose(fp);
+        ip[i] = 0;
+
+        pclose(fp);
+    }
+
+    //
+
+    if(dev) {
+        char cmd2[] = "ip route show default | awk '/default/ {print $5}'";
+
+        FILE* fp1 = popen(cmd2, "r");
+
+        if(fgets(dev, 16, fp1) == NULL){
+            success = false;
+        }
+
+        dev[15] = '\0';
+
+        int z = 0;
+        while((dev[z] >= 'a' && dev[z] <= 'z') || (dev[z] >= '0' && dev[z] <= '9') || (dev[z] >= 'A' && dev[z] <= 'Z')) {
+            z++;
+        }
+
+        dev[z] = 0;
+
+        pclose(fp1);
+    }
 
 	return success;
 }
