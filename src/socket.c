@@ -22,6 +22,16 @@ chipvpn_socket_t *chipvpn_socket_create() {
 		return NULL;
 	}
 
+	int sndbuf = 1024 * 1024 * 10;
+	if(setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf)) < 0) {
+		return NULL;
+	}
+
+	int rcvbuf = 1024 * 1024 * 10;
+	if(setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0) {
+		return NULL;
+	}
+
 	sock->fd = fd;
 	sock->can_read = 0;
 	sock->can_write = 0;
