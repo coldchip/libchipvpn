@@ -51,6 +51,14 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 		return NULL;
 	}
 
+	if(!chipvpn_socket_set_sendbuf(socket, config->sendbuf)) {
+		return NULL;
+	}
+
+	if(!chipvpn_socket_set_recvbuf(socket, config->recvbuf)) {
+		return NULL;
+	}
+
 	chipvpn_socket_set_key(socket, config->xor, strlen(config->xor));
 
 	if(config->is_bind) {

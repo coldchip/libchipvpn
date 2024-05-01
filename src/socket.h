@@ -19,6 +19,8 @@ typedef struct {
 } chipvpn_socket_t;
 
 chipvpn_socket_t    *chipvpn_socket_create();
+bool                 chipvpn_socket_set_sendbuf(chipvpn_socket_t *sock, int size);
+bool                 chipvpn_socket_set_recvbuf(chipvpn_socket_t *sock, int size);
 bool                 chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *bind);
 void                 chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length);
 void                 chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max);

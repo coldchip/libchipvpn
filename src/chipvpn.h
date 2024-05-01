@@ -32,6 +32,8 @@ typedef struct {
 	bool is_bind;
 	chipvpn_address_t bind;
 	char xor[1024];
+	int sendbuf;
+	int recvbuf;
 } chipvpn_config_t;
 
 typedef struct {

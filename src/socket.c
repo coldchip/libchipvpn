@@ -22,22 +22,26 @@ chipvpn_socket_t *chipvpn_socket_create() {
 		return NULL;
 	}
 
-	int sndbuf = 1024 * 1024 * 10;
-	if(setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf)) < 0) {
-		return NULL;
-	}
-
-	int rcvbuf = 1024 * 1024 * 10;
-	if(setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0) {
-		return NULL;
-	}
-
 	sock->fd = fd;
 	sock->can_read = 0;
 	sock->can_write = 0;
 	sock->key_length = 0;
 
 	return sock;
+}
+
+bool chipvpn_socket_set_sendbuf(chipvpn_socket_t *sock, int size) {
+	if(setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) < 0) {
+		return false;
+	}
+	return true;
+}
+
+bool chipvpn_socket_set_recvbuf(chipvpn_socket_t *sock, int size) {
+	if(setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0) {
+		return false;
+	}
+	return true;
 }
 
 bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
