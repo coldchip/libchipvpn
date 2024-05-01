@@ -81,6 +81,8 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 	int r = 0;
 
+	printf("startr\n");
+
 	if(sock->key[0] != 0) {
 		char packet[sizeof(uint32_t) + size];
 
@@ -104,6 +106,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 		chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key));
 	} else {
+		printf("yay\n");
 		r = recvfrom(sock->fd, data, size, 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 	}
 
@@ -126,6 +129,8 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_port = htons(addr->port);
 
 	int w = 0;
+
+	printf("startw\n");
 
 	if(sock->key[0] != 0) {
 
@@ -154,6 +159,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 			return 0;
 		}
 	} else {
+		printf("yay\n");
 		w = sendto(sock->fd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
 	}
 
