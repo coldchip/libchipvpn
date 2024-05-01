@@ -79,28 +79,35 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	struct sockaddr_in sa;
 	int len = sizeof(sa);
 
-	char packet[sizeof(uint32_t) + size];
+	int r = 0;
 
-	int r = recvfrom(sock->fd, packet, sizeof(packet), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
-	chipvpn_socket_set_read(sock, false);
+	if(sock->key[0] != 0) {
+		char packet[sizeof(uint32_t) + size];
 
-	r -= sizeof(uint32_t);
+		r = recvfrom(sock->fd, packet, sizeof(packet), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 
-	if(r <= 0) {
-		return 0;
+		r -= sizeof(uint32_t);
+
+		if(r <= 0) {
+			return 0;
+		}
+
+		uint32_t counter = ntohl(*(uint32_t*)packet);
+		char    *buf     = packet + sizeof(uint32_t);
+
+		uint32_t state;
+		chipvpn_crypto_crc32_init(&state);
+		chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
+		chipvpn_crypto_crc32_update(&state, (unsigned char*)&r, sizeof(r));
+		chipvpn_crypto_crc32_update(&state, (unsigned char*)&counter, sizeof(counter));
+		uint32_t key = chipvpn_crypto_crc32_final(&state);
+
+		chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key));
+	} else {
+		r = recvfrom(sock->fd, data, size, 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 	}
 
-	uint32_t counter = ntohl(*(uint32_t*)packet);
-	char    *buf     = packet + sizeof(uint32_t);
-
-	uint32_t state;
-	chipvpn_crypto_crc32_init(&state);
-	chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
-	chipvpn_crypto_crc32_update(&state, (unsigned char*)&r, sizeof(r));
-	chipvpn_crypto_crc32_update(&state, (unsigned char*)&counter, sizeof(counter));
-	uint32_t key = chipvpn_crypto_crc32_final(&state);
-
-	chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key));
+	chipvpn_socket_set_read(sock, false);
 
 	if(addr) {
 		addr->ip = sa.sin_addr.s_addr;
@@ -118,31 +125,39 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_addr.s_addr = addr->ip;
 	sa.sin_port = htons(addr->port);
 
-	uint32_t counter = randombytes_random();
+	int w = 0;
 
-	uint32_t state;
-	chipvpn_crypto_crc32_init(&state);
-	chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
-	chipvpn_crypto_crc32_update(&state, (unsigned char*)&size, sizeof(size));
-	chipvpn_crypto_crc32_update(&state, (unsigned char*)&counter, sizeof(counter));
-	uint32_t key = chipvpn_crypto_crc32_final(&state);
+	if(sock->key[0] != 0) {
 
-	chipvpn_crypto_xor(data, data, size, (char*)&key, sizeof(key));
+		uint32_t counter = randombytes_random();
 
-	uint32_t header = htonl(counter);
+		uint32_t state;
+		chipvpn_crypto_crc32_init(&state);
+		chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
+		chipvpn_crypto_crc32_update(&state, (unsigned char*)&size, sizeof(size));
+		chipvpn_crypto_crc32_update(&state, (unsigned char*)&counter, sizeof(counter));
+		uint32_t key = chipvpn_crypto_crc32_final(&state);
 
-	char packet[sizeof(uint32_t) + size];
-	memcpy(packet, &header, sizeof(header));
-	memcpy(sizeof(uint32_t) + packet, data, size);
+		chipvpn_crypto_xor(data, data, size, (char*)&key, sizeof(key));
 
-	int w = sendto(sock->fd, packet, sizeof(packet), 0, (struct sockaddr*)&sa, sizeof(sa));
-	chipvpn_socket_set_write(sock, false);
+		uint32_t header = htonl(counter);
 
-	w -= sizeof(uint32_t);
+		char packet[sizeof(uint32_t) + size];
+		memcpy(packet, &header, sizeof(header));
+		memcpy(sizeof(uint32_t) + packet, data, size);
 
-	if(w <= 0) {
-		return 0;
+		w = sendto(sock->fd, packet, sizeof(packet), 0, (struct sockaddr*)&sa, sizeof(sa));
+
+		w -= sizeof(uint32_t);
+
+		if(w <= 0) {
+			return 0;
+		}
+	} else {
+		w = sendto(sock->fd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
 	}
+
+	chipvpn_socket_set_write(sock, false);
 
 	return w;
 }

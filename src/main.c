@@ -226,7 +226,7 @@ int main(int argc, char const *argv[]) {
 	chipvpn_config_t config = {
 		.name = "chipvpn",
 		.mtu = 1400,
-		.xor = "00000000"
+		.xor = {0}
 	};
 	read_device_config(argv[1], &config);
 
