@@ -225,25 +225,30 @@ void chipvpn_peer_set_status(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 
 void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	char gateway[16];
-	if(!get_gateway(gateway)) {
+	char dev[16];
+	if(!get_gateway(gateway, dev)) {
 
 	}
 
 	char tx[16];
 	char rx[16];
 
-	sprintf(tx, "%lu", peer->tx);
-	sprintf(rx, "%lu", peer->rx);
+	if(peer) {
+		sprintf(tx, "%lu", peer->tx);
+		sprintf(rx, "%lu", peer->rx);
+	}
 
 	char *result1 = str_replace(command, "%gateway%", gateway);
-	char *result2 = str_replace(result1, "%tx%", tx);
-	char *result3 = str_replace(result2, "%rx%", rx);
-	if(system(result3) == 0) {
-		printf("executed command\n");
+	char *result2 = str_replace(result1, "%gatewaydev%", dev);
+	char *result3 = str_replace(result2, "%tx%", tx);
+	char *result4 = str_replace(result3, "%rx%", rx);
+	if(system(result4) == 0) {
+		printf("%s\n", result4);
 	}
 	free(result1);
 	free(result2);
 	free(result3);
+	free(result4);
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
