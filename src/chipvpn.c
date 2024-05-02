@@ -63,7 +63,7 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 
 	if(config->is_bind) {
 		printf("device has bind set\n");
-		if(config->is_bind && !chipvpn_socket_bind(socket, &config->bind)) {
+		if(!chipvpn_socket_bind(socket, &config->bind)) {
 			return NULL;
 		}
 	}
