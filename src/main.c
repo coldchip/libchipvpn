@@ -240,7 +240,7 @@ int main(int argc, char const *argv[]) {
 	chipvpn_config_t config = {
 		.name = "chipvpn",
 		.mtu = 1400,
-		.xor = {0},
+		.xor = "chipvpn",
 		.sendbuf = 0,
 		.recvbuf = 0
 	};
