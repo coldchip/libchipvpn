@@ -16,6 +16,7 @@ typedef struct {
 	int can_write;
 	char key[1024];
 	int key_length;
+	uint32_t counter;
 } chipvpn_socket_t;
 
 chipvpn_socket_t    *chipvpn_socket_create();

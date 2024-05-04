@@ -1,10 +1,6 @@
 section:device
-name:cv-server
+name:chipvpn
 network:10.128.0.1/16
 bind:0.0.0.0:4433
 mtu:1400
 xor:o9fejiejfefoefjrognirgnvgmrgmrgmlrgmrleld
-
-section:peer
-key:hello
-allow:10.128.0.4/32

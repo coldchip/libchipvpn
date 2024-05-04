@@ -1,10 +1,10 @@
 section:device
 name:cv-client
-network:10.128.0.4/16
+network:10.128.0.2/16
 mtu:1400
 xor:o9fejiejfefoefjrognirgnvgmrgmrgmlrgmrleld
 
 section:peer
 address:127.0.0.1:4433
 allow:0.0.0.0/0
-key:hello
+key:66367765cf941
