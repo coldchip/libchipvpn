@@ -66,7 +66,10 @@ bool get_gateway(char *ip, char *dev) {
         ip[15] = '\0';
 
         int i = 0;
-        while((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.') {
+        while(
+            (ip[i] >= '0' && ip[i] <= '9') || 
+            (ip[i] == '.')
+        ) {
         	i++;
         }
 
@@ -89,7 +92,13 @@ bool get_gateway(char *ip, char *dev) {
         dev[15] = '\0';
 
         int z = 0;
-        while((dev[z] >= 'a' && dev[z] <= 'z') || (dev[z] >= '0' && dev[z] <= '9') || (dev[z] >= 'A' && dev[z] <= 'Z')) {
+        while(
+            (dev[z] >= 'a' && dev[z] <= 'z') || 
+            (dev[z] >= '0' && dev[z] <= '9') || 
+            (dev[z] >= 'A' && dev[z] <= 'Z') || 
+            (dev[z] == '-') || 
+            (dev[z] == '_')
+        ) {
             z++;
         }
 
