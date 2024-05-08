@@ -222,7 +222,7 @@ int main(int argc, char const *argv[]) {
 	/* code */
 	srand(time(NULL));
 
-	printf("chipvpn 1.7.3 rc1\n"); 
+	printf("chipvpn 1.7.3 rc2\n"); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		printf("config path required\n");
