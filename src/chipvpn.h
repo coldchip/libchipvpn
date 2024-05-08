@@ -25,6 +25,8 @@ extern "C"
 # define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 #endif
 
+#define CHIPVPN_PEER_TIMEOUT 10000
+
 typedef struct {
 	char name[IFNAMSIZ + 1];
 	chipvpn_address_t network;
