@@ -134,14 +134,15 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	sa.sin_addr.s_addr = addr->ip;
 	sa.sin_port = htons(addr->port);
 
-	sock->counter++;
-
 	uint32_t state;
 	chipvpn_crypto_crc32_init(&state);
 	chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
 	chipvpn_crypto_crc32_update(&state, (unsigned char*)&size, sizeof(size));
 	chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->counter, sizeof(sock->counter));
 	uint32_t key = chipvpn_crypto_crc32_final(&state);
+	
+	chipvpn_crypto_crc32_update(&state, (unsigned char*)&sock->key, sock->key_length);
+	sock->counter = chipvpn_crypto_crc32_final(&state);
 
 	chipvpn_crypto_xor(data, data, size, (char*)&key, sizeof(key));
 
