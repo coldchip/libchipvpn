@@ -113,7 +113,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_get_time() - peer->last_check > CHIPVPN_PEER_TIMEOUT) {
+		if(chipvpn_get_time() - peer->last_check > CHIPVPN_PEER_PING) {
 			peer->last_check = chipvpn_get_time();
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
@@ -130,6 +130,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 			/* ping peers */
 			if(peer->state == PEER_CONNECTED) {
+				printf("peer ping\n");
 				chipvpn_peer_ping(vpn->socket, peer);
 			}
 		}
