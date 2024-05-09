@@ -130,7 +130,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 			/* ping peers */
 			if(peer->state == PEER_CONNECTED) {
-				printf("peer ping\n");
 				chipvpn_peer_ping(vpn->socket, peer);
 			}
 		}
