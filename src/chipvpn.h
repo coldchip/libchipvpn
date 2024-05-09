@@ -26,6 +26,7 @@ extern "C"
 #endif
 
 #define CHIPVPN_PEER_TIMEOUT 10000
+#define CHIPVPN_PEER_PING 1000
 
 typedef struct {
 	char name[IFNAMSIZ + 1];
