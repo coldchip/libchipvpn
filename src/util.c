@@ -5,6 +5,10 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 
 char *strdup(const char *s) {
 	size_t len = strlen(s) + 1;
@@ -126,6 +130,29 @@ char *chipvpn_format_bytes(uint64_t bytes) {
     static char output[200];
     sprintf(output, "%.02lf %s", dblBytes, suffix[i]);
     return output;
+}
+
+bool chipvpn_secure_random(char *buf, int size) {
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd < 0) {
+        return false;
+    }
+
+    int offset = 0, count;
+    int tmp;
+
+    while (size > 0) {
+        count = size <= 8192 ? size : 8192;
+        tmp = read(fd, (char *)buf + offset, count);
+        if (tmp == -1 && (errno == EAGAIN || errno == EINTR)) {
+            continue;
+        }
+        if (tmp == -1) return -1; /* Unrecoverable IO error */
+        offset += tmp;
+        size -= tmp;
+    }
+
+    close(fd);
 }
 
 uint64_t chipvpn_get_time() {
