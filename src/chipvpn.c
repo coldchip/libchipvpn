@@ -51,11 +51,11 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 		return NULL;
 	}
 
-	if(!chipvpn_socket_set_sendbuf(socket, config->sendbuf)) {
+	if(config->sendbuf > 0 && !chipvpn_socket_set_sendbuf(socket, config->sendbuf)) {
 		return NULL;
 	}
 
-	if(!chipvpn_socket_set_recvbuf(socket, config->recvbuf)) {
+	if(config->recvbuf > 0 && !chipvpn_socket_set_recvbuf(socket, config->recvbuf)) {
 		return NULL;
 	}
 
