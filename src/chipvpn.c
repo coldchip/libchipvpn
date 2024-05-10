@@ -206,13 +206,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(
-					chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
-					chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
-				) {
-					printf("invalid time range from peer\n");
-					return 0;
-				}
+				// if(
+				// 	chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
+				// 	chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
+				// ) {
+				// 	printf("invalid time range from peer\n");
+				// 	return 0;
+				// }
 
 				char sign[32];
 				memcpy(sign, packet->sign, sizeof(sign));
