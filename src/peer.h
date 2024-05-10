@@ -6,7 +6,6 @@ extern "C"
 {
 #endif
 
-#include <sodium.h>
 #include <stdint.h>
 #include "crypto.h"
 #include "socket.h"
@@ -27,7 +26,7 @@ typedef struct {
 	uint32_t inbound_session;
 	chipvpn_address_t address;
 	chipvpn_address_t allow;
-	char key[crypto_hash_sha256_BYTES];
+	char key[32];
 	char *onconnect;
 	char *onping;
 	char *ondisconnect;

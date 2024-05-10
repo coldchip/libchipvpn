@@ -10,6 +10,7 @@
 #include "crypto.h"
 #include "packet.h"
 #include "chipvpn.h"
+#include "util.h"
 
 chipvpn_socket_t *chipvpn_socket_create() {
 	chipvpn_socket_t *sock = malloc(sizeof(chipvpn_socket_t));
