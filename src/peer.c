@@ -5,6 +5,7 @@
 #include "packet.h"
 #include "crypto.h"
 #include "util.h"
+#include "xchacha20.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -45,13 +46,13 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	crypto_hash_sha256((unsigned char*)packet.keyhash, (unsigned char*)peer->key, sizeof(peer->key));
 	randombytes_buf((unsigned char*)packet.nonce, sizeof(packet.nonce));
 
-	crypto_stream_xchacha20_xor_ic(
+	xchacha_xcrypt(
 		(unsigned char*)&packet.crypto, 
 		(unsigned char*)&peer->inbound_crypto, 
 		sizeof(packet.crypto), 
+		(unsigned char*)peer->key,
 		(unsigned char*)packet.nonce, 
-		1024, 
-		(unsigned char*)peer->key
+		1024
 	);
 
 	memset(packet.sign, 0, sizeof(packet.sign));
