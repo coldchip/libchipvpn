@@ -7,11 +7,10 @@ extern "C"
 #endif
 
 #include <stdint.h>
-#include <sodium.h>
 
 typedef struct {
-	char key[crypto_stream_xchacha20_KEYBYTES];
-	char nonce[crypto_stream_xchacha20_NONCEBYTES];
+	char key[256 / 8];
+	char nonce[192 / 8];
 } chipvpn_crypto_t;
 
 void                  chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key);
