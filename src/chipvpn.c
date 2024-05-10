@@ -197,10 +197,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				if(chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session))) {
+					printf("session collision\n");
 					return 0;
 				}
 
 				if(ntohll(packet->timestamp) <= peer->timestamp) {
+					printf("invalid timestamp\n");
 					return 0;
 				}
 
@@ -208,6 +210,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
 					chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
 				) {
+					printf("invalid time range from peer\n");
 					return 0;
 				}
 
@@ -223,6 +226,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				sha256_final(&state, computed_sign);
 
 				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+					printf("invalid sign\n");
 					return 0;
 				}
 
