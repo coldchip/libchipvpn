@@ -13,15 +13,14 @@
 #include "packet.h"
 #include "address.h"
 #include "peer.h"
+#include "sha256.h"
+#include "xchacha20.h"
 #include "util.h"
 
 chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
-	if(sodium_init() == -1) {
-		return NULL;
-	}
 
 	/* create vpn device */
 	chipvpn_device_t *device = chipvpn_device_create();
@@ -217,11 +216,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memset(packet->sign, 0, sizeof(packet->sign));
 
 				unsigned char computed_sign[crypto_hash_sha256_BYTES];
-				crypto_hash_sha256_state state;
-				crypto_hash_sha256_init(&state);
-				crypto_hash_sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_auth_t));
-				crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
-				crypto_hash_sha256_final(&state, computed_sign);
+				SHA256_CTX state;
+				sha256_init(&state);
+				sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_auth_t));
+				sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
+				sha256_final(&state, computed_sign);
 
 				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 					return 0;
@@ -240,13 +239,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_set_status(peer, PEER_CONNECTED);
 
-				crypto_stream_xchacha20_xor_ic(
+				xchacha_xcrypt(
 					(unsigned char*)&peer->outbound_crypto, 
 					(unsigned char*)&packet->crypto, 
-					sizeof(packet->crypto), 
+					sizeof(packet->crypto),
+					(unsigned char*)peer->key, 
 					(unsigned char*)packet->nonce, 
-					1024, 
-					(unsigned char*)peer->key
+					1024
 				);
 
 				printf("%p says: hello\n", peer);
@@ -255,13 +254,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				printf("%p says: session id: %u\n", peer, ntohl(packet->session));
 
-				char keyhash_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
-				sodium_bin2hex(keyhash_hex, sizeof(keyhash_hex), (unsigned char*)&packet->keyhash, sizeof(packet->keyhash));
-				printf("%p says: keyhash: %s\n", peer, keyhash_hex);
+				// char keyhash_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
+				// sodium_bin2hex(keyhash_hex, sizeof(keyhash_hex), (unsigned char*)&packet->keyhash, sizeof(packet->keyhash));
+				// printf("%p says: keyhash: %s\n", peer, keyhash_hex);
 
-				char sign_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
-				sodium_bin2hex(sign_hex, sizeof(sign_hex), (unsigned char*)&sign, sizeof(sign));
-				printf("%p says: sign: %s\n", peer, sign_hex);
+				// char sign_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
+				// sodium_bin2hex(sign_hex, sizeof(sign_hex), (unsigned char*)&sign, sizeof(sign));
+				// printf("%p says: sign: %s\n", peer, sign_hex);
 
 				struct in_addr ip_addr;
 				ip_addr.s_addr = addr.ip;
@@ -328,11 +327,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memset(packet->sign, 0, sizeof(packet->sign));
 
 				unsigned char computed_sign[crypto_hash_sha256_BYTES];
-				crypto_hash_sha256_state state;
-				crypto_hash_sha256_init(&state);
-				crypto_hash_sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_ping_t));
-				crypto_hash_sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
-				crypto_hash_sha256_final(&state, computed_sign);
+				SHA256_CTX state;
+				sha256_init(&state);
+				sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_ping_t));
+				sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
+				sha256_final(&state, computed_sign);
 
 				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 					return 0;
