@@ -6,7 +6,6 @@ extern "C"
 {
 #endif
 
-#include <sodium.h>
 #include "crypto.h"
 
 typedef struct __attribute__((__packed__)) {
@@ -89,12 +88,12 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t version;
 	uint32_t session;
-	char keyhash[crypto_hash_sha256_BYTES];
+	char keyhash[32];
 	chipvpn_crypto_t crypto;
 	char nonce[192 / 8];
 	uint64_t timestamp;
 	bool ack;
-	char sign[crypto_hash_sha256_BYTES];
+	char sign[32];
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {
@@ -107,7 +106,7 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t session;
 	uint64_t counter;
-	char sign[crypto_hash_sha256_BYTES];
+	char sign[32];
 } chipvpn_packet_ping_t;
 
 typedef union {

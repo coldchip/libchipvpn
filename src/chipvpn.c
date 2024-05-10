@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
-#include <sodium.h>
+#include <stdio.h>
 #include "crypto.h"
 #include "chipvpn.h"
 #include "socket.h"
@@ -211,11 +211,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				char sign[crypto_hash_sha256_BYTES];
+				char sign[32];
 				memcpy(sign, packet->sign, sizeof(sign));
 				memset(packet->sign, 0, sizeof(packet->sign));
 
-				unsigned char computed_sign[crypto_hash_sha256_BYTES];
+				unsigned char computed_sign[32];
 				SHA256_CTX state;
 				sha256_init(&state);
 				sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_auth_t));
@@ -254,11 +254,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				printf("%p says: session id: %u\n", peer, ntohl(packet->session));
 
-				// char keyhash_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
+				// char keyhash_hex[32 * 2 + 1] = {0};
 				// sodium_bin2hex(keyhash_hex, sizeof(keyhash_hex), (unsigned char*)&packet->keyhash, sizeof(packet->keyhash));
 				// printf("%p says: keyhash: %s\n", peer, keyhash_hex);
 
-				// char sign_hex[crypto_hash_sha256_BYTES * 2 + 1] = {0};
+				// char sign_hex[32 * 2 + 1] = {0};
 				// sodium_bin2hex(sign_hex, sizeof(sign_hex), (unsigned char*)&sign, sizeof(sign));
 				// printf("%p says: sign: %s\n", peer, sign_hex);
 
@@ -322,11 +322,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				char sign[crypto_hash_sha256_BYTES];
+				char sign[32];
 				memcpy(sign, packet->sign, sizeof(sign));
 				memset(packet->sign, 0, sizeof(packet->sign));
 
-				unsigned char computed_sign[crypto_hash_sha256_BYTES];
+				unsigned char computed_sign[32];
 				SHA256_CTX state;
 				sha256_init(&state);
 				sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_ping_t));

@@ -1,6 +1,6 @@
 #include <stdlib.h>
-#include <sodium.h>
 #include <string.h>
+#include <stdio.h>
 #include "chipvpn.h"
 #include "packet.h"
 #include "crypto.h"
@@ -63,7 +63,7 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 
 	memset(packet.sign, 0, sizeof(packet.sign));
 
-	unsigned char sign[crypto_hash_sha256_BYTES];
+	unsigned char sign[32];
 
 	SHA256_CTX state;
 	sha256_init(&state);
@@ -86,7 +86,7 @@ void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 
 	memset(packet.sign, 0, sizeof(packet.sign));
 
-	unsigned char sign[crypto_hash_sha256_BYTES];
+	unsigned char sign[32];
 	SHA256_CTX state;
 	sha256_init(&state);
 	sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
@@ -168,7 +168,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		char current[crypto_hash_sha256_BYTES];
+		char current[32];
 		
 		SHA256_CTX state;
 		sha256_init(&state);

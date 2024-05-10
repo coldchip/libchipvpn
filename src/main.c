@@ -1,9 +1,11 @@
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <stdlib.h>
 #include "peer.h"
 #include "chipvpn.h"
 
@@ -222,7 +224,7 @@ int main(int argc, char const *argv[]) {
 	/* code */
 	srand(time(NULL));
 
-	printf("chipvpn 1.7.3 rc6\n"); 
+	printf("chipvpn 1.7.3 rc7\n"); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		printf("config path required\n");

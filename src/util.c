@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 char *strdup(const char *s) {
 	size_t len = strlen(s) + 1;
@@ -153,6 +154,8 @@ bool chipvpn_secure_random(char *buf, int size) {
     }
 
     close(fd);
+
+    return true;
 }
 
 uint64_t chipvpn_get_time() {
