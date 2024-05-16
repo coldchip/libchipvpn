@@ -17,13 +17,13 @@
 #include "xchacha20.h"
 #include "util.h"
 
-chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
+chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
 
 	/* create vpn device */
-	chipvpn_device_t *device = chipvpn_device_create();
+	chipvpn_device_t *device = chipvpn_device_create(tun_fd);
 	if(!device) {
 		return NULL;
 	}
@@ -34,20 +34,22 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 		return NULL;
 	}
 
-	if(!chipvpn_device_set_name(device, config->name)) {
-		return NULL;
-	}
+	if(tun_fd < 0) {
+		if(!chipvpn_device_set_name(device, config->name)) {
+			return NULL;
+		}
 
-	if(!chipvpn_device_set_address(device, &config->network)) {
-		return NULL;
-	}
+		if(!chipvpn_device_set_address(device, &config->network)) {
+			return NULL;
+		}
 
-	if(!chipvpn_device_set_mtu(device, config->mtu)) {
-		return NULL;
-	}
-	
-	if(!chipvpn_device_set_enabled(device)) {
-		return NULL;
+		if(!chipvpn_device_set_mtu(device, config->mtu)) {
+			return NULL;
+		}
+		
+		if(!chipvpn_device_set_enabled(device)) {
+			return NULL;
+		}
 	}
 
 	if(config->sendbuf > 0 && !chipvpn_socket_set_sendbuf(socket, config->sendbuf)) {
@@ -58,7 +60,7 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 		return NULL;
 	}
 
-	chipvpn_socket_set_key(socket, config->xor, strlen(config->xor));
+	chipvpn_socket_set_key(socket, config->xorkey, strlen(config->xorkey));
 
 	if(config->is_bind) {
 		printf("device has bind set\n");
@@ -136,7 +138,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* tunnel => socket */
 	if(chipvpn_device_can_read(vpn->device) && chipvpn_socket_can_write(vpn->socket)) {
-		char buffer[vpn->device->mtu];
+		char buffer[65536];
 		int r = chipvpn_device_read(vpn->device, buffer, sizeof(buffer));
 		if(r <= 0) {
 			return 0;
@@ -174,7 +176,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* socket => tunnel */
 	if(chipvpn_socket_can_read(vpn->socket) && chipvpn_device_can_write(vpn->device)) {
-		char buffer[sizeof(chipvpn_packet_t) + vpn->device->mtu];
+		char buffer[sizeof(chipvpn_packet_t) + 65536];
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);

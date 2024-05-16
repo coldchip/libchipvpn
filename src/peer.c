@@ -32,10 +32,10 @@ chipvpn_peer_t *chipvpn_peer_create() {
 }
 
 void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
-	chipvpn_secure_random((unsigned char*)&peer->inbound_session, sizeof(peer->inbound_session));
+	chipvpn_secure_random((char*)&peer->inbound_session, sizeof(peer->inbound_session));
 
-	chipvpn_secure_random((unsigned char*)&peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
-	chipvpn_secure_random((unsigned char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+	chipvpn_secure_random((char*)&peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
+	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
 	chipvpn_packet_auth_t packet = {
 		.version = 173,
@@ -50,7 +50,7 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	sha256_update(&state0, (unsigned char*)peer->key, sizeof(peer->key));
 	sha256_final(&state0, (unsigned char*)packet.keyhash);
 
-	chipvpn_secure_random((unsigned char*)&packet.nonce, sizeof(packet.nonce));
+	chipvpn_secure_random((char*)&packet.nonce, sizeof(packet.nonce));
 
 	xchacha_xcrypt(
 		(unsigned char*)&packet.crypto, 

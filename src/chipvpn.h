@@ -14,17 +14,6 @@ extern "C"
 #include "device.h"
 #include "socket.h"
 
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-
-#if __BIG_ENDIAN__
-# define htonll(x) (x)
-# define ntohll(x) (x)
-#else
-# define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-# define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
-#endif
-
 #define CHIPVPN_PEER_TIMEOUT 10000
 #define CHIPVPN_PEER_PING 1000
 
@@ -34,7 +23,7 @@ typedef struct {
 	int mtu;
 	bool is_bind;
 	chipvpn_address_t bind;
-	char xor[1024];
+	char xorkey[1024];
 	int sendbuf;
 	int recvbuf;
 } chipvpn_config_t;
@@ -46,7 +35,7 @@ typedef struct {
 	uint64_t counter;
 } chipvpn_t;
 
-chipvpn_t *    chipvpn_create(chipvpn_config_t *config);
+chipvpn_t *    chipvpn_create(chipvpn_config_t *config, int tun_fd);
 void           chipvpn_wait(chipvpn_t *vpn, uint64_t timeout);
 void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max);
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);

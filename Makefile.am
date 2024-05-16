@@ -1,6 +1,10 @@
 AUTOMAKE_OPTIONS = subdir-objects foreign
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
+# lib_LTLIBRARIES = libchipvpn.la
+# libchipvpn_la_SOURCES = src/main.c src/chipvpn.c src/socket.c src/crypto.c src/peer.c src/address.c src/device.c src/list.c src/list.h src/util.c src/xchacha20.c src/sha256.c
+# libchipvpn_la_LDFLAGS = -module -avoid-version -export-dynamic
+
 bin_PROGRAMS = chipvpn
 chipvpn_SOURCES = src/main.c src/chipvpn.c src/socket.c src/crypto.c src/peer.c src/address.c src/device.c src/list.c src/list.h src/util.c src/xchacha20.c src/sha256.c
 
