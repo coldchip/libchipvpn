@@ -30,30 +30,36 @@
 #include <netinet/in.h>
 
 
-chipvpn_device_t *chipvpn_device_create() {
+chipvpn_device_t *chipvpn_device_create(int existing_fd) {
 	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));
 	if(!device) {
 		return NULL;
 	}
 
-	int fd = open("/dev/net/tun", O_RDWR);
-	if(fd < 0) {
-		return NULL;
+	if(existing_fd < 0) {
+		int fd = open("/dev/net/tun", O_RDWR);
+		if(fd < 0) {
+			return NULL;
+		}
+
+		struct ifreq ifr;
+		memset(&ifr, 0, sizeof(ifr));
+		ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+
+		if(ioctl(fd, TUNSETIFF, &ifr) < 0) {
+			close(fd);
+			return NULL;
+		}
+
+		strcpy(device->dev, ifr.ifr_name);
+		device->fd = fd;
+	} else {
+		strcpy(device->dev, "tun0");
+		device->fd = existing_fd;
 	}
 
-	struct ifreq ifr;
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-
-	if(ioctl(fd, TUNSETIFF, &ifr) < 0) {
-		close(fd);
-		return NULL;
-	}
-
-	device->fd = fd;
 	device->can_read = 0;
 	device->can_write = 0;
-	strcpy(device->dev, ifr.ifr_name);
 
 	chipvpn_list_clear(&device->peers);
 
@@ -114,8 +120,6 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *net
 }
 
 bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
-	device->mtu = mtu;
-	
 	bool success = true;
 
 	struct ifreq ifr;

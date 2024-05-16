@@ -36,11 +36,11 @@ typedef struct {
     int can_read;
     int can_write;
 	char dev[IFNAMSIZ + 1];
-    int mtu;
     chipvpn_list_t peers;
+    struct sockaddr_un sa;
 } chipvpn_device_t;
 
-chipvpn_device_t       *chipvpn_device_create();
+chipvpn_device_t       *chipvpn_device_create(int existing_fd);
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
 bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *tun, int mtu);

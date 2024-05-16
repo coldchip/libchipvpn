@@ -6,10 +6,16 @@
  * code found in libsodium. To find the associated license and more      *
  * info., look in the NOTICE file.                                       *
  *************************************************************************/
-#include <stdint.h>
 
 #ifndef XCHACHA20_H_
 #define XCHACHA20_H_
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 
 /** Key and IV sizes that are supported by XChaCha20.
@@ -209,6 +215,11 @@ void xchacha_keystream_bytes(XChaCha_ctx* ctx, uint8_t* keystream, uint32_t leng
 #define xchacha_keystream_blocks(ctx, keystream, blocks)                   \
     xchacha_keystream_bytes(ctx, keystream,                                \
     (blocks) * XCHACHA_BLOCKLENGTH)
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

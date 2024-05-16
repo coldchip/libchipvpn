@@ -83,9 +83,9 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 			}
 
 			if(section == DEVICE_SECTION && strcmp(key, "xor") == 0) {
-				char xor[1024];
-				if(sscanf(value, "%1023s", xor) == 1) {
-					strcpy(config->xor, xor);
+				char xorkey[1024];
+				if(sscanf(value, "%1023s", xorkey) == 1) {
+					strcpy(config->xorkey, xorkey);
 				}
 			}
 
@@ -231,6 +231,11 @@ int main(int argc, char const *argv[]) {
 		exit(1);
 	}
 
+	int tun_fd = -1;
+	if(argc > 2 && argv[2] != NULL) {
+		tun_fd = atoi(argv[2]);
+	}
+
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
 	signal(SIGPIPE, SIG_IGN);
@@ -242,20 +247,20 @@ int main(int argc, char const *argv[]) {
 	chipvpn_config_t config = {
 		.name = "chipvpn",
 		.mtu = 1400,
-		.xor = "chipvpn",
+		.xorkey = "chipvpn",
 		.sendbuf = 0,
 		.recvbuf = 0
 	};
 	read_device_config(argv[1], &config);
 
-	chipvpn_t *vpn = chipvpn_create(&config);
+	chipvpn_t *vpn = chipvpn_create(&config, tun_fd);
 	if(!vpn) {
 		fprintf(stderr, "unable to create vpn tunnel interface\n");
 		exit(1);
 	}
 
 	while(!quit) {
-		chipvpn_wait(vpn, 100);
+		chipvpn_wait(vpn, 1000);
 		chipvpn_service(vpn);
 
 		if(file_mtime(argv[1]) > mtime) {

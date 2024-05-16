@@ -27,7 +27,7 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	sock->can_read = 0;
 	sock->can_write = 0;
 	sock->key_length = 0;
-	chipvpn_secure_random(&sock->counter, sizeof(sock->counter));
+	chipvpn_secure_random((char *)&sock->counter, sizeof(sock->counter));
 
 	return sock;
 }
