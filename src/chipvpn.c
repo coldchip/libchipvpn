@@ -204,7 +204,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				if(ntohll(packet->timestamp) <= peer->timestamp) {
-					printf("invalid timestamp\n");
+					printf("packet timestamp is older than peer timestamp\n");
 					return 0;
 				}
 
@@ -255,18 +255,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				);
 
 				printf("%p says: hello\n", peer);
-
 				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - ntohll(packet->timestamp));
-
 				printf("%p says: session id: %u\n", peer, ntohl(packet->session));
-
-				// char keyhash_hex[32 * 2 + 1] = {0};
-				// sodium_bin2hex(keyhash_hex, sizeof(keyhash_hex), (unsigned char*)&packet->keyhash, sizeof(packet->keyhash));
-				// printf("%p says: keyhash: %s\n", peer, keyhash_hex);
-
-				// char sign_hex[32 * 2 + 1] = {0};
-				// sodium_bin2hex(sign_hex, sizeof(sign_hex), (unsigned char*)&sign, sizeof(sign));
-				// printf("%p says: sign: %s\n", peer, sign_hex);
 
 				struct in_addr ip_addr;
 				ip_addr.s_addr = addr.ip;
@@ -350,7 +340,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				strcpy(tx, chipvpn_format_bytes(peer->tx));
 				strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-				printf("%p says: tx: [%s] packets: [] rx: [%s] packets: []\n", peer, tx, rx);
+				printf("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 			}

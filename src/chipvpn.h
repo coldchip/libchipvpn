@@ -15,7 +15,7 @@ extern "C"
 #include "socket.h"
 
 #define CHIPVPN_PEER_TIMEOUT 10000
-#define CHIPVPN_PEER_PING 1000
+#define CHIPVPN_PEER_PING 2000
 
 typedef struct {
 	char name[IFNAMSIZ + 1];
@@ -31,7 +31,6 @@ typedef struct {
 typedef struct {
 	chipvpn_device_t *device;
 	chipvpn_socket_t *socket;
-
 	uint64_t counter;
 } chipvpn_t;
 
