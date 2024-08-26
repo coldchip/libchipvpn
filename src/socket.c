@@ -27,10 +27,8 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	sock->key_length = 0;
 	chipvpn_secure_random((char *)&sock->counter, sizeof(sock->counter));
 
-	chipvpn_socket_reset_queue(sock);
-
-	chipvpn_list_clear(&sock->tx_queue);
-	chipvpn_list_clear(&sock->rx_queue);
+	chipvpn_socket_reset_queue(&sock->tx_queue);
+	chipvpn_socket_reset_queue(&sock->rx_queue);
 
 	return sock;
 }
@@ -79,17 +77,21 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		struct sockaddr_in sa;
 		int len = sizeof(sa);
 
-		chipvpn_socket_queue_t *queue = chipvpn_socket_acquire_queue(socket);
+		chipvpn_socket_queue_entry_t *queue = chipvpn_socket_enqueue(&socket->rx_queue);
 
 		int r = recvfrom(socket->fd, queue->buffer, sizeof(queue->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+		if(r <= 0) {
+			// todo
+		}
+
 		queue->size = r;
 
 		queue->addr.ip = sa.sin_addr.s_addr;
 		queue->addr.port = ntohs(sa.sin_port);
-		chipvpn_list_insert(chipvpn_list_end(&socket->rx_queue), queue);
+		
 	}
 	if(FD_ISSET(socket->fd, wdset)) {
-		chipvpn_socket_queue_t *queue = (chipvpn_socket_queue_t*)chipvpn_list_remove(chipvpn_list_begin(&socket->tx_queue));
+		chipvpn_socket_queue_entry_t *queue = chipvpn_socket_dequeue(&socket->tx_queue);
 		struct sockaddr_in sa;
 	
 		memset(&sa, 0, sizeof(sa));
@@ -98,64 +100,90 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		sa.sin_port = htons(queue->addr.port);
 
 		int w = sendto(socket->fd, queue->buffer, queue->size, 0, (struct sockaddr*)&sa, sizeof(sa));
-	
-		chipvpn_socket_release_queue(queue);
+		if(w <= 0) {
+			// todo
+		}
 	}
 }
 
-void chipvpn_socket_reset_queue(chipvpn_socket_t *sock) {
-	for(int i = 0; i < 40; i++) {
-		chipvpn_socket_queue_t *current = &sock->queue_pool[i];
+void chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue) {
+	for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
+		chipvpn_socket_queue_entry_t *current = &queue->pool[i];
 		current->is_used = false;
 	}
+
+	chipvpn_list_clear(&queue->queue);
 }
 
-chipvpn_socket_queue_t *chipvpn_socket_acquire_queue(chipvpn_socket_t *sock) {
-	for(int i = 0; i < 40; i++) {
-		chipvpn_socket_queue_t *current = &sock->queue_pool[i];
+int chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue) {
+	int j = 0;
+	for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
+		chipvpn_socket_queue_entry_t *current = &queue->pool[i];
+		if(current->is_used) {
+			++j;
+		}
+	}
+	return j;
+}
+
+chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue(chipvpn_socket_queue_t *queue) {
+	for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
+		chipvpn_socket_queue_entry_t *current = &queue->pool[i];
 		if(!current->is_used) {
 			current->is_used = true;
+
+			chipvpn_list_insert(chipvpn_list_end(&queue->queue), current);
+
 			return current;
 		}
 	}
 	return NULL;
 }
 
-void chipvpn_socket_release_queue(chipvpn_socket_queue_t *queue) {
-	queue->is_used = false;
+chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue(chipvpn_socket_queue_t *queue) {
+	if(!chipvpn_list_empty(&queue->queue)) {
+		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)chipvpn_list_remove(chipvpn_list_begin(&queue->queue));
+		entry->is_used = false;
+
+		return entry;
+	}
+	return NULL;
 }
 
 bool chipvpn_socket_can_enqueue(chipvpn_socket_t *sock) {
-	return chipvpn_list_size(&sock->rx_queue) < 20;
+	return chipvpn_socket_queue_size(&sock->rx_queue) < SOCKET_QUEUE_SIZE;
 }
 
 bool chipvpn_socket_can_dequeue(chipvpn_socket_t *sock) {
-	return chipvpn_list_size(&sock->tx_queue) > 0;
+	return chipvpn_socket_queue_size(&sock->tx_queue) > 0;
 }
 
 bool chipvpn_socket_can_read(chipvpn_socket_t *sock) {
-	return chipvpn_list_size(&sock->rx_queue) > 0;
+	return chipvpn_socket_queue_size(&sock->rx_queue) > 0;
 }
 
 bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
-	return chipvpn_list_size(&sock->tx_queue) < 20;
+	return chipvpn_socket_queue_size(&sock->tx_queue) < SOCKET_QUEUE_SIZE;
 }
 
 int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
-	chipvpn_socket_queue_t *queue = (chipvpn_socket_queue_t*)chipvpn_list_remove(chipvpn_list_begin(&sock->rx_queue));
-
-	char *packet = queue->buffer;
-	int r = queue->size;
-
-	r -= sizeof(uint32_t);
-
-	if(r <= 0) {
-		chipvpn_socket_release_queue(queue);
+	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue(&sock->rx_queue);
+	if(entry == NULL) {
 		return 0;
 	}
 
-	uint32_t counter = ntohl(*(uint32_t*)packet);
-	char    *buf     = packet + sizeof(uint32_t);
+	int r = entry->size;
+	r -= sizeof(uint32_t);
+	if(r <= 0) {
+		return 0;
+	}
+
+	if(addr) {
+		*addr = entry->addr;
+	}
+
+	uint32_t counter = ntohl(*(uint32_t*)entry->buffer);
+	char    *buf     = entry->buffer + sizeof(uint32_t);
 
 	uint32_t state;
 	chipvpn_crypto_crc32_init(&state);
@@ -166,15 +194,26 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 
 	chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key));
 
-	if(addr) {
-		*addr = queue->addr;
-	}
-
-	chipvpn_socket_release_queue(queue);
 	return r;
 }
 
 int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
+	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue(&sock->tx_queue);
+	if(entry == NULL) {
+		return 0;
+	}
+
+	entry->size = sizeof(uint32_t) + size;
+	int w = entry->size;
+	w -= sizeof(uint32_t);
+	if(w <= 0) {
+		return 0;
+	}
+
+	if(addr) {
+		entry->addr = *addr;
+	}
+
 	uint32_t state0;
 	chipvpn_crypto_crc32_update(&state0, (unsigned char*)&sock->key, sock->key_length);
 	chipvpn_crypto_crc32_update(&state0, (unsigned char*)&sock->counter, sizeof(sock->counter));
@@ -191,23 +230,8 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 
 	uint32_t header = htonl(sock->counter);
 
-	// char *packet = sock->tx_buffer;
-	chipvpn_socket_queue_t *queue = chipvpn_socket_acquire_queue(sock);
-	char *packet = queue->buffer;
-	memcpy(packet, &header, sizeof(header));
-	memcpy(sizeof(uint32_t) + packet, data, size);
-
-	int w = sizeof(uint32_t) + size;
-	//chipvpn_socket_set_write(sock, w);
-	queue->size = w;
-	queue->addr = *addr;
-	chipvpn_list_insert(chipvpn_list_end(&sock->tx_queue), queue);
-
-	w -= sizeof(uint32_t);
-
-	if(w <= 0) {
-		return 0;
-	}
+	memcpy(entry->buffer, &header, sizeof(header));
+	memcpy(sizeof(uint32_t) + entry->buffer, data, size);
 
 	return w;
 }
