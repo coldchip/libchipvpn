@@ -33,8 +33,6 @@ typedef struct {
 	uint64_t timestamp;
 	uint64_t tx;
 	uint64_t rx;
-	uint64_t tx_packet;
-	uint64_t rx_packet;
 	uint64_t last_check;
 	uint64_t timeout;
 	bool connect;

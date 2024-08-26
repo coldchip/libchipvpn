@@ -1,8 +1,8 @@
 section:device
 name:cv-client
-network:10.128.0.2/16
+network:10.64.0.2/16
 mtu:1400
-xor:o9fejiejfefoefjrognirgnvgmrgmrgmlrgmrleld
+xor:weweweshshsh
 
 section:peer
 address:127.0.0.1:4433

@@ -24,10 +24,13 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	}
 
 	sock->fd = fd;
-	sock->can_read = 0;
-	sock->can_write = 0;
+	sock->tx_size = 0;
+	sock->rx_size = 0;
 	sock->key_length = 0;
 	chipvpn_secure_random((char *)&sock->counter, sizeof(sock->counter));
+
+	chipvpn_list_clear(&sock->tx_queue);
+	chipvpn_list_clear(&sock->rx_queue);
 
 	return sock;
 }
@@ -66,44 +69,66 @@ void chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length)
 }
 
 void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max) {
-	if(chipvpn_socket_can_read(socket))  FD_CLR(socket->fd, rdset); else FD_SET(socket->fd, rdset);
-	if(chipvpn_socket_can_write(socket)) FD_CLR(socket->fd, wdset); else FD_SET(socket->fd, wdset);
+	if(!chipvpn_socket_can_enqueue(socket))  FD_CLR(socket->fd, rdset); else FD_SET(socket->fd, rdset);
+	if(!chipvpn_socket_can_dequeue(socket))  FD_CLR(socket->fd, wdset); else FD_SET(socket->fd, wdset);
 	*max = socket->fd;
 }
 
 void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset) {
-	if(FD_ISSET(socket->fd, rdset)) chipvpn_socket_set_read(socket, true);
-	if(FD_ISSET(socket->fd, wdset)) chipvpn_socket_set_write(socket, true);
+	if(FD_ISSET(socket->fd, rdset)) {
+		struct sockaddr_in sa;
+		int len = sizeof(sa);
+
+		chipvpn_socket_queue_t *queue = malloc(sizeof(chipvpn_socket_queue_t));
+
+		int r = recvfrom(socket->fd, queue->buffer, sizeof(queue->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+		queue->size = r;
+
+		queue->addr.ip = sa.sin_addr.s_addr;
+		queue->addr.port = ntohs(sa.sin_port);
+		chipvpn_list_insert(chipvpn_list_end(&socket->rx_queue), queue);
+	}
+	if(FD_ISSET(socket->fd, wdset)) {
+		chipvpn_socket_queue_t *queue = (chipvpn_socket_queue_t*)chipvpn_list_remove(chipvpn_list_begin(&socket->tx_queue));
+		struct sockaddr_in sa;
+	
+		memset(&sa, 0, sizeof(sa));
+		sa.sin_family = AF_INET;
+		sa.sin_addr.s_addr = queue->addr.ip;
+		sa.sin_port = htons(queue->addr.port);
+
+		int w = sendto(socket->fd, queue->buffer, queue->size, 0, (struct sockaddr*)&sa, sizeof(sa));
+	
+		free(queue);
+	}
 }
 
-void chipvpn_socket_set_read(chipvpn_socket_t *sock, bool status) {
-	sock->can_read = status;
+bool chipvpn_socket_can_enqueue(chipvpn_socket_t *sock) {
+	return chipvpn_list_size(&sock->rx_queue) < 100;
 }
 
-void chipvpn_socket_set_write(chipvpn_socket_t *sock, bool status) {
-	sock->can_write = status;
+bool chipvpn_socket_can_dequeue(chipvpn_socket_t *sock) {
+	return chipvpn_list_size(&sock->tx_queue) > 0;
 }
 
 bool chipvpn_socket_can_read(chipvpn_socket_t *sock) {
-	return sock->can_read;
+	return chipvpn_list_size(&sock->rx_queue) > 0;
 }
 
 bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
-	return sock->can_write;
+	return chipvpn_list_size(&sock->tx_queue) < 100;
 }
 
 int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
-	struct sockaddr_in sa;
-	int len = sizeof(sa);
+	chipvpn_socket_queue_t *queue = (chipvpn_socket_queue_t*)chipvpn_list_remove(chipvpn_list_begin(&sock->rx_queue));
 
-	char packet[sizeof(uint32_t) + size];
-
-	int r = recvfrom(sock->fd, packet, sizeof(packet), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
-	chipvpn_socket_set_read(sock, false);
+	char *packet = queue->buffer;
+	int r = queue->size;
 
 	r -= sizeof(uint32_t);
 
 	if(r <= 0) {
+		free(queue);
 		return 0;
 	}
 
@@ -120,21 +145,14 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	chipvpn_crypto_xor(data, buf, r, (char*)&key, sizeof(key));
 
 	if(addr) {
-		addr->ip = sa.sin_addr.s_addr;
-		addr->port = ntohs(sa.sin_port);
+		*addr = queue->addr;
 	}
 
+	free(queue);
 	return r;
 }
 
 int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
-	struct sockaddr_in sa;
-	
-	memset(&sa, 0, sizeof(sa));
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = addr->ip;
-	sa.sin_port = htons(addr->port);
-
 	uint32_t state0;
 	chipvpn_crypto_crc32_update(&state0, (unsigned char*)&sock->key, sock->key_length);
 	chipvpn_crypto_crc32_update(&state0, (unsigned char*)&sock->counter, sizeof(sock->counter));
@@ -151,12 +169,17 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 
 	uint32_t header = htonl(sock->counter);
 
-	char packet[sizeof(uint32_t) + size];
+	// char *packet = sock->tx_buffer;
+	chipvpn_socket_queue_t *queue = malloc(sizeof(chipvpn_socket_queue_t));
+	char *packet = queue->buffer;
 	memcpy(packet, &header, sizeof(header));
 	memcpy(sizeof(uint32_t) + packet, data, size);
 
-	int w = sendto(sock->fd, packet, sizeof(packet), 0, (struct sockaddr*)&sa, sizeof(sa));
-	chipvpn_socket_set_write(sock, false);
+	int w = sizeof(uint32_t) + size;
+	//chipvpn_socket_set_write(sock, w);
+	queue->size = w;
+	queue->addr = *addr;
+	chipvpn_list_insert(chipvpn_list_end(&sock->tx_queue), queue);
 
 	w -= sizeof(uint32_t);
 

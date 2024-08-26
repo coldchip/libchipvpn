@@ -138,7 +138,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* tunnel => socket */
 	if(chipvpn_device_can_read(vpn->device) && chipvpn_socket_can_write(vpn->socket)) {
-		char buffer[65536];
+		char buffer[65535];
 		int r = chipvpn_device_read(vpn->device, buffer, sizeof(buffer));
 		if(r <= 0) {
 			return 0;
@@ -169,14 +169,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 		vpn->counter++;
 
 		peer->tx += r;
-		peer->tx_packet += 1;
 
 		chipvpn_socket_write(vpn->socket, packet, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
 
 	/* socket => tunnel */
 	if(chipvpn_socket_can_read(vpn->socket) && chipvpn_device_can_write(vpn->device)) {
-		char buffer[sizeof(chipvpn_packet_t) + 65536];
+		char buffer[sizeof(chipvpn_packet_t) + 65535];
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);
@@ -208,13 +207,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				// if(
-				// 	chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
-				// 	chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
-				// ) {
-				// 	printf("invalid time range from peer\n");
-				// 	return 0;
-				// }
+				if(
+					chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
+					chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
+				) {
+					printf("invalid time range from peer\n");
+					return 0;
+				}
 
 				char sign[32];
 				memcpy(sign, packet->sign, sizeof(sign));
@@ -239,8 +238,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->timestamp = ntohll(packet->timestamp);
 				peer->tx = 0;
 				peer->rx = 0;
-				peer->tx_packet = 0;
-				peer->rx_packet = 0;
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 
 				chipvpn_peer_set_status(peer, PEER_CONNECTED);
@@ -298,7 +295,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				peer->rx += r - sizeof(chipvpn_packet_data_t);
-				peer->rx_packet += 1;
 				chipvpn_device_write(vpn->device, data, r - sizeof(chipvpn_packet_data_t));
 			}
 			break;

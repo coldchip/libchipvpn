@@ -18,8 +18,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->timestamp = 0;
 	peer->tx = 0;
 	peer->rx = 0;
-	peer->tx_packet = 0;
-	peer->rx_packet = 0;
 	peer->last_check = 0;
 	peer->timeout = 0;
 	peer->connect = false;
