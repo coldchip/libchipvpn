@@ -16,12 +16,8 @@ typedef struct {
 	char key[1024];
 	int key_length;
 	uint32_t counter;
-	char tx_buffer[65535];
-	char rx_buffer[65535];
 	chipvpn_list_t tx_queue;
 	chipvpn_list_t rx_queue;
-	int tx_size;
-	int rx_size;
 	chipvpn_address_t addr;
 } chipvpn_socket_t;
 

@@ -24,8 +24,6 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	}
 
 	sock->fd = fd;
-	sock->tx_size = 0;
-	sock->rx_size = 0;
 	sock->key_length = 0;
 	chipvpn_secure_random((char *)&sock->counter, sizeof(sock->counter));
 
@@ -104,7 +102,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 }
 
 bool chipvpn_socket_can_enqueue(chipvpn_socket_t *sock) {
-	return chipvpn_list_size(&sock->rx_queue) < 100;
+	return chipvpn_list_size(&sock->rx_queue) < 20;
 }
 
 bool chipvpn_socket_can_dequeue(chipvpn_socket_t *sock) {
@@ -116,7 +114,7 @@ bool chipvpn_socket_can_read(chipvpn_socket_t *sock) {
 }
 
 bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
-	return chipvpn_list_size(&sock->tx_queue) < 100;
+	return chipvpn_list_size(&sock->tx_queue) < 20;
 }
 
 int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
