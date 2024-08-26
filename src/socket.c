@@ -104,7 +104,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 }
 
 void chipvpn_socket_reset_queue(chipvpn_socket_t *sock) {
-	for(int i = 0; i < 20; i++) {
+	for(int i = 0; i < 40; i++) {
 		chipvpn_socket_queue_t *current = &sock->queue_pool[i];
 		current->is_used = false;
 	}
