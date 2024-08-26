@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
 	chipvpn_list_node_t node;
-	char buffer[65535];
+	char buffer[4096];
 	int size;
 	chipvpn_address_t addr;
 } chipvpn_socket_queue_t;
