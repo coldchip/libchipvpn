@@ -74,13 +74,13 @@ void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *w
 
 void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset) {
 	if(FD_ISSET(socket->fd, rdset)) {
-		struct sockaddr_in sa;
-		int len = sizeof(sa);
-
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&socket->rx_queue);
 		if(!entry) {
 			return;
 		}
+
+		struct sockaddr_in sa;
+		int len = sizeof(sa);
 
 		int r = recvfrom(socket->fd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 		if(r <= 0) {
