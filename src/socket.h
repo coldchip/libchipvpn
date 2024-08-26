@@ -16,7 +16,7 @@ typedef struct {
 	bool is_used;
 	int size;
 	chipvpn_address_t addr;
-	char buffer[65535];
+	char buffer[8192];
 } chipvpn_socket_queue_t;
 
 typedef struct {
