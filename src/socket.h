@@ -11,14 +11,23 @@ extern "C"
 #include "crypto.h"
 #include "list.h"
 
-#define SOCKET_QUEUE_SIZE 50
+#define SOCKET_QUEUE_SIZE 10
+#define SOCKET_QUEUE_ENTRY_SIZE 65535
+
+typedef struct __attribute__((__packed__)) {
+	uint16_t id;
+	uint16_t offset;
+	uint16_t total;
+} chipvpn_socket_packet_t;
 
 typedef struct {
 	chipvpn_list_node_t node;
 	bool is_used;
+	int id;
 	int size;
+	int total;
 	chipvpn_address_t addr;
-	char buffer[8192];
+	char buffer[SOCKET_QUEUE_ENTRY_SIZE];
 } chipvpn_socket_queue_entry_t;
 
 typedef struct {
@@ -51,10 +60,10 @@ chipvpn_socket_queue_entry_t    *chipvpn_socket_dequeue_acquire(chipvpn_socket_q
 void                             chipvpn_socket_enqueue_commit(chipvpn_socket_queue_t *queue, chipvpn_socket_queue_entry_t *entry);
 void                             chipvpn_socket_dequeue_commit(chipvpn_socket_queue_entry_t *entry);
 
-bool                             chipvpn_socket_can_enqueue(chipvpn_socket_t *sock);
-bool                             chipvpn_socket_can_dequeue(chipvpn_socket_t *sock);
-bool                             chipvpn_socket_can_read(chipvpn_socket_t *sock);
-bool                             chipvpn_socket_can_write(chipvpn_socket_t *sock);
+bool                             chipvpn_socket_can_enqueue(chipvpn_socket_t *socket);
+bool                             chipvpn_socket_can_dequeue(chipvpn_socket_t *socket);
+bool                             chipvpn_socket_can_read(chipvpn_socket_t *socket);
+bool                             chipvpn_socket_can_write(chipvpn_socket_t *socket);
 
 int                              chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr);
 int                              chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr);
