@@ -11,21 +11,13 @@ extern "C"
 #include "crypto.h"
 #include "list.h"
 
-#define SOCKET_QUEUE_SIZE 10
-#define SOCKET_QUEUE_ENTRY_SIZE 65535
-
-typedef struct __attribute__((__packed__)) {
-	uint16_t id;
-	uint16_t offset;
-	uint16_t total;
-} chipvpn_socket_packet_t;
+#define SOCKET_QUEUE_SIZE 32
+#define SOCKET_QUEUE_ENTRY_SIZE 8192
 
 typedef struct {
 	chipvpn_list_node_t node;
 	bool is_used;
-	int id;
 	int size;
-	int total;
 	chipvpn_address_t addr;
 	char buffer[SOCKET_QUEUE_ENTRY_SIZE];
 } chipvpn_socket_queue_entry_t;
