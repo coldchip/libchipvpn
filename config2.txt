@@ -2,7 +2,7 @@ section:device
 name:chipvpn
 network:10.64.0.1/16
 bind:0.0.0.0:4433
-mtu:1400
+mtu:1500
 xor:weweweshshsh
 
 section:peer

@@ -1,7 +1,7 @@
 section:device
 name:cv-client
 network:10.64.0.2/16
-mtu:1400
+mtu:1500
 xor:weweweshshsh
 
 section:peer
