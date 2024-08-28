@@ -268,7 +268,6 @@ int main(int argc, char const *argv[]) {
 	while(!quit) {
 		chipvpn_wait(vpn, 1000);
 		chipvpn_service(vpn);
-
 	}
 
 	printf("cleanup\n");

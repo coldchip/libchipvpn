@@ -282,7 +282,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	}
 
 	memcpy(entry->buffer, data, w);
-	chipvpn_secure_random(&entry->id, sizeof(entry->id));
+	entry->id = rand() % 0xFFFF;
 	entry->size = w;
 	entry->total = w;
 
