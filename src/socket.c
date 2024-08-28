@@ -112,10 +112,6 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 			chipvpn_socket_enqueue_commit(&socket->rx_queue, entry);
 		}
 
-		if(!entry) {
-			return;
-		}
-
 		memcpy(entry->buffer + fragment_offset, sizeof(chipvpn_socket_packet_t) + buffer, fragment_size);
 		//entry->size = r;
 		entry->id = fragment_id;
@@ -172,14 +168,16 @@ void chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue) {
 }
 
 int chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue) {
-	int j = 0;
-	for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
-		chipvpn_socket_queue_entry_t *current = &queue->pool[i];
-		if(current->is_used) {
-			++j;
-		}
-	}
-	return j;
+	// int j = 0;
+	// for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
+	// 	chipvpn_socket_queue_entry_t *current = &queue->pool[i];
+	// 	if(current->is_used) {
+	// 		++j;
+	// 	}
+	// }
+	// return j;
+
+	return chipvpn_list_size(&queue->queue);
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue) {
@@ -230,7 +228,7 @@ bool chipvpn_socket_can_enqueue(chipvpn_socket_t *sock) {
 		}
 	}
 
-	return chipvpn_socket_queue_size(&sock->rx_queue) < SOCKET_QUEUE_SIZE;
+	return true;
 }
 
 bool chipvpn_socket_can_dequeue(chipvpn_socket_t *sock) {
