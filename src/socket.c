@@ -95,7 +95,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		for(chipvpn_list_node_t *g = chipvpn_list_begin(&socket->rx_queue.queue); g != chipvpn_list_end(&socket->rx_queue.queue); g = chipvpn_list_next(g)) {
 			chipvpn_socket_queue_entry_t *current = (chipvpn_socket_queue_entry_t*)g;
 
-			if(current->id == fragment_id) {
+			if(current->is_used == true && current->id == fragment_id) {
 				entry = current;
 			}
 		}

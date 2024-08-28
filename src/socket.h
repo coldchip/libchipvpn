@@ -11,7 +11,7 @@ extern "C"
 #include "crypto.h"
 #include "list.h"
 
-#define SOCKET_QUEUE_SIZE 32
+#define SOCKET_QUEUE_SIZE 64
 #define SOCKET_QUEUE_ENTRY_SIZE 8192
 
 typedef struct __attribute__((__packed__)) {
