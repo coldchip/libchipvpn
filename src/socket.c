@@ -177,7 +177,7 @@ int chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue) {
 	// }
 	// return j;
 
-	return chipvpn_list_size(&queue->queue);
+	return (int)chipvpn_list_size(&queue->queue);
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue) {
