@@ -260,18 +260,15 @@ int main(int argc, char const *argv[]) {
 	}
 
 	if(file_mtime(argv[1]) > mtime) {
-			printf("reload config\n");
-			read_peer_config(argv[1], vpn->device);
-			mtime = file_mtime(argv[1]);
-		}
+		printf("reload config\n");
+		read_peer_config(argv[1], vpn->device);
+		mtime = file_mtime(argv[1]);
+	}
 
 	while(!quit) {
 		chipvpn_wait(vpn, 1000);
 		chipvpn_service(vpn);
 
-		if(file_mtime(argv[1]) > mtime) {
-			mtime = file_mtime(argv[1]);
-		}
 	}
 
 	printf("cleanup\n");
