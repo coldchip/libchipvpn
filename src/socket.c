@@ -130,7 +130,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 			return;
 		}
 
-		struct sockaddr_in sa;
+		struct sockaddr_in sa; 
 	
 		memset(&sa, 0, sizeof(sa));
 		sa.sin_family = AF_INET;
