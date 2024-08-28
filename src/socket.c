@@ -97,6 +97,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 
 			if(current->is_used == true && current->id == fragment_id) {
 				entry = current;
+				break;
 			}
 		}
 
@@ -144,11 +145,11 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 			.offset = htons(entry->total - entry->size),
 			.total  = htons(entry->total)
 		};
-		char buffer[sizeof(chipvpn_socket_packet_t) + fragment_size];
+		char buffer[sizeof(chipvpn_socket_packet_t) + SOCKET_QUEUE_ENTRY_SIZE];
 		memcpy(buffer, &header, sizeof(header));
 		memcpy(buffer + sizeof(header), entry->buffer + (entry->total - entry->size), fragment_size);
 
-		int w = sendto(socket->fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sa, sizeof(sa));
+		int w = sendto(socket->fd, buffer, sizeof(chipvpn_socket_packet_t) + fragment_size, 0, (struct sockaddr*)&sa, sizeof(sa));
 		if(w <= 0) {
 			return;
 		}
