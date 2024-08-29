@@ -12,7 +12,7 @@ extern "C"
 #include "list.h"
 
 #define SOCKET_QUEUE_SIZE 32
-#define SOCKET_QUEUE_ENTRY_SIZE 8192
+#define SOCKET_QUEUE_ENTRY_SIZE 4096
 
 typedef struct __attribute__((__packed__)) {
 	uint16_t id;

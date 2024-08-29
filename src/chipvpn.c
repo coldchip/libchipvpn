@@ -90,7 +90,7 @@ void chipvpn_wait(chipvpn_t *vpn, uint64_t timeout) {
 
 	chipvpn_fdset(vpn, &rdset, &wdset, &max);
 
-	if(select(max + 1, &rdset, &wdset, NULL, &tv) >= 0) {
+	if(select(max + 1, &rdset, &wdset, NULL, &tv) > 0) {
 		chipvpn_isset(vpn, &rdset, &wdset);
 	}
 }
@@ -159,10 +159,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		char packet[sizeof(chipvpn_packet_data_t) + r];
 
-		chipvpn_packet_data_t data = {};
-		data.header.type = CHIPVPN_PACKET_DATA;
-		data.session = htonl(peer->outbound_session);
-		data.counter = htonll(vpn->counter);
+		chipvpn_packet_data_t data = {
+			.header.type = CHIPVPN_PACKET_DATA,
+			.session = htonl(peer->outbound_session),
+			.counter = htonll(vpn->counter)
+		};
 
 		chipvpn_crypto_xchacha20(&peer->outbound_crypto, buffer, r, vpn->counter);
 		memcpy(packet, &data, sizeof(data));

@@ -137,7 +137,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		int fragment_size = MIN(entry->size, 1400);
 
 		char buffer[sizeof(chipvpn_socket_packet_t) + SOCKET_QUEUE_ENTRY_SIZE];
-		
+
 		chipvpn_socket_packet_t *header = (chipvpn_socket_packet_t*)&buffer;
 		header->id     = htons(entry->id);
 		header->offset = htons(entry->total - entry->size);
@@ -209,10 +209,10 @@ void chipvpn_socket_dequeue_commit(chipvpn_socket_queue_entry_t *entry) {
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_available_entry(chipvpn_socket_queue_t *queue) {
-	for(chipvpn_list_node_t *g = chipvpn_list_begin(&queue->queue); g != chipvpn_list_end(&queue->queue); g = chipvpn_list_next(g)) {
+	for(chipvpn_list_node_t *g = chipvpn_list_previous(chipvpn_list_end(&queue->queue)); g != chipvpn_list_end(&queue->queue); g = chipvpn_list_previous(g)) {
 		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)g;
 
-		if(entry->is_used && entry->size == entry->total) {
+		if(entry->is_used && entry->size == entry->total && entry->size != 0) {
 			return entry;
 		}
 	}
