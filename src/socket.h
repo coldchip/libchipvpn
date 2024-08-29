@@ -14,18 +14,10 @@ extern "C"
 #define SOCKET_QUEUE_SIZE 64
 #define SOCKET_QUEUE_ENTRY_SIZE 4096
 
-typedef struct __attribute__((__packed__)) {
-	uint16_t id;
-	uint16_t offset;
-	uint16_t total;
-} chipvpn_socket_packet_t;
-
 typedef struct {
 	chipvpn_list_node_t node;
 	bool is_used;
-	int id;
 	int size;
-	int total;
 	chipvpn_address_t addr;
 	char buffer[SOCKET_QUEUE_ENTRY_SIZE];
 } chipvpn_socket_queue_entry_t;
