@@ -117,8 +117,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 		if(chipvpn_get_time() - peer->last_check > CHIPVPN_PEER_PING) {
 			peer->last_check = chipvpn_get_time();
 
-			printf("queue tx %i queue rx %i\n", chipvpn_socket_queue_size(&vpn->socket->tx_queue), chipvpn_socket_queue_size(&vpn->socket->rx_queue));
-
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(peer->state != PEER_DISCONNECTED && chipvpn_get_time() > peer->timeout) {
 				printf("%p says: peer disconnected\n", peer);
