@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <stdlib.h>
+#include "util.h"
 #include "peer.h"
 #include "chipvpn.h"
 
@@ -259,15 +260,21 @@ int main(int argc, char const *argv[]) {
 		exit(1);
 	}
 
-	if(file_mtime(argv[1]) > mtime) {
-		printf("reload config\n");
-		read_peer_config(argv[1], vpn->device);
-		mtime = file_mtime(argv[1]);
-	}
+	uint64_t last_check = 0;
 
 	while(!quit) {
 		chipvpn_wait(vpn, 1000);
 		chipvpn_service(vpn);
+
+		if(chipvpn_get_time() - last_check > 1000) {
+			if(file_mtime(argv[1]) > mtime) {
+				printf("reload config\n");
+				read_peer_config(argv[1], vpn->device);
+				mtime = file_mtime(argv[1]);
+			}
+
+			last_check = chipvpn_get_time();
+		}
 	}
 
 	printf("cleanup\n");

@@ -136,14 +136,14 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 
 		int fragment_size = MIN(entry->size, 1400);
 
-		chipvpn_socket_packet_t header = {
-			.id     = htons(entry->id),
-			.offset = htons(entry->total - entry->size),
-			.total  = htons(entry->total)
-		};
 		char buffer[sizeof(chipvpn_socket_packet_t) + SOCKET_QUEUE_ENTRY_SIZE];
-		memcpy(buffer, &header, sizeof(header));
-		memcpy(buffer + sizeof(header), entry->buffer + (entry->total - entry->size), fragment_size);
+		
+		chipvpn_socket_packet_t *header = (chipvpn_socket_packet_t*)&buffer;
+		header->id     = htons(entry->id);
+		header->offset = htons(entry->total - entry->size);
+		header->total  = htons(entry->total);
+
+		memcpy(buffer + sizeof(chipvpn_socket_packet_t), entry->buffer + (entry->total - entry->size), fragment_size);
 
 		int w = sendto(socket->fd, buffer, sizeof(chipvpn_socket_packet_t) + fragment_size, 0, (struct sockaddr*)&sa, sizeof(sa));
 		if(w <= 0) {
