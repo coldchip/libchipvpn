@@ -113,7 +113,6 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		}
 
 		memcpy(entry->buffer + fragment_offset, sizeof(chipvpn_socket_packet_t) + buffer, fragment_size);
-		//entry->size = r;
 		entry->id = fragment_id;
 		entry->total = fragment_total;
 		entry->size += fragment_size;
@@ -134,7 +133,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		sa.sin_addr.s_addr = entry->addr.ip;
 		sa.sin_port = htons(entry->addr.port);
 
-		int fragment_size = MIN(entry->size, 1400);
+		int fragment_size = MIN(entry->size, 1470);
 
 		char buffer[sizeof(chipvpn_socket_packet_t) + SOCKET_QUEUE_ENTRY_SIZE];
 
@@ -209,7 +208,7 @@ void chipvpn_socket_dequeue_commit(chipvpn_socket_queue_entry_t *entry) {
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_available_entry(chipvpn_socket_queue_t *queue) {
-	for(chipvpn_list_node_t *g = chipvpn_list_previous(chipvpn_list_end(&queue->queue)); g != chipvpn_list_end(&queue->queue); g = chipvpn_list_previous(g)) {
+	for(chipvpn_list_node_t *g = chipvpn_list_begin(&queue->queue); g != chipvpn_list_end(&queue->queue); g = chipvpn_list_next(g)) {
 		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)g;
 
 		if(entry->is_used && entry->size == entry->total && entry->size != 0) {
