@@ -133,7 +133,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		sa.sin_addr.s_addr = entry->addr.ip;
 		sa.sin_port = htons(entry->addr.port);
 
-		int fragment_size = MIN(entry->size, 1470);
+		int fragment_size = MIN(entry->size, 1465);
 
 		char buffer[sizeof(chipvpn_socket_packet_t) + SOCKET_QUEUE_ENTRY_SIZE];
 
