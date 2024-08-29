@@ -11,8 +11,8 @@ extern "C"
 #include "crypto.h"
 #include "list.h"
 
-#define SOCKET_QUEUE_SIZE 64
-#define SOCKET_QUEUE_ENTRY_SIZE 4096
+#define SOCKET_QUEUE_SIZE 16
+#define SOCKET_QUEUE_ENTRY_SIZE 65535
 
 typedef struct {
 	chipvpn_list_node_t node;
