@@ -40,7 +40,7 @@ typedef struct {
     struct sockaddr_un sa;
 } chipvpn_device_t;
 
-chipvpn_device_t       *chipvpn_device_create(int existing_fd);
+chipvpn_device_t       *chipvpn_device_create();
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
 bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *tun, int mtu);
