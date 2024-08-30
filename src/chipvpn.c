@@ -149,7 +149,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
-
 		chipvpn_address_t dst = {
 			.ip = ip_hdr->dst_addr
 		};
@@ -159,14 +158,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
+		header->header.type = CHIPVPN_PACKET_DATA;
+		header->session     = htonl(peer->outbound_session);
+		header->counter     = htonll(vpn->counter);
+
 		chipvpn_crypto_xchacha20(&peer->outbound_crypto, data, r, vpn->counter);
 		vpn->counter++;
 
 		peer->tx += r;
-
-		header->header.type = CHIPVPN_PACKET_DATA;
-		header->session     = htonl(peer->outbound_session);
-		header->counter     = htonll(vpn->counter);
 
 		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
