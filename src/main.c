@@ -225,16 +225,11 @@ int main(int argc, char const *argv[]) {
 	/* code */
 	srand(time(NULL));
 
-	printf("chipvpn 1.7.4 rc5\n"); 
+	printf("chipvpn 1.7.5 alpha\n"); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		printf("config path required\n");
 		exit(1);
-	}
-
-	int tun_fd = -1;
-	if(argc > 2 && argv[2] != NULL) {
-		tun_fd = atoi(argv[2]);
 	}
 
 	signal(SIGINT, terminate);
@@ -254,7 +249,7 @@ int main(int argc, char const *argv[]) {
 	};
 	read_device_config(argv[1], &config);
 
-	chipvpn_t *vpn = chipvpn_create(&config, tun_fd);
+	chipvpn_t *vpn = chipvpn_create(&config);
 	if(!vpn) {
 		fprintf(stderr, "unable to create vpn tunnel interface\n");
 		exit(1);
@@ -263,10 +258,10 @@ int main(int argc, char const *argv[]) {
 	uint64_t last_check = 0;
 
 	while(!quit) {
-		chipvpn_wait(vpn, 1000);
+		chipvpn_wait(vpn, 250);
 		chipvpn_service(vpn);
 
-		if(chipvpn_get_time() - last_check > 1000) {
+		if(chipvpn_get_time() - last_check > 2000) {
 			if(file_mtime(argv[1]) > mtime) {
 				printf("reload config\n");
 				read_peer_config(argv[1], vpn->device);

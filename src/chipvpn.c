@@ -17,13 +17,13 @@
 #include "xchacha20.h"
 #include "util.h"
 
-chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
+chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
 
 	/* create vpn device */
-	chipvpn_device_t *device = chipvpn_device_create(tun_fd);
+	chipvpn_device_t *device = chipvpn_device_create();
 	if(!device) {
 		return NULL;
 	}
@@ -34,22 +34,20 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 		return NULL;
 	}
 
-	if(tun_fd < 0) {
-		if(!chipvpn_device_set_name(device, config->name)) {
-			return NULL;
-		}
+	if(!chipvpn_device_set_name(device, config->name)) {
+		return NULL;
+	}
 
-		if(!chipvpn_device_set_address(device, &config->network)) {
-			return NULL;
-		}
+	if(!chipvpn_device_set_address(device, &config->network)) {
+		return NULL;
+	}
 
-		if(!chipvpn_device_set_mtu(device, config->mtu)) {
-			return NULL;
-		}
-		
-		if(!chipvpn_device_set_enabled(device)) {
-			return NULL;
-		}
+	if(!chipvpn_device_set_mtu(device, config->mtu)) {
+		return NULL;
+	}
+	
+	if(!chipvpn_device_set_enabled(device)) {
+		return NULL;
 	}
 
 	if(config->sendbuf > 0 && !chipvpn_socket_set_sendbuf(socket, config->sendbuf)) {
