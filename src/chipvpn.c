@@ -162,11 +162,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 		header->session     = htonl(peer->outbound_session);
 		header->counter     = htonll(vpn->counter);
 
-		chipvpn_crypto_xchacha20(&peer->outbound_crypto, data, r, vpn->counter);
-		vpn->counter++;
+		chipvpn_crypto_xchacha20(&peer->outbound_crypto, data, r, vpn->counter++);
 
 		peer->tx += r;
-
 		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
 
