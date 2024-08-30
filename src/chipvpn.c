@@ -138,13 +138,17 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* tunnel => socket */
 	if(chipvpn_device_can_read(vpn->device) && chipvpn_socket_can_write(vpn->socket)) {
-		char buffer[65535];
-		int r = chipvpn_device_read(vpn->device, buffer, sizeof(buffer));
+		char buffer[SOCKET_QUEUE_ENTRY_SIZE];
+
+		chipvpn_packet_data_t *header = (chipvpn_packet_data_t*)buffer;
+		char                  *data   = buffer + sizeof(chipvpn_packet_data_t);
+
+		int r = chipvpn_device_read(vpn->device, data, sizeof(buffer) - sizeof(chipvpn_packet_data_t));
 		if(r <= 0) {
 			return 0;
 		}
 
-		ip_hdr_t *ip_hdr = (ip_hdr_t*)buffer;
+		ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
 		chipvpn_address_t dst = {
 			.ip = ip_hdr->dst_addr
@@ -155,28 +159,21 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
-		char packet[sizeof(chipvpn_packet_data_t) + r];
-
-		chipvpn_packet_data_t data = {
-			.header.type = CHIPVPN_PACKET_DATA,
-			.session = htonl(peer->outbound_session),
-			.counter = htonll(vpn->counter)
-		};
-
-		chipvpn_crypto_xchacha20(&peer->outbound_crypto, buffer, r, vpn->counter);
-		memcpy(packet, &data, sizeof(data));
-		memcpy(packet + sizeof(data), buffer, r);
-
+		chipvpn_crypto_xchacha20(&peer->outbound_crypto, data, r, vpn->counter);
 		vpn->counter++;
 
 		peer->tx += r;
 
-		chipvpn_socket_write(vpn->socket, packet, sizeof(chipvpn_packet_data_t) + r, &peer->address);
+		header->header.type = CHIPVPN_PACKET_DATA;
+		header->session     = htonl(peer->outbound_session);
+		header->counter     = htonll(vpn->counter);
+
+		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
 
 	/* socket => tunnel */
 	if(chipvpn_socket_can_read(vpn->socket) && chipvpn_device_can_write(vpn->device)) {
-		char buffer[sizeof(chipvpn_packet_t) + 65535];
+		char buffer[SOCKET_QUEUE_ENTRY_SIZE];
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);
