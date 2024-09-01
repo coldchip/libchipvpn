@@ -109,12 +109,6 @@ typedef struct __attribute__((__packed__)) {
 	char sign[32];
 } chipvpn_packet_ping_t;
 
-typedef union {
-	chipvpn_packet_auth_t auth;
-	chipvpn_packet_data_t data;
-	chipvpn_packet_ping_t ping;
-} chipvpn_packet_t;
-
 #ifdef __cplusplus
 }
 #endif

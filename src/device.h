@@ -24,12 +24,20 @@ extern "C"
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/select.h>
+#include <sys/ioctl.h>
 #include "socket.h"
 #include "address.h"
 #include "peer.h"
 #include "list.h"
 #include <netinet/in.h>
 #include <net/if.h>
+
+#ifdef __linux__
+#define IFF_TUN 0x0001
+#define IFF_NO_PI 0x1000
+#define TUNSETIFF _IOW('T', 202, int)
+#define TUNSETPERSIST _IOW('T', 203, int)
+#endif
 
 typedef struct {
 	int fd;
