@@ -245,8 +245,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				);
 
 				printf("%p says: hello\n", peer);
-				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - ntohll(packet->timestamp));
-				printf("%p says: session id: %u\n", peer, ntohl(packet->session));
+				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - peer->timestamp);
+				printf("%p says: session id: local [%u] remote [%u]\n", peer, peer->inbound_session, peer->outbound_session);
 
 				struct in_addr ip_addr;
 				ip_addr.s_addr = addr.ip;
