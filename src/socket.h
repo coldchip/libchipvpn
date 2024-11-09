@@ -12,7 +12,7 @@ extern "C"
 #include "list.h"
 
 #define SOCKET_QUEUE_SIZE 16
-#define SOCKET_QUEUE_ENTRY_SIZE 65535
+#define SOCKET_QUEUE_ENTRY_SIZE 64000
 
 typedef struct {
 	chipvpn_list_node_t node;
@@ -29,9 +29,6 @@ typedef struct {
 
 typedef struct {
 	int fd;
-	char key[1024];
-	int key_length;
-	uint32_t counter;
 	chipvpn_socket_queue_t tx_queue;
 	chipvpn_socket_queue_t rx_queue;
 	chipvpn_address_t addr;
@@ -41,7 +38,6 @@ chipvpn_socket_t                *chipvpn_socket_create();
 bool                             chipvpn_socket_set_sendbuf(chipvpn_socket_t *sock, int size);
 bool                             chipvpn_socket_set_recvbuf(chipvpn_socket_t *sock, int size);
 bool                             chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *bind);
-void                             chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length);
 void                             chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max);
 void                             chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset);
 

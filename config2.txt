@@ -1,5 +1,5 @@
 section:device
-name:chipvpn
+name:cv-server
 network:10.64.0.1/16
 bind:0.0.0.0:4433
 mtu:1500

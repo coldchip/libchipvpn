@@ -23,7 +23,6 @@ typedef struct {
 	int mtu;
 	bool is_bind;
 	chipvpn_address_t bind;
-	char xorkey[1024];
 	int sendbuf;
 	int recvbuf;
 } chipvpn_config_t;
@@ -34,7 +33,7 @@ typedef struct {
 	uint64_t counter;
 } chipvpn_t;
 
-chipvpn_t *    chipvpn_create(chipvpn_config_t *config);
+chipvpn_t *    chipvpn_create(chipvpn_config_t *config, int tun_fd);
 void           chipvpn_wait(chipvpn_t *vpn, uint64_t timeout);
 void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max);
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);

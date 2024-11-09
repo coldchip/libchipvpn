@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+
 #include <time.h>
 #include <stdlib.h>
 #include "util.h"
@@ -83,13 +89,6 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 				}
 			}
 
-			if(section == DEVICE_SECTION && strcmp(key, "xor") == 0) {
-				char xorkey[1024];
-				if(sscanf(value, "%1023s", xorkey) == 1) {
-					strcpy(config->xorkey, xorkey);
-				}
-			}
-
 			if(section == DEVICE_SECTION && strcmp(key, "sendbuf") == 0) {
 				int sendbuf;
 				if(sscanf(value, "%i", &sendbuf) == 1) {
@@ -147,9 +146,24 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 			chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&device->peers);
 
 			if(section == PEER_SECTION && strcmp(key, "address") == 0) {
-				char address[24];
+				char address[512];
 				int port;
-				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
+				if(sscanf(value, "%512[^:]:%i", address, &port) == 2) {
+					struct addrinfo hints, *result;
+
+					memset (&hints, 0, sizeof (hints));
+					hints.ai_family = PF_UNSPEC;
+					hints.ai_socktype = SOCK_STREAM;
+					hints.ai_flags |= AI_CANONNAME;
+
+					int errcode = getaddrinfo(address, NULL, &hints, &result);
+					if(errcode != 0) {
+						printf("getaddrinfo() failed\n");
+						exit(1);
+					}
+
+					inet_ntop(result->ai_family, &((struct sockaddr_in *)result->ai_addr)->sin_addr, address, 100);
+
 					chipvpn_peer_set_address(peer, address, port);
 					peer->connect = true;
 				}
@@ -243,13 +257,12 @@ int main(int argc, char const *argv[]) {
 	chipvpn_config_t config = {
 		.name = "chipvpn",
 		.mtu = 1400,
-		.xorkey = "chipvpn",
 		.sendbuf = 0,
 		.recvbuf = 0
 	};
 	read_device_config(argv[1], &config);
 
-	chipvpn_t *vpn = chipvpn_create(&config);
+	chipvpn_t *vpn = chipvpn_create(&config, -1);
 	if(!vpn) {
 		fprintf(stderr, "unable to create vpn tunnel interface\n");
 		exit(1);

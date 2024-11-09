@@ -24,8 +24,6 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	}
 
 	sock->fd = fd;
-	sock->key_length = 0;
-	chipvpn_secure_random((char *)&sock->counter, sizeof(sock->counter));
 
 	chipvpn_socket_reset_queue(&sock->tx_queue);
 	chipvpn_socket_reset_queue(&sock->rx_queue);
@@ -58,12 +56,6 @@ bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
 		return false;
 	}
 	return true;
-}
-
-void chipvpn_socket_set_key(chipvpn_socket_t *sock, const char *key, int length) {
-	memset(sock->key, 0, sizeof(sock->key));
-	memcpy(sock->key, key, length);
-	sock->key_length = length;
 }
 
 void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max) {
