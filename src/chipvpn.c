@@ -17,13 +17,13 @@
 #include "xchacha20.h"
 #include "util.h"
 
-chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
+chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
 
 	/* create vpn device */
-	chipvpn_device_t *device = chipvpn_device_create();
+	chipvpn_device_t *device = chipvpn_device_create(tun_fd);
 	if(!device) {
 		return NULL;
 	}
@@ -34,20 +34,22 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 		return NULL;
 	}
 
-	if(!chipvpn_device_set_name(device, config->name)) {
-		return NULL;
-	}
+	if(tun_fd < 0) {
+		if(!chipvpn_device_set_name(device, config->name)) {
+			return NULL;
+		}
 
-	if(!chipvpn_device_set_address(device, &config->network)) {
-		return NULL;
-	}
+		if(!chipvpn_device_set_address(device, &config->network)) {
+			return NULL;
+		}
 
-	if(!chipvpn_device_set_mtu(device, config->mtu)) {
-		return NULL;
-	}
-	
-	if(!chipvpn_device_set_enabled(device)) {
-		return NULL;
+		if(!chipvpn_device_set_mtu(device, config->mtu)) {
+			return NULL;
+		}
+		
+		if(!chipvpn_device_set_enabled(device)) {
+			return NULL;
+		}
 	}
 
 	if(config->sendbuf > 0 && !chipvpn_socket_set_sendbuf(socket, config->sendbuf)) {
@@ -57,8 +59,6 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config) {
 	if(config->recvbuf > 0 && !chipvpn_socket_set_recvbuf(socket, config->recvbuf)) {
 		return NULL;
 	}
-
-	chipvpn_socket_set_key(socket, config->xorkey, strlen(config->xorkey));
 
 	if(config->is_bind) {
 		printf("device has bind set\n");
@@ -244,6 +244,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 					1024
 				);
 
+				if(packet->ack) {
+					printf("%p says: peer requested auth acknowledgement\n", peer);
+					chipvpn_peer_connect(vpn->socket, peer, 0);
+				}
+
 				printf("%p says: hello\n", peer);
 				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - peer->timestamp);
 				printf("%p says: session id: local [%u] remote [%u]\n", peer, peer->inbound_session, peer->outbound_session);
@@ -251,11 +256,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				struct in_addr ip_addr;
 				ip_addr.s_addr = addr.ip;
 				printf("%p says: peer connected from [%s:%i]\n", peer, inet_ntoa(ip_addr), addr.port);
-
-				if(packet->ack) {
-					printf("%p says: peer requested auth acknowledgement\n", peer);
-					chipvpn_peer_connect(vpn->socket, peer, 0);
-				}
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
