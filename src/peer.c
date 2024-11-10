@@ -15,11 +15,11 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	}
 
 	peer->state = PEER_DISCONNECTED;
-	peer->timestamp = 0;
-	peer->tx = 0;
-	peer->rx = 0;
-	peer->last_check = 0;
-	peer->timeout = 0;
+	peer->timestamp = 0l;
+	peer->tx = 0l;
+	peer->rx = 0l;
+	peer->last_check = 0l;
+	peer->timeout = 0l;
 	peer->connect = false;
 	peer->onconnect = NULL;
 	peer->onping = NULL;

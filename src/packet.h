@@ -107,6 +107,8 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t session;
 	uint64_t counter;
 	char sign[32];
+	uint64_t tx_count;
+	uint64_t rx_count;
 } chipvpn_packet_ping_t;
 
 #ifdef __cplusplus
