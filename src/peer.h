@@ -45,10 +45,9 @@ void                 chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
-bool                 chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *onconnect);
-bool                 chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *onping);
-bool                 chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *ondisconnect);
-bool                 chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *needle);
+bool                 chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command);
+bool                 chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command);
+bool                 chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);
 chipvpn_peer_t      *chipvpn_peer_get_by_key(chipvpn_list_t *peers, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);

@@ -260,6 +260,7 @@ int main(int argc, char const *argv[]) {
 		.sendbuf = 0,
 		.recvbuf = 0
 	};
+	
 	read_device_config(argv[1], &config);
 
 	chipvpn_t *vpn = chipvpn_create(&config, -1);

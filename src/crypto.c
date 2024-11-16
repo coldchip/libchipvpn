@@ -51,11 +51,11 @@ const uint32_t crc32_table[] = {
 };
 
 void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key) {
-	memcpy(crypto->key, key, 256 / 8);
+	memcpy(crypto->key, key, 32);
 }
 
 void chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce) {
-	memcpy(crypto->nonce, nonce, 192 / 8);
+	memcpy(crypto->nonce, nonce, 24);
 }
 
 void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter) {

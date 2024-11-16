@@ -125,30 +125,19 @@ bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 	return true;
 }
 
-bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *onconnect) {
-	peer->onconnect = strdup(onconnect);
+bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
+	peer->onconnect = strdup(command);
 	return true;
 }
 
-bool chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *onping) {
-	peer->onping = strdup(onping);
+bool chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command) {
+	peer->onping = strdup(command);
 	return true;
 }
 
-bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *ondisconnect) {
-	peer->ondisconnect = strdup(ondisconnect);
+bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command) {
+	peer->ondisconnect = strdup(command);
 	return true;
-}
-
-bool chipvpn_peer_exists(chipvpn_list_t *peers, chipvpn_peer_t *needle) {
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-
-		if(peer == needle) {
-			return true;
-		}
-	}
-	return false;
 }
 
 chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_list_t *peers, char *key) {
