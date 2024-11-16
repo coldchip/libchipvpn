@@ -9,8 +9,8 @@ extern "C"
 #include <stdint.h>
 
 typedef struct {
-	char key[256 / 8];
-	char nonce[192 / 8];
+	char key[32];
+	char nonce[24];
 } chipvpn_crypto_t;
 
 void                  chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key);
