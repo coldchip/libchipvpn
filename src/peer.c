@@ -240,6 +240,8 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
+	chipvpn_peer_set_status(peer, PEER_DISCONNECTED);
+
 	if(peer->onconnect) {
 		free(peer->onconnect);
 	}

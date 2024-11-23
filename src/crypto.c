@@ -68,31 +68,3 @@ void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, ui
 		counter
 	);
 }
-
-void chipvpn_crypto_xor(char *dst, char *src, int size, char *key, int klen) {
-	int blocks = size / sizeof(int);
-	for(int i = 0; i < blocks; i++) {
-		((int*)dst)[i] = ((int*)src)[i] ^ *(int*)key;
-	}
-
-	int remaining = blocks * sizeof(int);
-
-	for(int i = remaining; i < size; i++) {
-		dst[i] = src[i] ^ key[i % klen];
-	}
-}
-
-void chipvpn_crypto_crc32_init(uint32_t *state) {
-	*state = ~0U;
-}
-
-void chipvpn_crypto_crc32_update(uint32_t *state, const void *buf, size_t size) {
-	const uint8_t *p = buf;
-	while(size--) {
-		*state = crc32_table[(*state ^ *p++) & 0xFF] ^ (*state >> 8);
-	}
-}
-
-uint32_t chipvpn_crypto_crc32_final(uint32_t *state) {
-	return *state ^ ~0U;
-}
