@@ -236,10 +236,9 @@ void terminate(int type) {
 }
 
 int main(int argc, char const *argv[]) {
-	/* code */
 	srand(time(NULL));
 
-	printf("chipvpn 1.7.5 alpha\n"); 
+	printf("chipvpn 1.7.6 alpha\n"); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		printf("config path required\n");
@@ -256,7 +255,7 @@ int main(int argc, char const *argv[]) {
 
 	chipvpn_config_t config = {
 		.name = "chipvpn",
-		.mtu = 1400,
+		.mtu = 1420,
 		.sendbuf = 0,
 		.recvbuf = 0
 	};

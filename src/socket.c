@@ -214,5 +214,9 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 
 void chipvpn_socket_free(chipvpn_socket_t *sock) {
 	close(sock->fd);
+
+	chipvpn_socket_reset_queue(&sock->tx_queue);
+	chipvpn_socket_reset_queue(&sock->rx_queue);
+
 	free(sock);
 }
