@@ -45,7 +45,6 @@ typedef struct {
     int can_write;
 	char dev[IFNAMSIZ + 1];
     chipvpn_list_t peers;
-    struct sockaddr_un sa;
 } chipvpn_device_t;
 
 chipvpn_device_t       *chipvpn_device_create(int tun_fd);

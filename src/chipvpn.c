@@ -252,10 +252,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				printf("%p says: hello\n", peer);
 				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - peer->timestamp);
 				printf("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
-
-				struct in_addr ip_addr;
-				ip_addr.s_addr = addr.ip;
-				printf("%p says: peer connected from [%s:%i]\n", peer, inet_ntoa(ip_addr), addr.port);
+				printf("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), addr.port);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
