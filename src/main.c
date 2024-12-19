@@ -238,7 +238,7 @@ void terminate(int type) {
 int main(int argc, char const *argv[]) {
 	srand(time(NULL));
 
-	printf("chipvpn 1.7.6 alpha\n"); 
+	printf("chipvpn 1.7.7 alpha\n"); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		printf("config path required\n");
