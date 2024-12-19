@@ -230,13 +230,15 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	char *result2 = str_replace(result1, "%gatewaydev%", dev);
 	char *result3 = str_replace(result2, "%tx%", tx);
 	char *result4 = str_replace(result3, "%rx%", rx);
-	if(system(result4) == 0) {
-		printf("%s\n", result4);
+	char *result5 = str_replace(result4, "%paddr%", chipvpn_address_to_char(&peer->address));
+	if(system(result5) == 0) {
+		printf("%s\n", result5);
 	}
 	free(result1);
 	free(result2);
 	free(result3);
 	free(result4);
+	free(result5);
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
