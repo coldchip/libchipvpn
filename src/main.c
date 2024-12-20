@@ -45,6 +45,12 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 		char key[32];
 		char value[4096];
 		if(sscanf(line, "%24[^:]:%1024[^\n]", key, value) == 2) {
+			// includes
+			if(strcmp(key, "include") == 0) {
+				read_device_config(value, config);
+				continue;
+			}
+
 			if(strcmp(key, "section") == 0 && strcmp(value, "device") == 0) {
 				section = DEVICE_SECTION;
 				continue;
@@ -135,6 +141,12 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 		char key[32];
 		char value[4096];
 		if(sscanf(line, "%24[^:]:%1024[^\n]", key, value) == 2) {
+			// includes
+			if(strcmp(key, "include") == 0) {
+				read_peer_config(value, device);
+				continue;
+			}
+
 			if(strcmp(key, "section") == 0 && strcmp(value, "peer") == 0) {
 				section = PEER_SECTION;
 
