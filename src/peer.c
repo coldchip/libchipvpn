@@ -191,16 +191,18 @@ chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t sess
 	return NULL;
 }
 
-void chipvpn_peer_set_status(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
+void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 	if(peer->state != state) {
 		switch(state) {
 			case PEER_CONNECTED: {
+				printf("peer state is connected\n");
 				if(peer->onconnect) {
 					chipvpn_peer_run_command(peer, peer->onconnect);
 				}
 			}
 			break;
 			case PEER_DISCONNECTED: {
+				printf("peer state is disconnected\n");
 				if(peer->ondisconnect) {
 					chipvpn_peer_run_command(peer, peer->ondisconnect);
 				}
@@ -242,7 +244,7 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
-	chipvpn_peer_set_status(peer, PEER_DISCONNECTED);
+	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 
 	if(peer->onconnect) {
 		free(peer->onconnect);

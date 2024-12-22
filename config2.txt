@@ -3,7 +3,6 @@ name:cv-server
 network:10.64.0.1/16
 bind:0.0.0.0:4433
 mtu:1500
-xor:weweweshshsh
 
 section:peer
 allow:10.64.0.2/32

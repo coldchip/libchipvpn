@@ -35,7 +35,7 @@ typedef struct {
 } chipvpn_t;
 
 chipvpn_t *    chipvpn_create(chipvpn_config_t *config, int tun_fd);
-void           chipvpn_wait(chipvpn_t *vpn, uint64_t timeout);
+void           chipvpn_poll(chipvpn_t *vpn, uint64_t timeout);
 void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max);
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);
 int            chipvpn_service(chipvpn_t *vpn);

@@ -283,7 +283,7 @@ int main(int argc, char const *argv[]) {
 	uint64_t last_check = 0;
 
 	while(!quit) {
-		chipvpn_wait(vpn, 250);
+		chipvpn_poll(vpn, 250);
 		chipvpn_service(vpn);
 
 		if(chipvpn_get_time() - last_check > 2000) {
