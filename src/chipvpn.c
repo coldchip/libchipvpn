@@ -75,7 +75,7 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 	return vpn;
 }
 
-void chipvpn_wait(chipvpn_t *vpn, uint64_t timeout) {
+void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
 	fd_set rdset, wdset;
 	FD_ZERO(&rdset);
 	FD_ZERO(&wdset);
@@ -118,12 +118,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(peer->state != PEER_DISCONNECTED && chipvpn_get_time() > peer->timeout) {
 				printf("%p says: peer disconnected\n", peer);
-				chipvpn_peer_set_status(peer, PEER_DISCONNECTED);
+				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 			}
 
 			/* attempt to connect to peer */
 			if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
-				printf("%p says: connecting\n", peer);
+				printf("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+
 				chipvpn_peer_connect(vpn->socket, peer, true);
 			}
 
@@ -172,7 +173,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);
-		if(r <= sizeof(chipvpn_packet_header_t)) {
+		if(r < sizeof(chipvpn_packet_header_t)) {
 			return 0;
 		}
 
@@ -224,7 +225,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				chipvpn_peer_set_status(peer, PEER_DISCONNECTED);
+				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 
 				peer->outbound_session = ntohl(packet->session);
 				peer->address = addr;
@@ -233,7 +234,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->rx = 0l;
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 
-				chipvpn_peer_set_status(peer, PEER_CONNECTED);
+				chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 				xchacha_xcrypt(
 					(unsigned char*)&peer->outbound_crypto, 
@@ -250,9 +251,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				printf("%p says: hello\n", peer);
-				printf("%p says: time difference %lims\n", peer, chipvpn_get_time() - peer->timestamp);
 				printf("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
-				printf("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), addr.port);
+				printf("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -340,7 +340,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 void chipvpn_cleanup(chipvpn_t *vpn) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-		chipvpn_peer_set_status(peer, PEER_DISCONNECTED);
+		chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 	}
 
 	chipvpn_device_free(vpn->device);
