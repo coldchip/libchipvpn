@@ -195,14 +195,12 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 	if(peer->state != state) {
 		switch(state) {
 			case PEER_CONNECTED: {
-				printf("peer state is connected\n");
 				if(peer->onconnect) {
 					chipvpn_peer_run_command(peer, peer->onconnect);
 				}
 			}
 			break;
 			case PEER_DISCONNECTED: {
-				printf("peer state is disconnected\n");
 				if(peer->ondisconnect) {
 					chipvpn_peer_run_command(peer, peer->ondisconnect);
 				}
