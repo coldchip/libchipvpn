@@ -14,6 +14,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 		return NULL;
 	}
 
+	/* use setter to set? */
 	peer->state = PEER_DISCONNECTED;
 	peer->timestamp = 0l;
 	peer->tx = 0l;

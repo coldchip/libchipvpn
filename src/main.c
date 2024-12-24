@@ -161,21 +161,6 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 				char address[512];
 				int port;
 				if(sscanf(value, "%512[^:]:%i", address, &port) == 2) {
-					struct addrinfo hints, *result;
-
-					memset (&hints, 0, sizeof (hints));
-					hints.ai_family = PF_UNSPEC;
-					hints.ai_socktype = SOCK_STREAM;
-					hints.ai_flags |= AI_CANONNAME;
-
-					int errcode = getaddrinfo(address, NULL, &hints, &result);
-					if(errcode != 0) {
-						printf("getaddrinfo() failed\n");
-						exit(1);
-					}
-
-					inet_ntop(result->ai_family, &((struct sockaddr_in *)result->ai_addr)->sin_addr, address, 100);
-
 					chipvpn_peer_set_address(peer, address, port);
 					peer->connect = true;
 				}

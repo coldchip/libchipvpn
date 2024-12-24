@@ -109,8 +109,11 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+	chipvpn_list_node_t *i = chipvpn_list_begin(&vpn->device->peers);
+	while(i != chipvpn_list_end(&vpn->device->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)i;
+		i = chipvpn_list_next(i);
 
 		if(chipvpn_get_time() - peer->last_check > CHIPVPN_PEER_PING) {
 			peer->last_check = chipvpn_get_time();

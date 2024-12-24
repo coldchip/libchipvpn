@@ -77,7 +77,7 @@ typedef struct {
 typedef enum {
 	CHIPVPN_PACKET_AUTH,
 	CHIPVPN_PACKET_DATA,
-	CHIPVPN_PACKET_PING
+	CHIPVPN_PACKET_PING,
 } chipvpn_packet_type_e;
 
 typedef struct __attribute__((__packed__)) {
