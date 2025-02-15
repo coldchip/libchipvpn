@@ -117,7 +117,7 @@ void xchacha_xcrypt(uint8_t *dst, const uint8_t *src, int size, uint8_t *key, ui
     XChaCha_ctx ctx;
     xchacha_keysetup(&ctx, key, nonce);
     xchacha_set_counter(&ctx, (uint8_t*)&counter);
-    xchacha_encrypt_bytes(&ctx, src, dst, size);
+    xchacha_xcrypt_bytes(&ctx, src, dst, size);
 }
 
 
@@ -130,7 +130,7 @@ void xchacha_xcrypt(uint8_t *dst, const uint8_t *src, int size, uint8_t *key, ui
  * overflow will occur.
  *
  */
-void xchacha_encrypt_bytes(XChaCha_ctx *ctx, const uint8_t *m, uint8_t *c, uint32_t bytes){
+void xchacha_xcrypt_bytes(XChaCha_ctx *ctx, const uint8_t *m, uint8_t *c, uint32_t bytes){
     uint32_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
     uint32_t j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;
     uint8_t *ctarget = NULL;
@@ -261,36 +261,4 @@ void xchacha_encrypt_bytes(XChaCha_ctx *ctx, const uint8_t *m, uint8_t *c, uint3
         c += 64;
         m += 64;
     }
-}
-
-
-/** Decrypt data with the XChaCha20 stream cipher
- * @param x The XChaCha20 context with the cipher's state to use
- * @param c The ciphertext to decrypt
- * @param m A buffer to hold the plaintext
- * @param bytes The number of bytes of ciphertext to decrypt
- * @note length of m must be >= the length of c otherwise a buffer
- * overflow will occur.
- *
- */
-void xchacha_decrypt_bytes(XChaCha_ctx *ctx, const uint8_t *c, uint8_t *m, uint32_t bytes){
-    xchacha_encrypt_bytes(ctx,c,m,bytes);
-}
-
-
-/** Generate a keystream from encrypting a zero byte plaintext
- * @param x The XChaCha context to use
- * @param stream A buffer to store the generated keystream
- * @param bytes The number of bytes of keystream to generate
- * @note Mostly for testing purposes
- *
- */
-void xchacha_keystream_bytes(XChaCha_ctx *ctx, uint8_t *stream, uint32_t bytes){
-    uint32_t i;
-
-    for (i = 0;i < bytes;++i){
-        stream[i] = 0;
-    }
-
-    xchacha_encrypt_bytes(ctx,stream,stream,bytes);
 }

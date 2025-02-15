@@ -167,54 +167,9 @@ void xchacha_xcrypt(uint8_t *dst, const uint8_t *src, int size, uint8_t *key, ui
  * @param msglen Message length in bytes
  *
  */
-void xchacha_encrypt_bytes(XChaCha_ctx* ctx, const uint8_t* plaintext,
+void xchacha_xcrypt_bytes(XChaCha_ctx* ctx, const uint8_t* plaintext,
 		uint8_t* ciphertext,
 		uint32_t msglen);
-
-
-/** Dencrypt a set of bytes with XChaCha20
- * @param ctx The XChaCha20 context to use
- * @param ciphertext The encrypted data to decrypt
- * @param plaintext A buffer to hold the decrypted data
- * @param msglen Message length in bytes
- *
- */
-void xchacha_decrypt_bytes(XChaCha_ctx* ctx, const uint8_t* ciphertext,
-    uint8_t* plaintext,
-    uint32_t msglen);
-
-
-/** For testing purposes it can sometimes be useful to have a function
- *  which immediately generates keystream without having to provide it
- *  with a zero plaintext.
- *  @param ctx The XChaCha context to use
- *  @param keystream A buffer to hold the keystream
- *  @param length Length of keystream in bytes
- *
- */
-void xchacha_keystream_bytes(XChaCha_ctx* ctx, uint8_t* keystream, uint32_t length);
-
-
-/** Encrypt/decrypt of blocks.
- *  @param ctx The XChaCha context to use
- *  @param plaintext A buffer which holds unencrypted data
- *  @param ciphertext A buffer which holds encrypted data
- *  @param blocks The number of 512 blocks to process with XChaCha20
- *
- */
-#define xchacha_encrypt_blocks(ctx, plaintext, ciphertext, blocks)         \
-    xchacha_encrypt_bytes(ctx, plaintext, ciphertext,                      \
-    (blocks) * XCHACHA_BLOCKLENGTH)
-
-
-#define xchacha_decrypt_blocks(ctx, ciphertext, plaintext, blocks)         \
-    xchacha_decrypt_bytes(ctx, ciphertext, plaintext,                      \
-    (blocks) * XCHACHA_BLOCKLENGTH)
-
-
-#define xchacha_keystream_blocks(ctx, keystream, blocks)                   \
-    xchacha_keystream_bytes(ctx, keystream,                                \
-    (blocks) * XCHACHA_BLOCKLENGTH)
 
 
 #ifdef __cplusplus
