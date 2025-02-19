@@ -271,10 +271,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
-					return 0;
-				}
-
 				chipvpn_crypto_xchacha20(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
@@ -287,6 +283,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
+				peer->address = addr;
 				peer->rx += r - sizeof(chipvpn_packet_data_t);
 				chipvpn_device_write(vpn->device, data, r - sizeof(chipvpn_packet_data_t));
 			}
@@ -303,10 +300,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 				
-				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
-					return 0;
-				}
-
 				char sign[32];
 				memcpy(sign, packet->sign, sizeof(sign));
 				memset(packet->sign, 0, sizeof(packet->sign));
@@ -331,6 +324,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				printf("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
+				peer->address = addr;
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 			}
 			break;
