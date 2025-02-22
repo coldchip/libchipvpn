@@ -224,8 +224,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				unsigned char computed_sign[32];
 				SHA256_CTX state;
 				sha256_init(&state);
-				sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_auth_t));
 				sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
+				sha256_update(&state, (unsigned char*)packet, sizeof(chipvpn_packet_auth_t));
 				sha256_final(&state, computed_sign);
 
 				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
