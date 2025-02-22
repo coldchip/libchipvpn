@@ -239,14 +239,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
-				xchacha_xcrypt(
-					(unsigned char*)&peer->outbound_crypto, 
-					(unsigned char*)&packet->crypto, 
-					sizeof(packet->crypto),
-					(unsigned char*)peer->key, 
-					(unsigned char*)packet->nonce, 
-					1024
-				);
+				SHA256_CTX state1;
+				sha256_init(&state1);
+				sha256_update(&state1, (unsigned char*)peer->key, sizeof(peer->key));
+				sha256_update(&state1, (unsigned char*)&packet->nonce, sizeof(packet->nonce));
+				sha256_final(&state1, (unsigned char*)&peer->outbound_crypto.key);
+				memcpy(peer->outbound_crypto.nonce, packet->nonce, sizeof(packet->nonce));
 
 				if(packet->ack) {
 					printf("%p says: peer requested auth acknowledgement\n", peer);
