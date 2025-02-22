@@ -33,37 +33,34 @@ chipvpn_peer_t *chipvpn_peer_create() {
 void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
 	chipvpn_secure_random((char*)&peer->inbound_session, sizeof(peer->inbound_session));
 
-	chipvpn_secure_random((char*)&peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
-	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
-
 	chipvpn_packet_auth_t packet = {
-		.version = 173,
+		.version = 175,
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.session = htonl(peer->inbound_session),
 		.timestamp = htonll(chipvpn_get_time()),
 		.ack = ack
 	};
 
+	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+
+	/* generate nonce */
+	SHA256_CTX state1;
+	sha256_init(&state1);
+	sha256_update(&state1, (unsigned char*)peer->key, sizeof(peer->key));
+	sha256_update(&state1, (unsigned char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+	sha256_final(&state1, (unsigned char*)&peer->inbound_crypto.key);
+	memcpy(packet.nonce, peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+
+	/* generate key hash */
 	SHA256_CTX state0;
 	sha256_init(&state0);
 	sha256_update(&state0, (unsigned char*)peer->key, sizeof(peer->key));
 	sha256_final(&state0, (unsigned char*)packet.keyhash);
 
-	chipvpn_secure_random((char*)&packet.nonce, sizeof(packet.nonce));
-
-	xchacha_xcrypt(
-		(unsigned char*)&packet.crypto, 
-		(unsigned char*)&peer->inbound_crypto, 
-		sizeof(packet.crypto), 
-		(unsigned char*)peer->key,
-		(unsigned char*)packet.nonce, 
-		1024
-	);
-
 	memset(packet.sign, 0, sizeof(packet.sign));
 
+	/* sign */
 	unsigned char sign[32];
-
 	SHA256_CTX state;
 	sha256_init(&state);
 	sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
