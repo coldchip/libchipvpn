@@ -199,6 +199,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
+				if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
+					printf("invalid protocol version\n");
+					return 0;
+				}
+
 				if(ntohll(packet->timestamp) <= peer->timestamp) {
 					printf("packet timestamp is older than peer timestamp\n");
 					return 0;
