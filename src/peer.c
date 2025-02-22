@@ -51,7 +51,7 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 	sha256_final(&state0, (unsigned char*)&peer->inbound_crypto.key);
 	memcpy(packet.nonce, peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
-	/* generate key hash */
+	/* generate keyhash */
 	SHA256_CTX state1;
 	sha256_init(&state1);
 	sha256_update(&state1, (unsigned char*)peer->key, sizeof(peer->key));
