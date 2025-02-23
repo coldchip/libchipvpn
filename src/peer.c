@@ -7,6 +7,7 @@
 #include "util.h"
 #include "xchacha20.h"
 #include "sha256.h"
+#include "hmac_sha256.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -30,7 +31,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
+int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
 	chipvpn_secure_random((char*)&peer->inbound_session, sizeof(peer->inbound_session));
 
 	chipvpn_packet_auth_t packet = {
@@ -41,38 +42,37 @@ void chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool a
 		.ack = ack
 	};
 
-	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+	/* generate keyhash */
+	sha256(peer->key, sizeof(peer->key), packet.keyhash, sizeof(packet.keyhash));
 
-	/* generate nonce for seeding the key */
-	SHA256_CTX state0;
-	sha256_init(&state0);
-	sha256_update(&state0, (unsigned char*)peer->key, sizeof(peer->key));
-	sha256_update(&state0, (unsigned char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
-	sha256_final(&state0, (unsigned char*)&peer->inbound_crypto.key);
+	/* generate nonce and sha256 the key */
+	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+	hmac_sha256(
+		peer->key, 
+		sizeof(peer->key),
+		peer->inbound_crypto.nonce,
+		sizeof(peer->inbound_crypto.nonce),
+		peer->inbound_crypto.key,
+		sizeof(peer->inbound_crypto.key)
+	);
 	memcpy(packet.nonce, peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
-	/* generate keyhash */
-	SHA256_CTX state1;
-	sha256_init(&state1);
-	sha256_update(&state1, (unsigned char*)peer->key, sizeof(peer->key));
-	sha256_final(&state1, (unsigned char*)packet.keyhash);
-
-	memset(packet.sign, 0, sizeof(packet.sign));
-
 	/* sign entire packet */
-	unsigned char sign[32];
-	SHA256_CTX state;
-	sha256_init(&state);
-	sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
-	sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
-	sha256_final(&state, sign);
+	memset(packet.sign, 0, sizeof(packet.sign));
+	hmac_sha256(
+		peer->key, 
+		sizeof(peer->key),
+		&packet,
+		sizeof(packet),
+		packet.sign, 
+		sizeof(packet.sign)
+	);
 
-	memcpy(packet.sign, sign, sizeof(packet.sign));
-
-	chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
+	/* write to socket */
+	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
 }
 
-void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
+int chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 	chipvpn_packet_ping_t packet = {};
 	packet.header.type = CHIPVPN_PACKET_PING;
 	packet.session = htonl(peer->outbound_session);
@@ -80,22 +80,22 @@ void chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 
 	peer->counter += 1;
 
+	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
-
-	unsigned char sign[32];
-	SHA256_CTX state;
-	sha256_init(&state);
-	sha256_update(&state, (unsigned char*)&packet, sizeof(packet));
-	sha256_update(&state, (unsigned char*)peer->key, sizeof(peer->key));
-	sha256_final(&state, sign);
-
-	memcpy(packet.sign, sign, sizeof(packet.sign));
+	hmac_sha256(
+		peer->key, 
+		sizeof(peer->key),
+		&packet,
+		sizeof(packet),
+		packet.sign, 
+		sizeof(packet.sign)
+	);
 
 	if(peer->onping) {
 		chipvpn_peer_run_command(peer, peer->onping);
 	}
 
-	chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
+	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
 }
 
 bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
@@ -115,10 +115,7 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 }
 
 bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
-	SHA256_CTX state;
-	sha256_init(&state);
-	sha256_update(&state, (unsigned char*)key, strlen(key));
-	sha256_final(&state, (unsigned char*)peer->key);
+	sha256(key, strlen(key), peer->key, sizeof(peer->key));
 
 	return true;
 }
@@ -155,10 +152,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
 
 		char current[32];
 		
-		SHA256_CTX state;
-		sha256_init(&state);
-		sha256_update(&state, (unsigned char*)peer->key, sizeof(current));
-		sha256_final(&state, (unsigned char*)current);
+		sha256(peer->key, sizeof(current), current, sizeof(current));
 
 		if(memcmp(key, current, sizeof(current)) == 0) {
 			return peer;
