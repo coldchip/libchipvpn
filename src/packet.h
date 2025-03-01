@@ -75,6 +75,8 @@ typedef struct {
 } udp_tcp_port_t;
 
 typedef enum {
+	CHIPVPN_PACKET_CHALLENGE = 0,
+	CHIPVPN_PACKET_CHALLENGE_REPLY,
 	CHIPVPN_PACKET_AUTH,
 	CHIPVPN_PACKET_DATA,
 	CHIPVPN_PACKET_PING,
@@ -86,11 +88,24 @@ typedef struct __attribute__((__packed__)) {
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
+	uint64_t id;
+	char keyhash[32];
+} chipvpn_packet_challenge_t;
+
+typedef struct __attribute__((__packed__)) {
+	chipvpn_packet_header_t header;
+	uint64_t id;
+	char keyhash[32];
+	char challenge[32];
+} chipvpn_packet_challenge_reply_t;
+
+typedef struct __attribute__((__packed__)) {
+	chipvpn_packet_header_t header;
 	uint32_t version;
 	uint32_t session;
 	char keyhash[32];
 	char nonce[24];
-	uint64_t timestamp;
+	char challenge[32];
 	bool ack;
 	char sign[32];
 } chipvpn_packet_auth_t;

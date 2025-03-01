@@ -129,7 +129,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
 				printf("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
-				chipvpn_peer_connect(vpn->socket, peer, true);
+				chipvpn_peer_connect(vpn->socket, peer, 1);
 			}
 
 			/* ping peers */
@@ -183,6 +183,55 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
 		switch(header->type) {
+			case CHIPVPN_PACKET_CHALLENGE: {
+				if(r < sizeof(chipvpn_packet_challenge_t)) {
+					return 0;
+				}
+
+				chipvpn_packet_challenge_t *packet = (chipvpn_packet_challenge_t*)buffer;
+
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
+				if(!peer) {
+					return 0;
+				}
+
+				chipvpn_secure_random(peer->challenge, sizeof(peer->challenge));
+
+				chipvpn_packet_challenge_reply_t reply = {
+					.header.type = CHIPVPN_PACKET_CHALLENGE_REPLY,
+					.id = packet->id
+				};
+				memcpy(reply.keyhash, packet->keyhash, sizeof(packet->keyhash));
+				memcpy(reply.challenge, peer->challenge, sizeof(peer->challenge));
+
+				chipvpn_socket_write(vpn->socket, &reply, sizeof(reply), &addr);
+			}
+			break;
+			case CHIPVPN_PACKET_CHALLENGE_REPLY: {
+				if(r < sizeof(chipvpn_packet_challenge_reply_t)) {
+					return 0;
+				}
+				
+				chipvpn_packet_challenge_reply_t *packet = (chipvpn_packet_challenge_reply_t*)buffer;
+
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
+				if(!peer) {
+					return 0;
+				}
+
+				chipvpn_list_node_t *r = chipvpn_list_begin(&peer->challenges);
+				while(r != chipvpn_list_end(&peer->challenges)) {
+					chipvpn_peer_challenge_receipt_t *receipt = (chipvpn_peer_challenge_receipt_t*)r;
+					r = chipvpn_list_next(r);
+
+					if(ntohll(packet->id) == receipt->id) {
+						chipvpn_peer_connect_challenge(vpn->socket, peer, packet->challenge, receipt->ack);
+						chipvpn_list_remove(&receipt->node);
+						free(receipt);
+					}
+				}
+			}
+			break;
 			case CHIPVPN_PACKET_AUTH: {
 				if(r < sizeof(chipvpn_packet_auth_t)) {
 					return 0;
@@ -205,16 +254,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(ntohll(packet->timestamp) <= peer->timestamp) {
-					printf("packet timestamp is older than peer timestamp\n");
-					return 0;
-				}
-
-				if(
-					chipvpn_get_time() - 60000 > ntohll(packet->timestamp) ||
-					chipvpn_get_time() + 60000 < ntohll(packet->timestamp)
-				) {
-					printf("invalid time range from peer\n");
+				if(memcmp(packet->challenge, peer->challenge, sizeof(peer->challenge)) != 0) {
+					printf("packet has invalid challenge code\n");
 					return 0;
 				}
 
@@ -241,7 +282,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				peer->outbound_session = ntohl(packet->session);
 				peer->address = addr;
-				peer->timestamp = ntohll(packet->timestamp);
 				peer->tx = 0l;
 				peer->rx = 0l;
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
@@ -264,7 +304,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				printf("%p says: hello\n", peer);
-				printf("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
 				printf("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 			}
 			break;
