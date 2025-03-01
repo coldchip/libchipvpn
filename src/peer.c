@@ -17,7 +17,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 
 	/* use setter to set? */
 	peer->state = PEER_DISCONNECTED;
-	peer->timestamp = 0l;
 	peer->tx = 0l;
 	peer->rx = 0l;
 	peer->last_check = 0l;
@@ -28,17 +27,43 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->ondisconnect = NULL;
 	peer->counter = 0l;
 
+	chipvpn_list_clear(&peer->challenges);
+
 	return peer;
 }
 
 int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
+	if(chipvpn_list_size(&peer->challenges) > 5) {
+		chipvpn_peer_challenge_receipt_t *receipt = (chipvpn_peer_challenge_receipt_t*)chipvpn_list_front(&peer->challenges);
+		chipvpn_list_remove(&receipt->node);
+		free(receipt);
+	}
+
+	chipvpn_peer_challenge_receipt_t *challenge = malloc(sizeof(chipvpn_peer_challenge_receipt_t));
+
+	chipvpn_secure_random((char*)&challenge->id, sizeof(challenge->id));
+	challenge->ack = ack;
+
+	chipvpn_list_insert(chipvpn_list_end(&peer->challenges), challenge);
+
+	chipvpn_packet_challenge_t packet = {
+		.header.type = CHIPVPN_PACKET_CHALLENGE,
+		.id = htonll(challenge->id)
+	};
+
+	/* generate keyhash */
+	sha256(peer->key, sizeof(peer->key), packet.keyhash, sizeof(packet.keyhash));
+
+	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
+}
+
+int chipvpn_peer_connect_challenge(chipvpn_socket_t *socket, chipvpn_peer_t *peer, char *challenge, bool ack) {
 	chipvpn_secure_random((char*)&peer->inbound_session, sizeof(peer->inbound_session));
 
 	chipvpn_packet_auth_t packet = {
-		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
 		.header.type = CHIPVPN_PACKET_AUTH,
+		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
 		.session = htonl(peer->inbound_session),
-		.timestamp = htonll(chipvpn_get_time()),
 		.ack = ack
 	};
 
@@ -56,6 +81,9 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 		sizeof(peer->inbound_crypto.key)
 	);
 	memcpy(packet.nonce, peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+
+	/* copy challenge */
+	memcpy(packet.challenge, challenge, sizeof(packet.challenge));
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
