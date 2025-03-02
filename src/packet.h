@@ -99,6 +99,7 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t session;
 	uint64_t counter;
+	char mac[16];
 } chipvpn_packet_data_t;
 
 typedef struct __attribute__((__packed__)) {

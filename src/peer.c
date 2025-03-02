@@ -28,7 +28,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->timeout = 0l;
 	peer->counter = 0l;
 
-	memset(&peer->bitmap, 0, sizeof(peer->bitmap));
+	chipvpn_bitmap_reset(&peer->bitmap);
 
 	return peer;
 }
