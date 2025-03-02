@@ -10,6 +10,7 @@ extern "C"
 #include "crypto.h"
 #include "socket.h"
 #include "address.h"
+#include "bitmap.h"
 #include "list.h"
 
 typedef enum {
@@ -19,16 +20,6 @@ typedef enum {
 
 typedef struct {
 	chipvpn_list_node_t node;
-	uint64_t id;
-	bool ack;
-} chipvpn_peer_challenge_receipt_t;
-
-typedef struct {
-	chipvpn_list_node_t node;
-
-	char challenge[32];
-	chipvpn_list_t challenges;
-
 	chipvpn_peer_state_e state;
 	chipvpn_crypto_t outbound_crypto;
 	chipvpn_crypto_t inbound_crypto;
@@ -40,17 +31,18 @@ typedef struct {
 	char *onconnect;
 	char *onping;
 	char *ondisconnect;
+	uint64_t timestamp;
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t last_check;
 	uint64_t timeout;
 	bool connect;
 	uint64_t counter;
+	chipvpn_bitmap_t bitmap;
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();
 int                  chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack);
-int                  chipvpn_peer_connect_challenge(chipvpn_socket_t *socket, chipvpn_peer_t *peer, char *challenge, bool ack);
 int                  chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
