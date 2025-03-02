@@ -33,7 +33,7 @@ void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *d
 
 	unsigned char block0[64] = {0};
 
-	chipvpn_crypto_xchacha20(crypto, block0, sizeof(block0), counter);
+	xchacha_hchacha20((uint8_t*)block0, (uint8_t*)crypto->key, (uint8_t*)crypto->nonce);
 
 	poly1305_init(&poly1305, block0);
 	poly1305_update(&poly1305, data, size);
@@ -45,7 +45,7 @@ void chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *d
 
 	unsigned char block0[64] = {0};
 
-	chipvpn_crypto_xchacha20(crypto, block0, sizeof(block0), counter);
+	xchacha_hchacha20((uint8_t*)block0, (uint8_t*)crypto->key, (uint8_t*)crypto->nonce);
 
 	poly1305_init(&poly1305, block0);
 	poly1305_update(&poly1305, data, size);
