@@ -247,6 +247,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->rx = 0l;
 				peer->counter = 0l;
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+				memset(&peer->bitmap, 0, sizeof(peer->bitmap));
 
 				chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
