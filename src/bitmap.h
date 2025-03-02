@@ -16,6 +16,7 @@ typedef struct {
     uint64_t bitmap[COUNTER_BITS_TOTAL / U64_SIZE];
 } chipvpn_bitmap_t;
 
-bool chipvpn_bitmap_validate(chipvpn_bitmap_t *window, uint64_t counter);
+void      chipvpn_bitmap_reset(chipvpn_bitmap_t *window);
+bool      chipvpn_bitmap_validate(chipvpn_bitmap_t *window, uint64_t counter);
 
 #endif

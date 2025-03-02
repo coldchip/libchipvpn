@@ -1,7 +1,14 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include "util.h"
 #include "bitmap.h"
+
+void chipvpn_bitmap_reset(chipvpn_bitmap_t *window) {
+	window->counter = 0l;
+	memset(window, 0, sizeof(chipvpn_bitmap_t));
+}
+
 
 bool chipvpn_bitmap_validate(chipvpn_bitmap_t *window, uint64_t counter) {
     if(

@@ -166,7 +166,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		header->session     = htonl(peer->outbound_session);
 		header->counter     = htonll(vpn->counter);
 
-		chipvpn_crypto_xchacha20(&peer->outbound_crypto, data, r, vpn->counter++);
+		chipvpn_crypto_xchacha20_poly1305_encrypt(&peer->outbound_crypto, data, r, vpn->counter++, header->mac);
 
 		peer->tx += r;
 		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
@@ -247,7 +247,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				peer->rx = 0l;
 				peer->counter = 0l;
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
-				memset(&peer->bitmap, 0, sizeof(peer->bitmap));
+				chipvpn_bitmap_reset(&peer->bitmap);
 
 				chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
@@ -292,7 +292,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				chipvpn_crypto_xchacha20(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter));
+				char mac[16];
+				chipvpn_crypto_xchacha20_poly1305_decrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), mac);
+
+				if(memcmp(mac, packet->mac, sizeof(packet->mac)) != 0) {
+					return 0;
+				}
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
