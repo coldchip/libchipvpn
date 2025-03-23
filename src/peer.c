@@ -46,7 +46,14 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 	};
 
 	/* generate keyhash */
-	sha256(peer->key, sizeof(peer->key), packet.keyhash, sizeof(packet.keyhash));
+	hmac_sha256(
+		peer->key, 
+		sizeof(peer->key),
+		"#CHIPVPN_KEYHASH",
+		16,
+		packet.keyhash, 
+		sizeof(packet.keyhash)
+	);
 
 	/* generate nonce and sha256 the key */
 	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
@@ -155,7 +162,14 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
 
 		char current[32];
 		
-		sha256(peer->key, sizeof(current), current, sizeof(current));
+		hmac_sha256(
+			peer->key, 
+			sizeof(peer->key),
+			"#CHIPVPN_KEYHASH",
+			16,
+			current, 
+			sizeof(current)
+		);
 
 		if(memcmp(key, current, sizeof(current)) == 0) {
 			return peer;
