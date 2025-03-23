@@ -22,6 +22,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->last_check = 0l;
 	peer->timeout = 0l;
 	peer->connect = false;
+	peer->hmac_sha256 = hmac_sha256;
 	peer->onconnect = NULL;
 	peer->onping = NULL;
 	peer->ondisconnect = NULL;
@@ -46,7 +47,7 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 	};
 
 	/* generate keyhash */
-	hmac_sha256(
+	peer->hmac_sha256(
 		peer->key, 
 		sizeof(peer->key),
 		"#CHIPVPN_KEYHASH",
@@ -57,7 +58,7 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 
 	/* generate nonce and sha256 the key */
 	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
-	hmac_sha256(
+	peer->hmac_sha256(
 		peer->key, 
 		sizeof(peer->key),
 		peer->inbound_crypto.nonce,
@@ -69,7 +70,7 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
-	hmac_sha256(
+	peer->hmac_sha256(
 		peer->key, 
 		sizeof(peer->key),
 		&packet,
@@ -92,7 +93,7 @@ int chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
-	hmac_sha256(
+	peer->hmac_sha256(
 		peer->key, 
 		sizeof(peer->key),
 		&packet,
@@ -162,7 +163,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
 
 		char current[32];
 		
-		hmac_sha256(
+		peer->hmac_sha256(
 			peer->key, 
 			sizeof(peer->key),
 			"#CHIPVPN_KEYHASH",

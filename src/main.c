@@ -4,12 +4,10 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
-
+#include <dlfcn.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
-
 #include <time.h>
 #include <stdlib.h>
 #include "util.h"
@@ -166,6 +164,23 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 				}
 			}
 
+			if(section == PEER_SECTION && strcmp(key, "plugin") == 0) {
+				char name[1024];
+				if(sscanf(value, "%1023s", name) == 1) {
+					void *dl = dlopen(name, RTLD_LAZY);
+					if(!dl) {
+						printf("unable to open shared library %s\n", name);
+						exit(1);
+					}
+					*(void**)(&peer->hmac_sha256) = dlsym(dl, "hmac_sha256");
+					if(!peer->hmac_sha256) {
+						printf("unable to load shared library function hmac_sha256(...)\n");
+						exit(1);
+					}
+					// close dl??
+				}
+			}
+
 			if(section == PEER_SECTION && strcmp(key, "allow") == 0) {
 				char address[24];
 				int prefix;
@@ -254,7 +269,7 @@ int main(int argc, char const *argv[]) {
 		.name = "chipvpn",
 		.mtu = 1420,
 		.sendbuf = 0,
-		.recvbuf = 0
+		.recvbuf = 0,
 	};
 	
 	read_device_config(argv[1], &config);
