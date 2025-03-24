@@ -224,7 +224,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memcpy(sign, packet->sign, sizeof(sign));
 				memset(packet->sign, 0, sizeof(packet->sign));
 
-				peer->hmac_sha256(
+				hmac_sha256(
 					peer->key, 
 					sizeof(peer->key),
 					packet,
@@ -251,7 +251,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
-				peer->hmac_sha256(
+				hmac_sha256(
 					peer->key, 
 					sizeof(peer->key),
 					packet->nonce,
@@ -334,7 +334,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memcpy(sign, packet->sign, sizeof(sign));
 				memset(packet->sign, 0, sizeof(packet->sign));
 
-				peer->hmac_sha256(
+				hmac_sha256(
 					peer->key, 
 					sizeof(peer->key),
 					packet,
