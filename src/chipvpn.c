@@ -285,10 +285,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
+					printf("%p says: rejected replayed packet\n", peer);
 					return 0;
 				}
 
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
+					printf("%p says: invalid src ip or src port\n", peer);
 					return 0;
 				}
 
@@ -306,6 +308,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				};
 
 				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
+					printf("%p says: invalid allow ip\n", peer);
 					return 0;
 				}
 
@@ -326,6 +329,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 				
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
+					printf("%p says: invalid src ip or src port\n", peer);
 					return 0;
 				}
 
@@ -344,6 +348,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				);
 
 				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+					printf("%p says: invalid ping sign\n", peer);
 					return 0;
 				}
 
