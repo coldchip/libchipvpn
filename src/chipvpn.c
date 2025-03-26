@@ -308,7 +308,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				};
 
 				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
-					printf("%p says: invalid allow ip\n", peer);
+					printf("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					return 0;
 				}
 
