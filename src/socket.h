@@ -11,7 +11,7 @@ extern "C"
 #include "crypto.h"
 #include "list.h"
 
-#define SOCKET_QUEUE_SIZE 16
+#define SOCKET_QUEUE_SIZE 128
 #define SOCKET_QUEUE_ENTRY_SIZE 64000
 #define SOCKET_FRAGMENT_ENTRY_SIZE 32
 
@@ -31,9 +31,6 @@ typedef struct {
 	int size;
 	uint16_t count;
 	chipvpn_address_t addr;
-	char buffer[SOCKET_QUEUE_ENTRY_SIZE];
-
-	// added
 	chipvpn_list_t fragment;
 } chipvpn_socket_queue_entry_t;
 
