@@ -191,11 +191,13 @@ void chipvpn_socket_dequeue_commit(chipvpn_socket_queue_entry_t *entry) {
 }
 
 bool chipvpn_socket_can_enqueue(chipvpn_socket_t *sock) {
-	return chipvpn_socket_queue_size(&sock->rx_queue) < SOCKET_QUEUE_SIZE;
+	// return chipvpn_socket_queue_size(&sock->rx_queue) < SOCKET_QUEUE_SIZE;
+	return true;
 }
 
 bool chipvpn_socket_can_dequeue(chipvpn_socket_t *sock) {
-	return chipvpn_socket_queue_size(&sock->tx_queue) > 0;
+	//return chipvpn_socket_queue_size(&sock->tx_queue) > 0;
+	return chipvpn_socket_dequeue_acquire(&sock->tx_queue) != NULL;
 }
 
 bool chipvpn_socket_can_read(chipvpn_socket_t *sock) {
