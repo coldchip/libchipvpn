@@ -66,41 +66,57 @@ void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *w
 
 void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset) {
 	if(FD_ISSET(socket->fd, rdset)) {
-		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&socket->rx_queue);
+		chipvpn_socket_fragment_entry_t *fragment = malloc(sizeof(chipvpn_socket_fragment_entry_t));
 
 		struct sockaddr_in sa;
 		int len = sizeof(sa);
 
-		int r = recvfrom(socket->fd, &entry->fragment, sizeof(entry->fragment), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+		int r = recvfrom(socket->fd, fragment, sizeof(chipvpn_socket_fragment_entry_t), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 		if(r <= 0) {
 			return;
 		}
 
-		entry->size = r - 6;
+		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&socket->rx_queue, fragment->id);
+		if(!entry) {
+			return;
+		}
+
+		entry->count = fragment->count;
+
+		chipvpn_list_insert(chipvpn_list_end(&entry->fragment), fragment);
+
+		entry->size += fragment->size;
 
 		entry->addr.ip = sa.sin_addr.s_addr;
 		entry->addr.port = ntohs(sa.sin_port);
 
-		chipvpn_socket_enqueue_commit(&socket->rx_queue, entry);
-		
 	}
 	if(FD_ISSET(socket->fd, wdset)) {
-		uint16_t count = 0;
-
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&socket->tx_queue);
 		if(!entry) {
 			return;
 		}
 
-		struct sockaddr_in sa;
-	
-		memset(&sa, 0, sizeof(sa));
-		sa.sin_family = AF_INET;
-		sa.sin_addr.s_addr = entry->addr.ip;
-		sa.sin_port = htons(entry->addr.port);
+		if(!chipvpn_list_empty(&entry->fragment)) {
+			chipvpn_socket_fragment_entry_t *fragment = (chipvpn_socket_fragment_entry_t*)chipvpn_list_front(&entry->fragment);
+			
+			struct sockaddr_in sa;
 
-		int w = sendto(socket->fd, &entry->fragment, entry->size + 6, 0, (struct sockaddr*)&sa, sizeof(sa));
-		if(w <= 0) {
+			memset(&sa, 0, sizeof(sa));
+			sa.sin_family = AF_INET;
+			sa.sin_addr.s_addr = entry->addr.ip;
+			sa.sin_port = htons(entry->addr.port);
+
+			int w = sendto(socket->fd, fragment, sizeof(chipvpn_socket_fragment_entry_t), 0, (struct sockaddr*)&sa, sizeof(sa));
+			if(w <= 0) {
+				return;
+			}
+
+			chipvpn_list_remove(&fragment->node);
+			free(fragment);
+
+			entry->count--;
+
 			return;
 		}
 
@@ -110,10 +126,10 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 
 void chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue) {
 	for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
-		chipvpn_socket_queue_entry_t *current = &queue->pool[i];
-		current->is_used = false;
+		chipvpn_socket_queue_entry_t *entry = &queue->pool[i];
+		chipvpn_list_clear(&entry->fragment);
+		entry->is_used = false;
 	}
-
 	chipvpn_list_clear(&queue->queue);
 }
 
@@ -121,83 +137,34 @@ int chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue) {
 	return (int)chipvpn_list_size(&queue->queue);
 }
 
-chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue) {
+chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue, uint16_t id) {
 	for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
 		chipvpn_socket_queue_entry_t *current = &queue->pool[i];
-		if(!current->is_used) {
+		if(current->id == id) {
 			return current;
 		}
 	}
 
-	chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)chipvpn_list_back(&queue->queue);
-	chipvpn_socket_dequeue_commit(entry);
-
-	return entry;
-}
-
-chipvpn_socket_queue_entry_t **chipvpn_socket_enqueue_acquire_fragment(chipvpn_socket_queue_t *queue, uint16_t size, uint16_t *count) {
-	static chipvpn_socket_queue_entry_t *result[32];
-
-	uint16_t fragment_id = rand() & 0xFFFF;
-	uint8_t  fragments   = (size / 32) + 1;
-
-	for(int i = 0; i < fragments; i++) {
-		chipvpn_socket_queue_entry_t *current = chipvpn_socket_enqueue_acquire(queue);
-		if(current == NULL) {
-			return NULL;
+	for(int i = 0; i < SOCKET_QUEUE_SIZE; i++) {
+		chipvpn_socket_queue_entry_t *current = &queue->pool[i];
+		if(!current->is_used) {
+			current->id = id;
+			current->count = 0;
+			chipvpn_socket_enqueue_commit(queue, current);
+			return current;
 		}
-
-		current->is_used = true;
-
-		result[i] = current;
 	}
-
-	for(int i = 0; i < fragments; i++) {
-		result[i]->fragment.id = fragment_id;
-		result[i]->is_used = false;
-	}
-
-	*count = fragments;
-
-	return result;
-}
-
-chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire(chipvpn_socket_queue_t *queue) {
-	if(!chipvpn_list_empty(&queue->queue)) {
-		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)chipvpn_list_front(&queue->queue);
-		return entry;
-	}
-
 	return NULL;
 }
 
-chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire_fragment(chipvpn_socket_queue_t *queue, uint16_t size, uint16_t *count) {
-	static chipvpn_socket_queue_entry_t *result[32];
-
-	for(chipvpn_list_node_t *q = chipvpn_list_begin(&queue->queue); q != chipvpn_list_end(&queue->queue); q = chipvpn_list_next(q)) {
-		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)q;
-
-		uint16_t head_fragment_id = entry->fragment.id;
-		uint16_t head_fragment_size = entry->fragment.size;
-
-		uint16_t x = 0;
-		uint16_t y = 0;
-
-		for(chipvpn_list_node_t *q1 = entry; q1 != chipvpn_list_end(&queue->queue); q1 = chipvpn_list_next(q1)) {
-			chipvpn_socket_queue_entry_t *needle = (chipvpn_socket_queue_entry_t*)q1;
-			
-			if(entry->fragment.id == needle->fragment.id) {
-				x += needle->size;
-				result[y] = needle;
-				y++;
-			}
-		}
-
-		if(x == head_fragment_size) {
-			*count = y;
-			return result;
+chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire(chipvpn_socket_queue_t *queue) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(&queue->queue); p != chipvpn_list_end(&queue->queue); p = chipvpn_list_next(p)) {
+		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)p;
+		if(chipvpn_list_size(&entry->fragment) == entry->count) {
+			return entry;			
 		}
 	}
+
 	return NULL;
 }
 
@@ -228,66 +195,69 @@ bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
 }
 
 int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
-	uint16_t count = 0;
-
-	chipvpn_socket_queue_entry_t **entries = chipvpn_socket_dequeue_acquire_fragment(&sock->rx_queue, 0, &count);
-	if(entries == NULL) {
+	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&sock->rx_queue);
+	if(entry == NULL) {
 		return 0;
 	}
 
-	int processed = 0;
+	uint16_t processed = 0;
 
-	for(int i = 0; i < count; i++) {
-		int r = MIN(size, entries[i]->size);
+	while(!chipvpn_list_empty(&entry->fragment)) {
+		chipvpn_socket_fragment_entry_t *fragment = (chipvpn_socket_fragment_entry_t*)chipvpn_list_remove(chipvpn_list_begin(&entry->fragment));
+
+		int r = MIN(size, entry->size);
 		if(r <= 0) {
 			return 0;
 		}
 
 		if(addr) {
-			*addr = entries[i]->addr;
+			*addr = entry->addr;
 		}
 
-		// printf("%i %i\n", entries[i]->fragment.offset, r);
+		memcpy(data + fragment->offset, fragment->buffer, fragment->size);
 
-		memcpy(data + entries[i]->fragment.offset, entries[i]->fragment.buffer, r);
-		entries[i]->fragment.size = 0;
+		free(fragment);
 
-		chipvpn_socket_dequeue_commit(entries[i]);
-
-		processed += r;
+		processed += fragment->size;
 	}
+
+	chipvpn_socket_dequeue_commit(entry);
 
 	return processed;
 }
 
 int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
-	uint16_t count = 0;
+	uint16_t fragment_id    = rand() % 0xFFFF;
+	uint16_t fragment_count = (size / SOCKET_FRAGMENT_ENTRY_SIZE) + 1;
 
-	chipvpn_socket_queue_entry_t **entries = chipvpn_socket_enqueue_acquire_fragment(&sock->tx_queue, size, &count);
-	if(entries == NULL) {
+	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&sock->tx_queue, fragment_id);
+	if(entry == NULL) {
 		return 0;
 	}
 
-	int processed = 0;
+	uint16_t processed = 0;
 
-	for(int i = 0; i < count; i++) {
-		int w = MIN(size - processed, sizeof(entries[i]->fragment.buffer));
+	for(int i = 0; i < fragment_count; i++) {
+		chipvpn_socket_fragment_entry_t *fragment = malloc(sizeof(chipvpn_socket_fragment_entry_t));
+
+		int w = MIN(size - processed, sizeof(fragment->buffer));
 		if(w <= 0) {
 			return 0;
 		}
 
 		if(addr) {
-			entries[i]->addr = *addr;
+			entry->addr = *addr;
 		}
 
-		// printf("COPY frag %i, index %i, size %i\n", i, processed, w);
+		memcpy(fragment->buffer, ((char*)data) + processed, w);
+		fragment->id     = fragment_id;
+		fragment->offset = processed;
+		fragment->size   = w;
+		fragment->count  = fragment_count;
 
-		memcpy(entries[i]->fragment.buffer, data + processed, w);
-		entries[i]->fragment.size   = size;
-		entries[i]->fragment.offset = processed;
-		entries[i]->size            = w;
-	
-		chipvpn_socket_enqueue_commit(&sock->tx_queue, entries[i]);
+		entry->count++;
+
+		chipvpn_list_insert(chipvpn_list_end(&entry->fragment), fragment);
 
 		processed += w;
 	}
