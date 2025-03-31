@@ -154,7 +154,16 @@ chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queu
 			return current;
 		}
 	}
-	return NULL;
+
+	chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)chipvpn_list_front(&queue->queue);
+	entry->id = id;
+	entry->count = 0;
+	while(!chipvpn_list_empty(&entry->fragment)) {
+		chipvpn_socket_fragment_entry_t *fragment = (chipvpn_socket_fragment_entry_t*)chipvpn_list_remove(chipvpn_list_begin(&entry->fragment));
+		free(fragment);
+	}
+
+	return entry;
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire(chipvpn_socket_queue_t *queue) {
