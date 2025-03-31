@@ -13,7 +13,7 @@ extern "C"
 
 #define SOCKET_QUEUE_SIZE 128
 #define SOCKET_QUEUE_ENTRY_SIZE 64000
-#define SOCKET_FRAGMENT_ENTRY_SIZE 32
+#define SOCKET_FRAGMENT_ENTRY_SIZE 500
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_list_node_t node;
