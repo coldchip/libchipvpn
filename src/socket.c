@@ -76,8 +76,11 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 			return;
 		}
 
+		printf("recv\n");
+
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&socket->rx_queue, fragment->id);
 		if(!entry) {
+			printf("recv fail\n");
 			return;
 		}
 
