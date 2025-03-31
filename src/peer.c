@@ -1,3 +1,4 @@
+#include "peer.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -8,6 +9,7 @@
 #include "xchacha20.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
+#include "log.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -241,7 +243,7 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	char *result4 = str_replace(result3, "%rx%", rx);
 	char *result5 = str_replace(result4, "%paddr%", chipvpn_address_to_char(&peer->address));
 	if(system(result5) == 0) {
-		printf("%s\n", result5);
+		chipvpn_log_append("%s\n", result5);
 	}
 	free(result1);
 	free(result2);

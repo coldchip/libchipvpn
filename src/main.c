@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include "util.h"
 #include "peer.h"
+#include "log.h"
 #include "chipvpn.h"
 
 int file_mtime(const char *path) {
@@ -225,17 +226,17 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 volatile sig_atomic_t quit = 0;
 
 void terminate(int type) {
-	printf("interrupt received\n");
+	chipvpn_log_append("interrupt received\n");
 	quit = 1;
 }
 
 int main(int argc, char const *argv[]) {
 	srand(time(NULL));
 
-	printf("chipvpn 1.7.8 alpha protocol %i\n", CHIPVPN_PROTOCOL_VERSION); 
+	chipvpn_log_append("chipvpn 1.7.8 alpha protocol %i\n", CHIPVPN_PROTOCOL_VERSION); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
-		printf("config path required\n");
+		chipvpn_log_append("config path required\n");
 		exit(1);
 	}
 
@@ -269,7 +270,7 @@ int main(int argc, char const *argv[]) {
 
 		if(chipvpn_get_time() - last_check > 2000) {
 			if(file_mtime(argv[1]) > mtime) {
-				printf("reload config\n");
+				chipvpn_log_append("reload config\n");
 				read_peer_config(argv[1], vpn->device);
 				mtime = file_mtime(argv[1]);
 			}
@@ -278,11 +279,11 @@ int main(int argc, char const *argv[]) {
 		}
 	}
 
-	printf("cleanup\n");
+	chipvpn_log_append("cleanup\n");
 
 	chipvpn_cleanup(vpn);
 
-	printf("shutting down\n"); 
+	chipvpn_log_append("shutting down\n"); 
 
 	return 0;
 }
