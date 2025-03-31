@@ -67,19 +67,16 @@ void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *w
 void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset) {
 	if(FD_ISSET(socket->fd, rdset)) {
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&socket->rx_queue);
-		if(!entry) {
-			return;
-		}
 
 		struct sockaddr_in sa;
 		int len = sizeof(sa);
 
-		int r = recvfrom(socket->fd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+		int r = recvfrom(socket->fd, &entry->fragment, sizeof(entry->fragment), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 		if(r <= 0) {
 			return;
 		}
 
-		entry->size = r;
+		entry->size = r - 6;
 
 		entry->addr.ip = sa.sin_addr.s_addr;
 		entry->addr.port = ntohs(sa.sin_port);
@@ -88,6 +85,8 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		
 	}
 	if(FD_ISSET(socket->fd, wdset)) {
+		uint16_t count = 0;
+
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&socket->tx_queue);
 		if(!entry) {
 			return;
@@ -100,7 +99,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		sa.sin_addr.s_addr = entry->addr.ip;
 		sa.sin_port = htons(entry->addr.port);
 
-		int w = sendto(socket->fd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
+		int w = sendto(socket->fd, &entry->fragment, entry->size + 6, 0, (struct sockaddr*)&sa, sizeof(sa));
 		if(w <= 0) {
 			return;
 		}
@@ -129,13 +128,75 @@ chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queu
 			return current;
 		}
 	}
-	return NULL;
+
+	chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)chipvpn_list_back(&queue->queue);
+	chipvpn_socket_dequeue_commit(entry);
+
+	return entry;
+}
+
+chipvpn_socket_queue_entry_t **chipvpn_socket_enqueue_acquire_fragment(chipvpn_socket_queue_t *queue, uint16_t size, uint16_t *count) {
+	static chipvpn_socket_queue_entry_t *result[32];
+
+	uint16_t fragment_id = rand() & 0xFFFF;
+	uint8_t  fragments   = (size / 32) + 1;
+
+	for(int i = 0; i < fragments; i++) {
+		chipvpn_socket_queue_entry_t *current = chipvpn_socket_enqueue_acquire(queue);
+		if(current == NULL) {
+			return NULL;
+		}
+
+		current->is_used = true;
+
+		result[i] = current;
+	}
+
+	for(int i = 0; i < fragments; i++) {
+		result[i]->fragment.id = fragment_id;
+		result[i]->is_used = false;
+	}
+
+	*count = fragments;
+
+	return result;
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire(chipvpn_socket_queue_t *queue) {
 	if(!chipvpn_list_empty(&queue->queue)) {
 		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)chipvpn_list_front(&queue->queue);
 		return entry;
+	}
+
+	return NULL;
+}
+
+chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire_fragment(chipvpn_socket_queue_t *queue, uint16_t size, uint16_t *count) {
+	static chipvpn_socket_queue_entry_t *result[32];
+
+	for(chipvpn_list_node_t *q = chipvpn_list_begin(&queue->queue); q != chipvpn_list_end(&queue->queue); q = chipvpn_list_next(q)) {
+		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)q;
+
+		uint16_t head_fragment_id = entry->fragment.id;
+		uint16_t head_fragment_size = entry->fragment.size;
+
+		uint16_t x = 0;
+		uint16_t y = 0;
+
+		for(chipvpn_list_node_t *q1 = entry; q1 != chipvpn_list_end(&queue->queue); q1 = chipvpn_list_next(q1)) {
+			chipvpn_socket_queue_entry_t *needle = (chipvpn_socket_queue_entry_t*)q1;
+			
+			if(entry->fragment.id == needle->fragment.id) {
+				x += needle->size;
+				result[y] = needle;
+				y++;
+			}
+		}
+
+		if(x == head_fragment_size) {
+			*count = y;
+			return result;
+		}
 	}
 	return NULL;
 }
@@ -167,49 +228,71 @@ bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
 }
 
 int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
-	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&sock->rx_queue);
-	if(entry == NULL) {
+	uint16_t count = 0;
+
+	chipvpn_socket_queue_entry_t **entries = chipvpn_socket_dequeue_acquire_fragment(&sock->rx_queue, 0, &count);
+	if(entries == NULL) {
 		return 0;
 	}
 
-	int r = MIN(size, entry->size);
-	if(r <= 0) {
-		return 0;
+	int processed = 0;
+
+	for(int i = 0; i < count; i++) {
+		int r = MIN(size, entries[i]->size);
+		if(r <= 0) {
+			return 0;
+		}
+
+		if(addr) {
+			*addr = entries[i]->addr;
+		}
+
+		// printf("%i %i\n", entries[i]->fragment.offset, r);
+
+		memcpy(data + entries[i]->fragment.offset, entries[i]->fragment.buffer, r);
+		entries[i]->fragment.size = 0;
+
+		chipvpn_socket_dequeue_commit(entries[i]);
+
+		processed += r;
 	}
 
-	if(addr) {
-		*addr = entry->addr;
-	}
-
-	memcpy(data, entry->buffer, r);
-	entry->size = 0;
-
-	chipvpn_socket_dequeue_commit(entry);
-
-	return r;
+	return processed;
 }
 
 int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
-	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&sock->tx_queue);
-	if(entry == NULL) {
+	uint16_t count = 0;
+
+	chipvpn_socket_queue_entry_t **entries = chipvpn_socket_enqueue_acquire_fragment(&sock->tx_queue, size, &count);
+	if(entries == NULL) {
 		return 0;
 	}
 
-	int w = MIN(size, sizeof(entry->buffer));
-	if(w <= 0) {
-		return 0;
+	int processed = 0;
+
+	for(int i = 0; i < count; i++) {
+		int w = MIN(size - processed, sizeof(entries[i]->fragment.buffer));
+		if(w <= 0) {
+			return 0;
+		}
+
+		if(addr) {
+			entries[i]->addr = *addr;
+		}
+
+		// printf("COPY frag %i, index %i, size %i\n", i, processed, w);
+
+		memcpy(entries[i]->fragment.buffer, data + processed, w);
+		entries[i]->fragment.size   = size;
+		entries[i]->fragment.offset = processed;
+		entries[i]->size            = w;
+	
+		chipvpn_socket_enqueue_commit(&sock->tx_queue, entries[i]);
+
+		processed += w;
 	}
 
-	if(addr) {
-		entry->addr = *addr;
-	}
-
-	memcpy(entry->buffer, data, w);
-	entry->size = w;
-
-	chipvpn_socket_enqueue_commit(&sock->tx_queue, entry);
-
-	return w;
+	return processed;
 }
 
 void chipvpn_socket_free(chipvpn_socket_t *sock) {

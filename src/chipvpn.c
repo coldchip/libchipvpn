@@ -17,6 +17,7 @@
 #include "sha256.h"
 #include "hmac_sha256.h"
 #include "xchacha20.h"
+#include "log.h"
 #include "util.h"
 
 chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
@@ -63,7 +64,7 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 	}
 
 	if(config->is_bind) {
-		printf("device has bind set\n");
+		chipvpn_log_append("device has bind set\n");
 		if(!chipvpn_socket_bind(socket, &config->bind)) {
 			return NULL;
 		}
@@ -122,13 +123,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(peer->state != PEER_DISCONNECTED && chipvpn_get_time() > peer->timeout) {
-				printf("%p says: peer disconnected\n", peer);
+				chipvpn_log_append("%p says: peer disconnected\n", peer);
 				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 			}
 
 			/* attempt to connect to peer */
 			if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
-				printf("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 				chipvpn_peer_connect(vpn->socket, peer, true);
 			}
@@ -174,7 +175,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* socket => tunnel */
 	if(chipvpn_socket_can_read(vpn->socket) && chipvpn_device_can_write(vpn->device)) {
-		char buffer[SOCKET_QUEUE_ENTRY_SIZE];
+		char buffer[60000];
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);
@@ -197,17 +198,17 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				if(chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session))) {
-					printf("session collision\n");
+					chipvpn_log_append("session collision\n");
 					return 0;
 				}
 
 				if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
-					printf("invalid protocol version\n");
+					chipvpn_log_append("invalid protocol version\n");
 					return 0;
 				}
 
 				if(ntohll(packet->timestamp) <= peer->timestamp) {
-					printf("packet is replayed or duplicated\n");
+					chipvpn_log_append("packet is replayed or duplicated\n");
 					return 0;
 				}
 
@@ -215,7 +216,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					chipvpn_get_time() - (60 * 1000 * 5) > ntohll(packet->timestamp) ||
 					chipvpn_get_time() + (60 * 1000 * 5) < ntohll(packet->timestamp)
 				) {
-					printf("invalid time range from peer\n");
+					chipvpn_log_append("invalid time range from peer\n");
 					return 0;
 				}
 
@@ -234,7 +235,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				);
 
 				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-					printf("invalid sign\n");
+					chipvpn_log_append("invalid sign\n");
 					return 0;
 				}
 
@@ -262,13 +263,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memcpy(peer->outbound_crypto.nonce, packet->nonce, sizeof(packet->nonce));
 
 				if(packet->ack) {
-					printf("%p says: peer requested auth acknowledgement\n", peer);
+					chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
 					chipvpn_peer_connect(vpn->socket, peer, 0);
 				}
 
-				printf("%p says: hello\n", peer);
-				printf("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
-				printf("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+				chipvpn_log_append("%p says: hello\n", peer);
+				chipvpn_log_append("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
+				chipvpn_log_append("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -285,21 +286,17 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
-					printf("%p says: rejected replayed packet\n", peer);
+					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
 					return 0;
 				}
 
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
-					printf("%p says: invalid src ip or src port\n", peer);
+					chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
 					return 0;
 				}
 
 				char mac[16];
 				chipvpn_crypto_xchacha20_poly1305_decrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), mac);
-
-				// if(memcmp(mac, packet->mac, sizeof(packet->mac)) != 0) {
-				// 	return 0;
-				// }
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
@@ -308,7 +305,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				};
 
 				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
-					printf("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
+					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					return 0;
 				}
 
@@ -329,7 +326,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 				
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
-					printf("%p says: invalid src ip or src port\n", peer);
+					chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
 					return 0;
 				}
 
@@ -348,18 +345,18 @@ int chipvpn_service(chipvpn_t *vpn) {
 				);
 
 				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-					printf("%p says: invalid ping sign\n", peer);
+					chipvpn_log_append("%p says: invalid ping sign\n", peer);
 					return 0;
 				}
 
-				printf("%p says: received ping from peer\n", peer);
+				chipvpn_log_append("%p says: received ping from peer\n", peer);
 
 				char tx[128];
 				char rx[128];
 				strcpy(tx, chipvpn_format_bytes(peer->tx));
 				strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-				printf("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
+				chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
 				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 			}
