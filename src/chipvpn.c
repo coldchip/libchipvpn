@@ -90,7 +90,7 @@ void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
 	int max = 0;
 
 	chipvpn_fdset(vpn, &rdset, &wdset, &max);
-
+	
 	if(select(max + 1, &rdset, &wdset, NULL, &tv) > 0) {
 		chipvpn_isset(vpn, &rdset, &wdset);
 	}
@@ -175,7 +175,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* socket => tunnel */
 	if(chipvpn_socket_can_read(vpn->socket) && chipvpn_device_can_write(vpn->device)) {
-		char buffer[60000];
+		char buffer[SOCKET_QUEUE_ENTRY_SIZE];
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);
