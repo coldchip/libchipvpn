@@ -111,7 +111,6 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 			return;
 		}
 
-		chipvpn_list_remove(&fragment->node);
 		free(fragment);
 
 		return;
@@ -181,7 +180,7 @@ chipvpn_socket_fragment_entry_t *chipvpn_socket_dequeue_as_fragment(chipvpn_sock
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&queue->queue); p != chipvpn_list_end(&queue->queue); p = chipvpn_list_next(p)) {
 		chipvpn_socket_queue_entry_t *entry = (chipvpn_socket_queue_entry_t*)p;
 		
-		chipvpn_socket_fragment_entry_t *fragment = (chipvpn_socket_fragment_entry_t*)chipvpn_list_front(&entry->fragment);
+		chipvpn_socket_fragment_entry_t *fragment = (chipvpn_socket_fragment_entry_t*)chipvpn_list_remove(chipvpn_list_front(&entry->fragment));
 
 		if(chipvpn_list_size(&entry->fragment) == 0) {
 			chipvpn_list_remove(&entry->node);
