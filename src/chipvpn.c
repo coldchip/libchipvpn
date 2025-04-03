@@ -128,7 +128,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 
 			/* attempt to connect to peer */
-			if(peer->state == PEER_DISCONNECTED && peer->connect == true) {
+			if(peer->state == PEER_DISCONNECTED && peer->config.connect == true) {
 				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 				chipvpn_peer_connect(vpn->socket, peer, true);
@@ -226,8 +226,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memset(packet->sign, 0, sizeof(packet->sign));
 
 				hmac_sha256(
-					peer->key, 
-					sizeof(peer->key),
+					peer->config.key, 
+					sizeof(peer->config.key),
 					packet,
 					sizeof(chipvpn_packet_auth_t),
 					computed_sign,
@@ -253,8 +253,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 				hmac_sha256(
-					peer->key, 
-					sizeof(peer->key),
+					peer->config.key, 
+					sizeof(peer->config.key),
 					packet->nonce,
 					sizeof(packet->nonce),
 					peer->outbound_crypto.key,
@@ -336,8 +336,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memset(packet->sign, 0, sizeof(packet->sign));
 
 				hmac_sha256(
-					peer->key, 
-					sizeof(peer->key),
+					peer->config.key, 
+					sizeof(peer->config.key),
 					packet,
 					sizeof(chipvpn_packet_ping_t),
 					computed_sign,

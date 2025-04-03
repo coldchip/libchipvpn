@@ -11,26 +11,14 @@ extern "C"
 #include "crypto.h"
 #include "list.h"
 
-#define SOCKET_QUEUE_SIZE 16
-#define SOCKET_QUEUE_ENTRY_SIZE 2048
-
-typedef struct __attribute__((__packed__)) {
-	uint16_t id;
-	uint8_t index;
-	uint8_t total;
-	char buffer[64]
-} chipvpn_socket_fragment_packet;
+#define SOCKET_QUEUE_SIZE 64
+#define SOCKET_QUEUE_ENTRY_SIZE 16000
 
 typedef struct {
 	chipvpn_list_node_t node;
 	bool is_used;
 	int size;
 	chipvpn_address_t addr;
-
-	uint16_t id;
-	uint32_t map;
-	uint8_t total;
-
 	char buffer[SOCKET_QUEUE_ENTRY_SIZE];
 } chipvpn_socket_queue_entry_t;
 
@@ -55,11 +43,6 @@ void                             chipvpn_socket_postselect(chipvpn_socket_t *soc
 
 void                             chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue);
 int                              chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue);
-
-chipvpn_socket_queue_entry_t    *chipvpn_socket_get_entry(chipvpn_socket_queue_t *queue, uint16_t id);
-
-void                             chipvpn_socket_fragment_enqueue_acquire(chipvpn_socket_queue_t *queue, uint32_t id, uint8_t index, uint8_t total, char *buf, uint16_t size, chipvpn_address_t *addr);
-void                             chipvpn_socket_fragment_dequeue_acquire(chipvpn_socket_queue_t *queue, uint16_t *id, uint8_t *index, uint8_t *total, char *buf, uint16_t *size, chipvpn_address_t *addr);
 
 chipvpn_socket_queue_entry_t    *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue);
 chipvpn_socket_queue_entry_t    *chipvpn_socket_dequeue_acquire(chipvpn_socket_queue_t *queue);
