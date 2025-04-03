@@ -160,7 +160,7 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 				int port;
 				if(sscanf(value, "%512[^:]:%i", address, &port) == 2) {
 					chipvpn_peer_set_address(peer, address, port);
-					peer->connect = true;
+					peer->config.connect = true;
 				}
 			}
 
@@ -206,7 +206,7 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 			chipvpn_peer_t *peer1 = (chipvpn_peer_t*)t;
 			t = chipvpn_list_next(t);
 
-			if(memcmp(peer->key, peer1->key, sizeof(peer->key)) == 0) {
+			if(memcmp(peer->config.key, peer1->config.key, sizeof(peer->config.key)) == 0) {
 				chipvpn_list_remove(&peer->node);
 				chipvpn_peer_free(peer);
 

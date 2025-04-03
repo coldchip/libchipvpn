@@ -23,10 +23,10 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->rx = 0l;
 	peer->last_check = 0l;
 	peer->timeout = 0l;
-	peer->connect = false;
-	peer->onconnect = NULL;
-	peer->onping = NULL;
-	peer->ondisconnect = NULL;
+	peer->config.connect = false;
+	peer->config.onconnect = NULL;
+	peer->config.onping = NULL;
+	peer->config.ondisconnect = NULL;
 	peer->timeout = 0l;
 	peer->counter = 0l;
 	peer->timestamp = 0l;
@@ -49,8 +49,8 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 
 	/* generate keyhash */
 	hmac_sha256(
-		peer->key, 
-		sizeof(peer->key),
+		peer->config.key, 
+		sizeof(peer->config.key),
 		"#CHIPVPN_KEYHASH",
 		16,
 		packet.keyhash, 
@@ -60,8 +60,8 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 	/* generate nonce and sha256 the key */
 	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 	hmac_sha256(
-		peer->key, 
-		sizeof(peer->key),
+		peer->config.key, 
+		sizeof(peer->config.key),
 		peer->inbound_crypto.nonce,
 		sizeof(peer->inbound_crypto.nonce),
 		peer->inbound_crypto.key,
@@ -72,8 +72,8 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
 	hmac_sha256(
-		peer->key, 
-		sizeof(peer->key),
+		peer->config.key, 
+		sizeof(peer->config.key),
 		&packet,
 		sizeof(packet),
 		packet.sign, 
@@ -81,7 +81,7 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 	);
 
 	/* write to socket */
-	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
+	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->config.address);
 }
 
 int chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
@@ -95,55 +95,55 @@ int chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
 	hmac_sha256(
-		peer->key, 
-		sizeof(peer->key),
+		peer->config.key, 
+		sizeof(peer->config.key),
 		&packet,
 		sizeof(packet),
 		packet.sign, 
 		sizeof(packet.sign)
 	);
 
-	if(peer->onping) {
-		chipvpn_peer_run_command(peer, peer->onping);
+	if(peer->config.onping) {
+		chipvpn_peer_run_command(peer, peer->config.onping);
 	}
 
 	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
 }
 
 bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
-	if(!chipvpn_address_set_ip(&peer->allow, address)) {
+	if(!chipvpn_address_set_ip(&peer->config.allow, address)) {
 		return false;
 	}
-	peer->allow.prefix = prefix;
+	peer->config.allow.prefix = prefix;
 	return true;
 }
 
 bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port) {
-	if(!chipvpn_address_set_ip(&peer->address, address)) {
+	if(!chipvpn_address_set_ip(&peer->config.address, address)) {
 		return false;
 	}
-	peer->address.port = port;
+	peer->config.address.port = port;
 	return true;
 }
 
 bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
-	sha256(key, strlen(key), peer->key, sizeof(peer->key));
+	sha256(key, strlen(key), peer->config.key, sizeof(peer->config.key));
 
 	return true;
 }
 
 bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
-	peer->onconnect = strdup(command);
+	peer->config.onconnect = strdup(command);
 	return true;
 }
 
 bool chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command) {
-	peer->onping = strdup(command);
+	peer->config.onping = strdup(command);
 	return true;
 }
 
 bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command) {
-	peer->ondisconnect = strdup(command);
+	peer->config.ondisconnect = strdup(command);
 	return true;
 }
 
@@ -151,7 +151,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_list_t *peers, char *key) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(memcmp(key, peer->key, sizeof(peer->key)) == 0) {
+		if(memcmp(key, peer->config.key, sizeof(peer->config.key)) == 0) {
 			return peer;
 		}
 	}
@@ -165,8 +165,8 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
 		char current[32];
 		
 		hmac_sha256(
-			peer->key, 
-			sizeof(peer->key),
+			peer->config.key, 
+			sizeof(peer->config.key),
 			"#CHIPVPN_KEYHASH",
 			16,
 			current, 
@@ -184,7 +184,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_addre
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_address_cidr_match(ip, &peer->allow)) {
+		if(chipvpn_address_cidr_match(ip, &peer->config.allow)) {
 			return peer;
 		}
 	}
@@ -206,14 +206,14 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 	if(peer->state != state) {
 		switch(state) {
 			case PEER_CONNECTED: {
-				if(peer->onconnect) {
-					chipvpn_peer_run_command(peer, peer->onconnect);
+				if(peer->config.onconnect) {
+					chipvpn_peer_run_command(peer, peer->config.onconnect);
 				}
 			}
 			break;
 			case PEER_DISCONNECTED: {
-				if(peer->ondisconnect) {
-					chipvpn_peer_run_command(peer, peer->ondisconnect);
+				if(peer->config.ondisconnect) {
+					chipvpn_peer_run_command(peer, peer->config.ondisconnect);
 				}
 			}
 			break;
@@ -255,16 +255,16 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 
-	if(peer->onconnect) {
-		free(peer->onconnect);
+	if(peer->config.onconnect) {
+		free(peer->config.onconnect);
 	}
 
-	if(peer->onping) {
-		free(peer->onping);
+	if(peer->config.onping) {
+		free(peer->config.onping);
 	}
 
-	if(peer->ondisconnect) {
-		free(peer->ondisconnect);
+	if(peer->config.ondisconnect) {
+		free(peer->config.ondisconnect);
 	}
 
 	free(peer);

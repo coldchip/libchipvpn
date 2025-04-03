@@ -26,17 +26,22 @@ typedef struct {
 	uint32_t outbound_session;
 	uint32_t inbound_session;
 	chipvpn_address_t address;
-	chipvpn_address_t allow;
-	char key[32];
-	char *onconnect;
-	char *onping;
-	char *ondisconnect;
+
+	struct {
+		chipvpn_address_t address;
+		chipvpn_address_t allow;
+		bool connect;
+		char key[32];
+		char *onconnect;
+		char *onping;
+		char *ondisconnect;
+	} config;
+
 	uint64_t timestamp;
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t last_check;
 	uint64_t timeout;
-	bool connect;
 	uint64_t counter;
 	chipvpn_bitmap_t bitmap;
 } chipvpn_peer_t;
