@@ -36,7 +36,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ack) {
+int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack) {
 	chipvpn_secure_random((char*)&peer->inbound_session, sizeof(peer->inbound_session));
 
 	chipvpn_packet_auth_t packet = {
@@ -81,7 +81,7 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, bool ac
 	);
 
 	/* write to socket */
-	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->config.address);
+	return chipvpn_socket_write(socket, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {

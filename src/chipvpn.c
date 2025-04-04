@@ -129,9 +129,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 			/* attempt to connect to peer */
 			if(peer->state == PEER_DISCONNECTED && peer->config.connect == true) {
-				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
 
-				chipvpn_peer_connect(vpn->socket, peer, true);
+				chipvpn_peer_connect(vpn->socket, peer, &peer->config.address, true);
 			}
 
 			/* ping peers */
@@ -264,7 +264,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				if(packet->ack) {
 					chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-					chipvpn_peer_connect(vpn->socket, peer, 0);
+					chipvpn_peer_connect(vpn->socket, peer, &peer->address, 0);
 				}
 
 				chipvpn_log_append("%p says: hello\n", peer);
