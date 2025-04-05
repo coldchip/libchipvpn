@@ -206,7 +206,10 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 			chipvpn_peer_t *peer1 = (chipvpn_peer_t*)t;
 			t = chipvpn_list_next(t);
 
-			if(memcmp(&peer->config, &peer1->config, sizeof(peer->config)) == 0) {
+			if(
+				(memcmp(peer->config.key, peer1->config.key, sizeof(peer->config.key)) == 0) &&
+				(memcmp(&peer->config.address, &peer1->config.address, sizeof(peer->config.address)) == 0)
+			) {
 				chipvpn_list_remove(&peer->node);
 				chipvpn_peer_free(peer);
 
