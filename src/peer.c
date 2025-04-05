@@ -231,25 +231,48 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 
 	char tx[16];
 	char rx[16];
+	char keyhash[64 + 1];
+	char address[16];
+	char port[16];
 
 	if(peer) {
 		sprintf(tx, "%lu", peer->tx);
 		sprintf(rx, "%lu", peer->rx);
+
+		char keyhash_buffer[32];
+		hmac_sha256(
+			peer->config.key, 
+			sizeof(peer->config.key),
+			"#CHIPVPN_KEYHASH",
+			16,
+			keyhash_buffer, 
+			sizeof(keyhash_buffer)
+		);
+		for(int i = 0; i < 32; i++) {
+			sprintf(&keyhash[i * 2], "%02x", keyhash_buffer[i] & 0xff);
+		}
+
+		strcpy(address, chipvpn_address_to_char(&peer->address));
+		sprintf(port, "%u", peer->address.port);
 	}
 
 	char *result1 = str_replace(command, "%gateway%", gateway);
 	char *result2 = str_replace(result1, "%gatewaydev%", dev);
 	char *result3 = str_replace(result2, "%tx%", tx);
 	char *result4 = str_replace(result3, "%rx%", rx);
-	char *result5 = str_replace(result4, "%paddr%", chipvpn_address_to_char(&peer->address));
-	if(system(result5) == 0) {
-		chipvpn_log_append("%s\n", result5);
+	char *result5 = str_replace(result4, "%keyhash%", keyhash);
+	char *result6 = str_replace(result5, "%paddr%", address);
+	char *result7 = str_replace(result6, "%pport%", port);
+	if(system(result7) == 0) {
+		chipvpn_log_append("%s\n", result7);
 	}
 	free(result1);
 	free(result2);
 	free(result3);
 	free(result4);
 	free(result5);
+	free(result6);
+	free(result7);
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
