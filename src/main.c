@@ -264,7 +264,6 @@ int main(int argc, char const *argv[]) {
 		exit(1);
 	}
 
-	int mtime = 0;
 	uint64_t last_check = 0;
 
 	while(!quit) {
@@ -272,12 +271,7 @@ int main(int argc, char const *argv[]) {
 		chipvpn_service(vpn);
 
 		if(chipvpn_get_time() - last_check > 2000) {
-			if(file_mtime(argv[1]) > mtime) {
-				chipvpn_log_append("reload config\n");
-				read_peer_config(argv[1], vpn->device);
-				mtime = file_mtime(argv[1]);
-			}
-
+			read_peer_config(argv[1], vpn->device);
 			last_check = chipvpn_get_time();
 		}
 	}
