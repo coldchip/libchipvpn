@@ -216,6 +216,8 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 
 				chipvpn_list_remove(&peer1->node);
 				chipvpn_list_insert(chipvpn_list_end(&device->peers), peer1);
+
+				break;
 			}
 		}
 	}
