@@ -15,6 +15,7 @@
 
 #include "device.h"
 #include "socket.h"
+#include "peer.h"
 #include <stdint.h>
 #include <sys/stat.h>
 #include <fcntl.h>

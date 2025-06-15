@@ -9,8 +9,8 @@ extern "C"
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/select.h>
+#include <net/if.h>
 
-#include "device.h"
 #include "device.h"
 #include "socket.h"
 
