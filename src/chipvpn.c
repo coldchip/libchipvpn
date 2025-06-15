@@ -131,12 +131,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 			if(peer->state == PEER_DISCONNECTED && peer->config.connect == true) {
 				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
 
-				chipvpn_peer_connect(vpn->socket, peer, &peer->config.address, true);
+				chipvpn_peer_send_connect(vpn, peer, &peer->config.address, true);
 			}
 
 			/* ping peers */
 			if(peer->state == PEER_CONNECTED) {
-				chipvpn_peer_ping(vpn->socket, peer);
+				chipvpn_peer_send_ping(vpn, peer);
 			}
 		}
 	}
@@ -197,79 +197,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session))) {
-					chipvpn_log_append("session collision\n");
-					return 0;
-				}
-
-				if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
-					chipvpn_log_append("invalid protocol version\n");
-					return 0;
-				}
-
-				if(ntohll(packet->timestamp) <= peer->timestamp) {
-					chipvpn_log_append("packet is replayed or duplicated\n");
-					return 0;
-				}
-
-				if(
-					chipvpn_get_time() - (60 * 1000 * 5) > ntohll(packet->timestamp) ||
-					chipvpn_get_time() + (60 * 1000 * 5) < ntohll(packet->timestamp)
-				) {
-					chipvpn_log_append("invalid time range from peer\n");
-					return 0;
-				}
-
-				char sign[32];
-				char computed_sign[32];
-				memcpy(sign, packet->sign, sizeof(sign));
-				memset(packet->sign, 0, sizeof(packet->sign));
-
-				hmac_sha256(
-					peer->config.key, 
-					sizeof(peer->config.key),
-					packet,
-					sizeof(chipvpn_packet_auth_t),
-					computed_sign,
-					sizeof(computed_sign)
-				);
-
-				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-					chipvpn_log_append("invalid sign\n");
-					return 0;
-				}
-
-				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-
-				peer->outbound_session = ntohl(packet->session);
-				peer->address = addr;
-				peer->timestamp = ntohll(packet->timestamp);
-				peer->tx = 0l;
-				peer->rx = 0l;
-				peer->counter = 0l;
-				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
-				chipvpn_bitmap_reset(&peer->bitmap);
-
-				chipvpn_peer_set_state(peer, PEER_CONNECTED);
-
-				hmac_sha256(
-					peer->config.key, 
-					sizeof(peer->config.key),
-					packet->nonce,
-					sizeof(packet->nonce),
-					peer->outbound_crypto.key,
-					sizeof(peer->outbound_crypto.key)
-				);
-				memcpy(peer->outbound_crypto.nonce, packet->nonce, sizeof(packet->nonce));
-
-				if(packet->ack) {
-					chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-					chipvpn_peer_connect(vpn->socket, peer, &peer->address, 0);
-				}
-
-				chipvpn_log_append("%p says: hello\n", peer);
-				chipvpn_log_append("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
-				chipvpn_log_append("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+				return chipvpn_peer_recv_connect(vpn, peer, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -325,40 +253,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 				
-				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
-					chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
-					return 0;
-				}
-
-				char sign[32];
-				char computed_sign[32];
-				memcpy(sign, packet->sign, sizeof(sign));
-				memset(packet->sign, 0, sizeof(packet->sign));
-
-				hmac_sha256(
-					peer->config.key, 
-					sizeof(peer->config.key),
-					packet,
-					sizeof(chipvpn_packet_ping_t),
-					computed_sign,
-					sizeof(computed_sign)
-				);
-
-				if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-					chipvpn_log_append("%p says: invalid ping sign\n", peer);
-					return 0;
-				}
-
-				chipvpn_log_append("%p says: received ping from peer\n", peer);
-
-				char tx[128];
-				char rx[128];
-				strcpy(tx, chipvpn_format_bytes(peer->tx));
-				strcpy(rx, chipvpn_format_bytes(peer->rx));
-
-				chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
-
-				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+				return chipvpn_peer_recv_ping(peer, packet, &addr);
 			}
 			break;
 		}

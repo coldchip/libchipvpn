@@ -24,6 +24,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->last_check = 0l;
 	peer->timeout = 0l;
 	peer->config.connect = false;
+	peer->config.signer = NULL;
 	peer->config.onconnect = NULL;
 	peer->config.onping = NULL;
 	peer->config.ondisconnect = NULL;
@@ -36,7 +37,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack) {
+int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack) {
 	chipvpn_secure_random((char*)&peer->inbound_session, sizeof(peer->inbound_session));
 
 	chipvpn_packet_auth_t packet = {
@@ -81,10 +82,88 @@ int chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, chipvpn
 	);
 
 	/* write to socket */
-	return chipvpn_socket_write(socket, &packet, sizeof(packet), addr);
+	return chipvpn_socket_write(vpn->socket, &packet, sizeof(packet), addr);
 }
 
-int chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
+int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
+	if(chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session))) {
+		chipvpn_log_append("session collision\n");
+		return 0;
+	}
+
+	if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
+		chipvpn_log_append("invalid protocol version\n");
+		return 0;
+	}
+
+	if(ntohll(packet->timestamp) <= peer->timestamp) {
+		chipvpn_log_append("packet is replayed or duplicated\n");
+		return 0;
+	}
+
+	if(
+		chipvpn_get_time() - (60 * 1000 * 5) > ntohll(packet->timestamp) ||
+		chipvpn_get_time() + (60 * 1000 * 5) < ntohll(packet->timestamp)
+	) {
+		chipvpn_log_append("invalid time range from peer\n");
+		return 0;
+	}
+
+	char sign[32];
+	char computed_sign[32];
+	memcpy(sign, packet->sign, sizeof(sign));
+	memset(packet->sign, 0, sizeof(packet->sign));
+
+	hmac_sha256(
+		peer->config.key, 
+		sizeof(peer->config.key),
+		packet,
+		sizeof(chipvpn_packet_auth_t),
+		computed_sign,
+		sizeof(computed_sign)
+	);
+
+	if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+		chipvpn_log_append("invalid sign\n");
+		return 0;
+	}
+
+	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+
+	peer->outbound_session = ntohl(packet->session);
+	peer->address = *addr;
+	peer->timestamp = ntohll(packet->timestamp);
+	peer->tx = 0l;
+	peer->rx = 0l;
+	peer->counter = 0l;
+	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+	chipvpn_bitmap_reset(&peer->bitmap);
+
+	chipvpn_peer_set_state(peer, PEER_CONNECTED);
+
+	hmac_sha256(
+		peer->config.key, 
+		sizeof(peer->config.key),
+		packet->nonce,
+		sizeof(packet->nonce),
+		peer->outbound_crypto.key,
+		sizeof(peer->outbound_crypto.key)
+	);
+	memcpy(peer->outbound_crypto.nonce, packet->nonce, sizeof(packet->nonce));
+
+	if(packet->ack) {
+		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
+		chipvpn_peer_send_connect(vpn, peer, &peer->address, 0);
+	}
+
+	chipvpn_log_append("%p says: hello\n", peer);
+	chipvpn_log_append("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
+	chipvpn_log_append("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+
+	return 0;
+}
+
+int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 	chipvpn_packet_ping_t packet = {};
 	packet.header.type = CHIPVPN_PACKET_PING;
 	packet.session = htonl(peer->outbound_session);
@@ -107,7 +186,46 @@ int chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer) {
 		chipvpn_peer_run_command(peer, peer->config.onping);
 	}
 
-	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
+	return chipvpn_socket_write(vpn->socket, &packet, sizeof(packet), &peer->address);
+}
+
+int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr) {
+	if(peer->address.ip != addr->ip || peer->address.port != addr->port) {
+		chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
+		return 0;
+	}
+
+	char sign[32];
+	char computed_sign[32];
+	memcpy(sign, packet->sign, sizeof(sign));
+	memset(packet->sign, 0, sizeof(packet->sign));
+
+	hmac_sha256(
+		peer->config.key, 
+		sizeof(peer->config.key),
+		packet,
+		sizeof(chipvpn_packet_ping_t),
+		computed_sign,
+		sizeof(computed_sign)
+	);
+
+	if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+		chipvpn_log_append("%p says: invalid ping sign\n", peer);
+		return 0;
+	}
+
+	chipvpn_log_append("%p says: received ping from peer\n", peer);
+
+	char tx[128];
+	char rx[128];
+	strcpy(tx, chipvpn_format_bytes(peer->tx));
+	strcpy(rx, chipvpn_format_bytes(peer->rx));
+
+	chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
+
+	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+
+	return 0;
 }
 
 bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
@@ -277,6 +395,10 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+
+	if(peer->config.signer) {
+		free(peer->config.signer);
+	}
 
 	if(peer->config.onconnect) {
 		free(peer->config.onconnect);

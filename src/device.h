@@ -25,9 +25,7 @@ extern "C"
 #include <stdbool.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
-#include "socket.h"
 #include "address.h"
-#include "peer.h"
 #include "list.h"
 #include <netinet/in.h>
 #include <net/if.h>

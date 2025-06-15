@@ -12,6 +12,8 @@ extern "C"
 #include "address.h"
 #include "bitmap.h"
 #include "list.h"
+#include "packet.h"
+#include "chipvpn.h"
 
 typedef enum {
 	PEER_DISCONNECTED,
@@ -32,6 +34,7 @@ typedef struct {
 		chipvpn_address_t allow;
 		bool connect;
 		char key[32];
+		char *signer;
 		char *onconnect;
 		char *onping;
 		char *ondisconnect;
@@ -47,8 +50,13 @@ typedef struct {
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();
-int                  chipvpn_peer_connect(chipvpn_socket_t *socket, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack);
-int                  chipvpn_peer_ping(chipvpn_socket_t *socket, chipvpn_peer_t *peer);
+
+int                  chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack);
+int                  chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
+
+int                  chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer);
+int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
+
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key);
