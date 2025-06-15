@@ -246,7 +246,7 @@ void terminate(int type) {
 int main(int argc, char const *argv[]) {
 	srand(time(NULL));
 
-	chipvpn_log_append("chipvpn 1.7.8 alpha protocol %i\n", CHIPVPN_PROTOCOL_VERSION); 
+	chipvpn_log_append("chipvpn %i alpha protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION); 
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		chipvpn_log_append("config path required\n");
