@@ -24,7 +24,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->last_check = 0l;
 	peer->timeout = 0l;
 	peer->config.connect = false;
-	peer->config.signer = NULL;
 	peer->config.onconnect = NULL;
 	peer->config.onping = NULL;
 	peer->config.ondisconnect = NULL;
@@ -395,10 +394,6 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-
-	if(peer->config.signer) {
-		free(peer->config.signer);
-	}
 
 	if(peer->config.onconnect) {
 		free(peer->config.onconnect);

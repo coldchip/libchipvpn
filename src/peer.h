@@ -34,7 +34,6 @@ typedef struct {
 		chipvpn_address_t allow;
 		bool connect;
 		char key[32];
-		char *signer;
 		char *onconnect;
 		char *onping;
 		char *ondisconnect;
