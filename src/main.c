@@ -179,13 +179,6 @@ void read_peer_config(const char *path, chipvpn_device_t *device) {
 				}
 			}
 
-			if(section == PEER_SECTION && strcmp(key, "signer") == 0) {
-				char signer[1024];
-				if(sscanf(value, "%1023s", signer) == 1) {
-					peer->config.signer = strdup(signer);
-				}
-			}
-
 			if(section == PEER_SECTION && strcmp(key, "onconnect") == 0) {
 				chipvpn_peer_set_onconnect(peer, value);
 			}
