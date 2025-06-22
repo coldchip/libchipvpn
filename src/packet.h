@@ -6,8 +6,6 @@ extern "C"
 {
 #endif
 
-#include "crypto.h"
-
 typedef struct __attribute__((__packed__)) {
 # if __BYTE_ORDER == __LITTLE_ENDIAN
     uint8_t ihl:4;
