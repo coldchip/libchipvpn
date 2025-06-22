@@ -13,6 +13,11 @@ void chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce) {
 	memcpy(crypto->nonce, nonce, 24);
 }
 
+void chipvpn_crypto_poly1305_init(chipvpn_crypto_t *crypto) {
+	memset(&crypto->block0, 0, sizeof(crypto->block0));
+	xchacha_hchacha20((uint8_t*)&crypto->block0, (uint8_t*)crypto->nonce, (uint8_t*)crypto->key);
+}
+
 void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter) {
 	xchacha_xcrypt(
 		(unsigned char*)data, 
@@ -31,11 +36,7 @@ void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *d
 
 	poly1305_context poly1305;
 
-	unsigned char block0[64] = {0};
-
-	xchacha_hchacha20((uint8_t*)block0, (uint8_t*)crypto->nonce, (uint8_t*)crypto->key);
-
-	poly1305_init(&poly1305, block0);
+	poly1305_init(&poly1305, (unsigned char*)&crypto->block0);
 	poly1305_update(&poly1305, data, size);
 	poly1305_finish(&poly1305, (unsigned char*)mac);
 }
@@ -43,11 +44,7 @@ void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *d
 void chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
 	poly1305_context poly1305;
 
-	unsigned char block0[64] = {0};
-
-	xchacha_hchacha20((uint8_t*)block0, (uint8_t*)crypto->nonce, (uint8_t*)crypto->key);
-
-	poly1305_init(&poly1305, block0);
+	poly1305_init(&poly1305, (unsigned char*)&crypto->block0);
 	poly1305_update(&poly1305, data, size);
 	poly1305_finish(&poly1305, (unsigned char*)mac);
 
