@@ -1,38 +1,18 @@
-/*
-	poly1305 implementation using 16 bit * 16 bit = 32 bit multiplication and 32 bit addition
-*/
+/* $OpenBSD: poly1305.h,v 1.4 2014/05/02 03:27:54 djm Exp $ */
 
-#include <stddef.h>
+/* 
+ * Public Domain poly1305 from Andrew Moon
+ * poly1305-donna-unrolled.c from https://github.com/floodyberry/poly1305-donna
+ */
 
-#if defined(_MSC_VER)
-	#define POLY1305_NOINLINE __declspec(noinline)
-#elif defined(__GNUC__)
-	#define POLY1305_NOINLINE __attribute__((noinline))
-#else
-	#define POLY1305_NOINLINE
-#endif
+#ifndef POLY1305_H
+#define POLY1305_H
 
-#define poly1305_block_size 16
+#include <sys/types.h>
 
-/* 17 + sizeof(size_t) + 18*sizeof(unsigned short) */
-typedef struct poly1305_state_internal_t {
-	unsigned char buffer[poly1305_block_size];
-	size_t leftover;
-	unsigned short r[10];
-	unsigned short h[10];
-	unsigned short pad[8];
-	unsigned char final;
-} poly1305_state_internal_t;
+#define POLY1305_KEYLEN		32
+#define POLY1305_TAGLEN		16
 
-typedef struct poly1305_context {
-	size_t aligner;
-	unsigned char opaque[136];
-} poly1305_context;
+void poly1305_auth(u_char out[POLY1305_TAGLEN], const u_char *m, size_t inlen, const u_char key[POLY1305_KEYLEN]);
 
-void poly1305_init(poly1305_context *ctx, const unsigned char key[32]);
-void poly1305_update(poly1305_context *ctx, const unsigned char *m, size_t bytes);
-void poly1305_finish(poly1305_context *ctx, unsigned char mac[16]);
-void poly1305_auth(unsigned char mac[16], const unsigned char *m, size_t bytes, const unsigned char key[32]);
-
-int poly1305_verify(const unsigned char mac1[16], const unsigned char mac2[16]);
-int poly1305_power_on_self_test(void);
+#endif	/* POLY1305_H */

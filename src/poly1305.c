@@ -1,235 +1,155 @@
-#include <stddef.h>
+/* $OpenBSD: poly1305.c,v 1.4 2023/07/17 05:26:38 djm Exp $ */
+/* 
+ * Public Domain poly1305 from Andrew Moon
+ * poly1305-donna-unrolled.c from https://github.com/floodyberry/poly1305-donna
+ */
+
+#include <sys/types.h>
+#include <stdint.h>
+
 #include "poly1305.h"
 
-/* interpret two 8 bit unsigned integers as a 16 bit unsigned integer in little endian */
-static unsigned short
-U8TO16(const unsigned char *p) {
-	return
-		(((unsigned short)(p[0] & 0xff)      ) |
-	     ((unsigned short)(p[1] & 0xff) <<  8));
-}
+#define mul32x32_64(a,b) ((uint64_t)(a) * (b))
 
-/* store a 16 bit unsigned integer as two 8 bit unsigned integers in little endian */
-static void
-U16TO8(unsigned char *p, unsigned short v) {
-	p[0] = (v      ) & 0xff;
-	p[1] = (v >>  8) & 0xff;
-}
+#define U8TO32_LE(p) \
+	(((uint32_t)((p)[0])) | \
+	 ((uint32_t)((p)[1]) <<  8) | \
+	 ((uint32_t)((p)[2]) << 16) | \
+	 ((uint32_t)((p)[3]) << 24))
 
-static void
-poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t bytes) {
-	const unsigned short hibit = (st->final) ? 0 : (1 << 11); /* 1 << 128 */
-	unsigned short t0,t1,t2,t3,t4,t5,t6,t7;
-	unsigned long d[10];
-	unsigned long c;
-
-	while (bytes >= poly1305_block_size) {
-		size_t i, j;
-
-		/* h += m[i] */
-		t0 = U8TO16(&m[ 0]); st->h[0] += ( t0                    ) & 0x1fff;
-		t1 = U8TO16(&m[ 2]); st->h[1] += ((t0 >> 13) | (t1 <<  3)) & 0x1fff;
-		t2 = U8TO16(&m[ 4]); st->h[2] += ((t1 >> 10) | (t2 <<  6)) & 0x1fff;
-		t3 = U8TO16(&m[ 6]); st->h[3] += ((t2 >>  7) | (t3 <<  9)) & 0x1fff;
-		t4 = U8TO16(&m[ 8]); st->h[4] += ((t3 >>  4) | (t4 << 12)) & 0x1fff;
-		                     st->h[5] += ((t4 >>  1)             ) & 0x1fff;
-		t5 = U8TO16(&m[10]); st->h[6] += ((t4 >> 14) | (t5 <<  2)) & 0x1fff;
-		t6 = U8TO16(&m[12]); st->h[7] += ((t5 >> 11) | (t6 <<  5)) & 0x1fff;
-		t7 = U8TO16(&m[14]); st->h[8] += ((t6 >>  8) | (t7 <<  8)) & 0x1fff;
-		                     st->h[9] += ((t7 >>  5)             ) | hibit;
-
-		/* h *= r, (partial) h %= p */
-		for (i = 0, c = 0; i < 10; i++) {
-			d[i] = c;
-			for (j = 0; j < 10; j++) {
-				d[i] += (unsigned long)st->h[j] * ((j <= i) ? st->r[i - j] : (5 * st->r[i + 10 - j]));
-				/* Sum(h[i] * r[i] * 5) will overflow slightly above 6 products with an unclamped r, so carry at 5 */
-				if (j == 4) {
-					c = (d[i] >> 13);
-					d[i] &= 0x1fff;
-				}
-			}
-			c += (d[i] >> 13);
-			d[i] &= 0x1fff;
-		}
-		c = ((c << 2) + c); /* c *= 5 */
-		c += d[0];
-		d[0] = ((unsigned short)c & 0x1fff);
-		c = (c >> 13);
-		d[1] += c;
-
-		for (i = 0; i < 10; i++)
-			st->h[i] = (unsigned short)d[i];
-
-		m += poly1305_block_size;
-		bytes -= poly1305_block_size;
-	}
-}
+#define U32TO8_LE(p, v) \
+	do { \
+		(p)[0] = (uint8_t)((v)); \
+		(p)[1] = (uint8_t)((v) >>  8); \
+		(p)[2] = (uint8_t)((v) >> 16); \
+		(p)[3] = (uint8_t)((v) >> 24); \
+	} while (0)
 
 void
-poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
-	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
-	unsigned short t0,t1,t2,t3,t4,t5,t6,t7;
-	size_t i;
+poly1305_auth(unsigned char out[POLY1305_TAGLEN], const unsigned char *m, size_t inlen, const unsigned char key[POLY1305_KEYLEN]) {
+	uint32_t t0,t1,t2,t3;
+	uint32_t h0,h1,h2,h3,h4;
+	uint32_t r0,r1,r2,r3,r4;
+	uint32_t s1,s2,s3,s4;
+	uint32_t b, nb;
+	size_t j;
+	uint64_t t[5];
+	uint64_t f0,f1,f2,f3;
+	uint32_t g0,g1,g2,g3,g4;
+	uint64_t c;
+	unsigned char mp[16];
 
-	/* r &= 0xffffffc0ffffffc0ffffffc0fffffff */
-	t0 = U8TO16(&key[ 0]); st->r[0] = ( t0                    ) & 0x1fff;
-	t1 = U8TO16(&key[ 2]); st->r[1] = ((t0 >> 13) | (t1 <<  3)) & 0x1fff;
-	t2 = U8TO16(&key[ 4]); st->r[2] = ((t1 >> 10) | (t2 <<  6)) & 0x1f03;
-	t3 = U8TO16(&key[ 6]); st->r[3] = ((t2 >>  7) | (t3 <<  9)) & 0x1fff;
-	t4 = U8TO16(&key[ 8]); st->r[4] = ((t3 >>  4) | (t4 << 12)) & 0x00ff;
-	                       st->r[5] = ((t4 >>  1)             ) & 0x1ffe;
-	t5 = U8TO16(&key[10]); st->r[6] = ((t4 >> 14) | (t5 <<  2)) & 0x1fff;
-	t6 = U8TO16(&key[12]); st->r[7] = ((t5 >> 11) | (t6 <<  5)) & 0x1f81;
-	t7 = U8TO16(&key[14]); st->r[8] = ((t6 >>  8) | (t7 <<  8)) & 0x1fff;
-	                       st->r[9] = ((t7 >>  5)             ) & 0x007f;
+	/* clamp key */
+	t0 = U8TO32_LE(key+0);
+	t1 = U8TO32_LE(key+4);
+	t2 = U8TO32_LE(key+8);
+	t3 = U8TO32_LE(key+12);
 
-	/* h = 0 */
-	for (i = 0; i < 10; i++)
-		st->h[i] = 0;
+	/* precompute multipliers */
+	r0 = t0 & 0x3ffffff; t0 >>= 26; t0 |= t1 << 6;
+	r1 = t0 & 0x3ffff03; t1 >>= 20; t1 |= t2 << 12;
+	r2 = t1 & 0x3ffc0ff; t2 >>= 14; t2 |= t3 << 18;
+	r3 = t2 & 0x3f03fff; t3 >>= 8;
+	r4 = t3 & 0x00fffff;
 
-	/* save pad for later */
-	for (i = 0; i < 8; i++)
-		st->pad[i] = U8TO16(&key[16 + (2 * i)]);
+	s1 = r1 * 5;
+	s2 = r2 * 5;
+	s3 = r3 * 5;
+	s4 = r4 * 5;
 
-	st->leftover = 0;
-	st->final = 0;
-}
+	/* init state */
+	h0 = 0;
+	h1 = 0;
+	h2 = 0;
+	h3 = 0;
+	h4 = 0;
 
-void
-poly1305_update(poly1305_context *ctx, const unsigned char *m, size_t bytes) {
-	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
-	size_t i;
+	/* full blocks */
+	if (inlen < 16) goto poly1305_donna_atmost15bytes;
+poly1305_donna_16bytes:
+	m += 16;
+	inlen -= 16;
 
-	/* handle leftover */
-	if (st->leftover) {
-		size_t want = (poly1305_block_size - st->leftover);
-		if (want > bytes)
-			want = bytes;
-		for (i = 0; i < want; i++)
-			st->buffer[st->leftover + i] = m[i];
-		bytes -= want;
-		m += want;
-		st->leftover += want;
-		if (st->leftover < poly1305_block_size)
-			return;
-		poly1305_blocks(st, st->buffer, poly1305_block_size);
-		st->leftover = 0;
-	}
+	t0 = U8TO32_LE(m-16);
+	t1 = U8TO32_LE(m-12);
+	t2 = U8TO32_LE(m-8);
+	t3 = U8TO32_LE(m-4);
 
-	/* process full blocks */
-	if (bytes >= poly1305_block_size) {
-		size_t want = (bytes & ~(poly1305_block_size - 1));
-		poly1305_blocks(st, m, want);
-		m += want;
-		bytes -= want;
-	}
+	h0 += t0 & 0x3ffffff;
+	h1 += ((((uint64_t)t1 << 32) | t0) >> 26) & 0x3ffffff;
+	h2 += ((((uint64_t)t2 << 32) | t1) >> 20) & 0x3ffffff;
+	h3 += ((((uint64_t)t3 << 32) | t2) >> 14) & 0x3ffffff;
+	h4 += (t3 >> 8) | (1 << 24);
 
-	/* store leftover */
-	if (bytes) {
-		for (i = 0; i < bytes; i++)
-			st->buffer[st->leftover + i] = m[i];
-		st->leftover += bytes;
-	}
-}
 
-POLY1305_NOINLINE void
-poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
-	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
-	unsigned short c;
-	unsigned short g[10];
-	unsigned short mask;
-	unsigned long f;
-	size_t i;
+poly1305_donna_mul:
+	t[0]  = mul32x32_64(h0,r0) + mul32x32_64(h1,s4) + mul32x32_64(h2,s3) + mul32x32_64(h3,s2) + mul32x32_64(h4,s1);
+	t[1]  = mul32x32_64(h0,r1) + mul32x32_64(h1,r0) + mul32x32_64(h2,s4) + mul32x32_64(h3,s3) + mul32x32_64(h4,s2);
+	t[2]  = mul32x32_64(h0,r2) + mul32x32_64(h1,r1) + mul32x32_64(h2,r0) + mul32x32_64(h3,s4) + mul32x32_64(h4,s3);
+	t[3]  = mul32x32_64(h0,r3) + mul32x32_64(h1,r2) + mul32x32_64(h2,r1) + mul32x32_64(h3,r0) + mul32x32_64(h4,s4);
+	t[4]  = mul32x32_64(h0,r4) + mul32x32_64(h1,r3) + mul32x32_64(h2,r2) + mul32x32_64(h3,r1) + mul32x32_64(h4,r0);
 
-	/* process the remaining block */
-	if (st->leftover) {
-		size_t i = st->leftover;
-		st->buffer[i++] = 1;
-		for (; i < poly1305_block_size; i++)
-			st->buffer[i] = 0;
-		st->final = 1;
-		poly1305_blocks(st, st->buffer, poly1305_block_size);
-	}
+	                h0 = (uint32_t)t[0] & 0x3ffffff; c =           (t[0] >> 26);
+	t[1] += c;      h1 = (uint32_t)t[1] & 0x3ffffff; b = (uint32_t)(t[1] >> 26);
+	t[2] += b;      h2 = (uint32_t)t[2] & 0x3ffffff; b = (uint32_t)(t[2] >> 26);
+	t[3] += b;      h3 = (uint32_t)t[3] & 0x3ffffff; b = (uint32_t)(t[3] >> 26);
+	t[4] += b;      h4 = (uint32_t)t[4] & 0x3ffffff; b = (uint32_t)(t[4] >> 26);
+	h0 += b * 5;
 
-	/* fully carry h */
-	c = st->h[1] >> 13;
-	st->h[1] &= 0x1fff;
-	for (i = 2; i < 10; i++) {
-		st->h[i] += c;
-		c = st->h[i] >> 13;
-		st->h[i] &= 0x1fff;
-	}
-	st->h[0] += (c * 5);
-	c = st->h[0] >> 13;
-	st->h[0] &= 0x1fff;
-	st->h[1] += c;
-	c = st->h[1] >> 13;
-	st->h[1] &= 0x1fff;
-	st->h[2] += c;
+	if (inlen >= 16) goto poly1305_donna_16bytes;
 
-	/* compute h + -p */
-	g[0] = st->h[0] + 5;
-	c = g[0] >> 13;
-	g[0] &= 0x1fff;
-	for (i = 1; i < 10; i++) {
-		g[i] = st->h[i] + c;
-		c = g[i] >> 13;
-		g[i] &= 0x1fff;
-	}
+	/* final bytes */
+poly1305_donna_atmost15bytes:
+	if (!inlen) goto poly1305_donna_finish;
 
-	/* select h if h < p, or h + -p if h >= p */
-	mask = (c ^ 1) - 1;
-	for (i = 0; i < 10; i++)
-		g[i] &= mask;
-	mask = ~mask;
-	for (i = 0; i < 10; i++)
-		st->h[i] = (st->h[i] & mask) | g[i];
+	for (j = 0; j < inlen; j++) mp[j] = m[j];
+	mp[j++] = 1;
+	for (; j < 16; j++)	mp[j] = 0;
+	inlen = 0;
 
-	/* h = h % (2^128) */
-	st->h[0] = ((st->h[0]      ) | (st->h[1] << 13)                   ) & 0xffff;
-	st->h[1] = ((st->h[1] >>  3) | (st->h[2] << 10)                   ) & 0xffff;
-	st->h[2] = ((st->h[2] >>  6) | (st->h[3] <<  7)                   ) & 0xffff;
-	st->h[3] = ((st->h[3] >>  9) | (st->h[4] <<  4)                   ) & 0xffff;
-	st->h[4] = ((st->h[4] >> 12) | (st->h[5] <<  1) | (st->h[6] << 14)) & 0xffff;
-	st->h[5] = ((st->h[6] >>  2) | (st->h[7] << 11)                   ) & 0xffff;
-	st->h[6] = ((st->h[7] >>  5) | (st->h[8] <<  8)                   ) & 0xffff;
-	st->h[7] = ((st->h[8] >>  8) | (st->h[9] <<  5)                   ) & 0xffff;
+	t0 = U8TO32_LE(mp+0);
+	t1 = U8TO32_LE(mp+4);
+	t2 = U8TO32_LE(mp+8);
+	t3 = U8TO32_LE(mp+12);
 
-	/* mac = (h + pad) % (2^128) */
-	f = (unsigned long)st->h[0] + st->pad[0];
-	st->h[0] = (unsigned short)f;
-	for (i = 1; i < 8; i++) {
-		f = (unsigned long)st->h[i] + st->pad[i] + (f >> 16);
-		st->h[i] = (unsigned short)f;
-	}
+	h0 += t0 & 0x3ffffff;
+	h1 += ((((uint64_t)t1 << 32) | t0) >> 26) & 0x3ffffff;
+	h2 += ((((uint64_t)t2 << 32) | t1) >> 20) & 0x3ffffff;
+	h3 += ((((uint64_t)t3 << 32) | t2) >> 14) & 0x3ffffff;
+	h4 += (t3 >> 8);
 
-	for (i = 0; i < 8; i++)
-		U16TO8(mac + (i * 2), st->h[i]);
+	goto poly1305_donna_mul;
 
-	/* zero out the state */
-	for (i = 0; i < 10; i++)
-		st->h[i] = 0;
-	for (i = 0; i < 10; i++)
-		st->r[i] = 0;
-	for (i = 0; i < 8; i++)
-		st->pad[i] = 0;
-}
+poly1305_donna_finish:
+	             b = h0 >> 26; h0 = h0 & 0x3ffffff;
+	h1 +=     b; b = h1 >> 26; h1 = h1 & 0x3ffffff;
+	h2 +=     b; b = h2 >> 26; h2 = h2 & 0x3ffffff;
+	h3 +=     b; b = h3 >> 26; h3 = h3 & 0x3ffffff;
+	h4 +=     b; b = h4 >> 26; h4 = h4 & 0x3ffffff;
+	h0 += b * 5; b = h0 >> 26; h0 = h0 & 0x3ffffff;
+	h1 +=     b;
 
-void
-poly1305_auth(unsigned char mac[16], const unsigned char *m, size_t bytes, const unsigned char key[32]) {
-	poly1305_context ctx;
-	poly1305_init(&ctx, key);
-	poly1305_update(&ctx, m, bytes);
-	poly1305_finish(&ctx, mac);
-}
+	g0 = h0 + 5; b = g0 >> 26; g0 &= 0x3ffffff;
+	g1 = h1 + b; b = g1 >> 26; g1 &= 0x3ffffff;
+	g2 = h2 + b; b = g2 >> 26; g2 &= 0x3ffffff;
+	g3 = h3 + b; b = g3 >> 26; g3 &= 0x3ffffff;
+	g4 = h4 + b - (1 << 26);
 
-int
-poly1305_verify(const unsigned char mac1[16], const unsigned char mac2[16]) {
-	size_t i;
-	unsigned int dif = 0;
-	for (i = 0; i < 16; i++)
-		dif |= (mac1[i] ^ mac2[i]);
-	dif = (dif - 1) >> ((sizeof(unsigned int) * 8) - 1);
-	return (dif & 1);
+	b = (g4 >> 31) - 1;
+	nb = ~b;
+	h0 = (h0 & nb) | (g0 & b);
+	h1 = (h1 & nb) | (g1 & b);
+	h2 = (h2 & nb) | (g2 & b);
+	h3 = (h3 & nb) | (g3 & b);
+	h4 = (h4 & nb) | (g4 & b);
+
+	f0 = ((h0      ) | (h1 << 26)) + (uint64_t)U8TO32_LE(&key[16]);
+	f1 = ((h1 >>  6) | (h2 << 20)) + (uint64_t)U8TO32_LE(&key[20]);
+	f2 = ((h2 >> 12) | (h3 << 14)) + (uint64_t)U8TO32_LE(&key[24]);
+	f3 = ((h3 >> 18) | (h4 <<  8)) + (uint64_t)U8TO32_LE(&key[28]);
+
+	U32TO8_LE(&out[ 0], f0); f1 += (f0 >> 32);
+	U32TO8_LE(&out[ 4], f1); f2 += (f1 >> 32);
+	U32TO8_LE(&out[ 8], f2); f3 += (f2 >> 32);
+	U32TO8_LE(&out[12], f3);
 }
