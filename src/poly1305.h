@@ -1,18 +1,19 @@
-/* $OpenBSD: poly1305.h,v 1.4 2014/05/02 03:27:54 djm Exp $ */
+#ifndef POLY1305_DONNA_H
+#define POLY1305_DONNA_H
 
-/* 
- * Public Domain poly1305 from Andrew Moon
- * poly1305-donna-unrolled.c from https://github.com/floodyberry/poly1305-donna
- */
+#include <stddef.h>
 
-#ifndef POLY1305_H
-#define POLY1305_H
+typedef struct poly1305_context {
+	size_t aligner;
+	unsigned char opaque[136];
+} poly1305_context;
 
-#include <sys/types.h>
+void poly1305_init(poly1305_context *ctx, const unsigned char key[32]);
+void poly1305_update(poly1305_context *ctx, const unsigned char *m, size_t bytes);
+void poly1305_finish(poly1305_context *ctx, unsigned char mac[16]);
+void poly1305_auth(unsigned char mac[16], const unsigned char *m, size_t bytes, const unsigned char key[32]);
 
-#define POLY1305_KEYLEN		32
-#define POLY1305_TAGLEN		16
+int poly1305_verify(const unsigned char mac1[16], const unsigned char mac2[16]);
+int poly1305_power_on_self_test(void);
 
-void poly1305_auth(u_char out[POLY1305_TAGLEN], const u_char *m, size_t inlen, const u_char key[POLY1305_KEYLEN]);
-
-#endif	/* POLY1305_H */
+#endif /* POLY1305_DONNA_H */

@@ -13,6 +13,7 @@
 #include "peer.h"
 #include "log.h"
 #include "chipvpn.h"
+#include "crypto.h"
 
 int file_mtime(const char *path) {
 	struct stat file_stat;
@@ -251,6 +252,33 @@ int main(int argc, char const *argv[]) {
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
+
+	chipvpn_crypto_t c;
+	unsigned char key[32];
+    unsigned char nonce[24];
+    unsigned char tag[16];
+
+    char message[] = "This is a secret message.";
+
+    // Generate random key and nonce
+    memset(key, 0x10, 32);
+    memset(nonce, 0x11, 24);
+
+    chipvpn_crypto_set_key(&c, key);
+    chipvpn_crypto_set_nonce(&c, nonce);
+    chipvpn_crypto_poly1305_init(&c);
+
+    chipvpn_crypto_xchacha20_poly1305_encrypt(&c, message, strlen(message), 1, tag);
+
+    for(int i = 0; i < 25; i++) {
+    	printf("%02x", message[i] & 0xff);
+    }
+    printf("\n");
+
+    for(int i = 0; i < 16; i++) {
+    	printf("%02x", tag[i] & 0xff);
+    }
+    printf("\n");
 
 	chipvpn_config_t config = {
 		.name = "chipvpn",
