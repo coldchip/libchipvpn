@@ -225,6 +225,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				char mac[16];
 				chipvpn_crypto_xchacha20_poly1305_decrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), mac);
+				if(memcmp(mac, packet->mac, sizeof(packet->mac) != 0)) {
+					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
+					return 0;
+				}
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
