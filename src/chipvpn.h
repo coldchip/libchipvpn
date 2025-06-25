@@ -14,8 +14,8 @@ extern "C"
 #include "device.h"
 #include "socket.h"
 
-#define CHIPVPN_VERSION 300001
-#define CHIPVPN_PROTOCOL_VERSION 182
+#define CHIPVPN_VERSION 300002
+#define CHIPVPN_PROTOCOL_VERSION 183
 
 #define CHIPVPN_PEER_TIMEOUT 10000
 #define CHIPVPN_PEER_PING 2000
