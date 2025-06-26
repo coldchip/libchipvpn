@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdint.h>
 #include "crypto.h"
-#include "chacha20.h"
 #include "xchacha20.h"
 #include "poly1305.h"
 
@@ -16,18 +15,15 @@ void chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce) {
 
 void chipvpn_crypto_poly1305_init(chipvpn_crypto_t *crypto) {
 	memset(&crypto->block0, 0, sizeof(crypto->block0));
-	//xchacha_hchacha20((uint8_t*)&crypto->block0, (uint8_t*)crypto->nonce, (uint8_t*)crypto->key);
 
-	char key2[32] = {0};
-	char nonce2[12] = {0};
-	xchacha_hchacha20((uint8_t*)key2, (uint8_t*)crypto->nonce, (uint8_t*)crypto->key);
-
-
-	memcpy(nonce2 + 4, crypto->nonce + 16, 12 - 4);
-
-	struct chacha20_context ctx;
-	chacha20_init_context(&ctx, (uint8_t*)key2, (uint8_t*)nonce2, 0);
-	chacha20_xor(&ctx, (uint8_t*)&crypto->block0, sizeof(crypto->block0));
+	xchacha_xcrypt(
+		(uint8_t*)&crypto->block0, 
+		(uint8_t*)&crypto->block0, 
+		sizeof(crypto->block0), 
+		(uint8_t*)crypto->key,
+		(uint8_t*)crypto->nonce, 
+		0
+	);
 }
 
 void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter) {
@@ -42,8 +38,6 @@ void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, ui
 
 	
 }
-
-static const unsigned char _pad0[16] = { 0 };
 
 void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
 	chipvpn_crypto_xchacha20(crypto, data, size, counter);

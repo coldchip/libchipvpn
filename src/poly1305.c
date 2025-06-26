@@ -6,9 +6,9 @@
 #define HAS_GCC_4_4_64BIT (defined(__GNUC__) && defined(__LP64__) && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 4))))
 
 #if (HAS_SIZEOF_INT128_64BIT || HAS_MSVC_64BIT || HAS_GCC_4_4_64BIT)
-#include "poly1305-64.h"
+#include "poly1305-m64.h"
 #else
-#include "poly1305-32.h"
+#include "poly1305-m32.h"
 #endif
 
 
