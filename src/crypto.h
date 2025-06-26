@@ -14,6 +14,8 @@ typedef struct {
 	char block0[64];
 } chipvpn_crypto_t;
 
+static const unsigned char _pad0[16] = { 0 };
+
 void                  chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key);
 void                  chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce);
 void                  chipvpn_crypto_poly1305_init(chipvpn_crypto_t *crypto);
