@@ -13,7 +13,13 @@ void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *d
 	char nonce[12];
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
-	//chacha20_xor2(data, size, crypto->key, nonce, 1);
+	printf("Encrypt: ");
+	for(int k = 0; k < 32; k++) {
+		printf("%02x", crypto->key[k] & 0xff);
+	}
+	printf("\n");
+
+	chacha20_xor2(data, size, crypto->key, nonce, 1);
 
 	char block0[64];
 	chacha20_xor2(block0, sizeof(block0), crypto->key, nonce, 0);
@@ -50,5 +56,11 @@ void chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *d
 
 	poly1305_finish(&ctx, (unsigned char*)mac);
 
-	//chacha20_xor2(data, size, crypto->key, nonce, 1);
+	printf("Decrypt: ");
+	for(int k = 0; k < 32; k++) {
+		printf("%02x", crypto->key[k] & 0xff);
+	}
+	printf("\n");
+
+	chacha20_xor2(data, size, crypto->key, nonce, 1);
 }
