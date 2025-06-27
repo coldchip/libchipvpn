@@ -6,7 +6,6 @@
 #include "packet.h"
 #include "crypto.h"
 #include "util.h"
-#include "xchacha20.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
 #include "log.h"

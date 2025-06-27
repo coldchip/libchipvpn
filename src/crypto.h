@@ -11,7 +11,6 @@ extern "C"
 typedef struct {
 	char key[32];
 	char nonce[24];
-	char block0[64];
 } chipvpn_crypto_t;
 
 static const unsigned char _pad0[16] = { 0 };

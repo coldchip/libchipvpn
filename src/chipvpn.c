@@ -16,7 +16,6 @@
 #include "bitmap.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
-#include "xchacha20.h"
 #include "log.h"
 #include "util.h"
 
