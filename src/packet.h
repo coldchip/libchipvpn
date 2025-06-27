@@ -87,7 +87,7 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t version;
 	uint32_t session;
 	char keyhash[32];
-	char nonce[24];
+	char nonce[32];
 	uint64_t timestamp;
 	bool ack;
 	char sign[32];
