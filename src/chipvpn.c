@@ -7,7 +7,7 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <stdio.h>
-#include "crypto.h"
+#include "chacha20poly1305.h"
 #include "chipvpn.h"
 #include "socket.h"
 #include "packet.h"

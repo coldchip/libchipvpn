@@ -7,7 +7,6 @@
 #include "socket.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "crypto.h"
 #include "packet.h"
 #include "chipvpn.h"
 #include "util.h"

@@ -8,7 +8,6 @@ extern "C"
 
 #include <sys/select.h>
 #include "address.h"
-#include "crypto.h"
 #include "list.h"
 
 #define SOCKET_QUEUE_SIZE 64
