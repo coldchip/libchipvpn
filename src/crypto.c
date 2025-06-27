@@ -13,10 +13,10 @@ void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *d
 	char nonce[12];
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
+	chacha20_xor2(data, size, crypto->key, nonce, 1);
+
 	char block0[64];
 	chacha20_xor2(block0, sizeof(block0), crypto->key, nonce, 0);
-
-	chacha20_xor2(data, size, crypto->key, nonce, 1);
 
 	poly1305_context ctx;
 	poly1305_init(&ctx, (unsigned char*)&crypto->block0);
