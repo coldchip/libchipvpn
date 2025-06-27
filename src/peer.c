@@ -58,17 +58,15 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 	);
 
 	/* generate nonce and sha256 the key */
-	chipvpn_secure_random((char*)&peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
+	chipvpn_secure_random(packet.nonce, sizeof(packet.nonce));
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
-		peer->inbound_crypto.nonce,
-		sizeof(peer->inbound_crypto.nonce),
+		packet.nonce,
+		sizeof(packet.nonce),
 		peer->inbound_crypto.key,
 		sizeof(peer->inbound_crypto.key)
 	);
-	chipvpn_crypto_poly1305_init(&peer->inbound_crypto);
-	memcpy(packet.nonce, peer->inbound_crypto.nonce, sizeof(peer->inbound_crypto.nonce));
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
@@ -149,8 +147,6 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		peer->outbound_crypto.key,
 		sizeof(peer->outbound_crypto.key)
 	);
-	chipvpn_crypto_set_nonce(&peer->outbound_crypto, packet->nonce);
-	chipvpn_crypto_poly1305_init(&peer->outbound_crypto);
 
 	if(packet->ack) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);

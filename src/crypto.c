@@ -5,42 +5,18 @@
 #include "xchacha20.h"
 #include "poly1305.h"
 
-void chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key) {
-	memcpy(crypto->key, key, 32);
-}
-
-void chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce) {
-	memcpy(crypto->nonce, nonce, 24);
-}
-
-void chipvpn_crypto_poly1305_init(chipvpn_crypto_t *crypto) {
-	memset(&crypto->block0, 0, sizeof(crypto->block0));
-
-	xchacha_xcrypt(
-		(uint8_t*)&crypto->block0, 
-		(uint8_t*)&crypto->block0, 
-		sizeof(crypto->block0), 
-		(uint8_t*)crypto->key,
-		(uint8_t*)crypto->nonce, 
-		0
-	);
-}
-
 void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter) {
-	xchacha_xcrypt(
-		(unsigned char*)data, 
-		(unsigned char*)data, 
-		size, 
-		(unsigned char*)crypto->key,
-		(unsigned char*)crypto->nonce, 
-		counter
-	);
-
 	
 }
 
 void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
-	chipvpn_crypto_xchacha20(crypto, data, size, counter);
+	char nonce[12];
+	memcpy(nonce + 4, &counter, sizeof(counter));
+
+	chacha20_xor2(data, size, crypto->key, nonce, 1);
+
+	char block0[64];
+	chacha20_xor2(block0, sizeof(block0), crypto->key, nonce, 0);
 
 	poly1305_context ctx;
 	poly1305_init(&ctx, (unsigned char*)&crypto->block0);
@@ -56,6 +32,12 @@ void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *d
 }
 
 void chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
+	char nonce[12];
+	memcpy(nonce + 4, &counter, sizeof(counter));
+
+	char block0[64];
+	chacha20_xor2(block0, sizeof(block0), crypto->key, nonce, 0);
+
 	poly1305_context ctx;
 	poly1305_init(&ctx, (unsigned char*)&crypto->block0);
 	poly1305_update(&ctx, (unsigned char*)data, size);
@@ -68,5 +50,5 @@ void chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *d
 
 	poly1305_finish(&ctx, (unsigned char*)mac);
 
-	chipvpn_crypto_xchacha20(crypto, data, size, counter);
+	chacha20_xor2(data, size, crypto->key, nonce, 1);
 }
