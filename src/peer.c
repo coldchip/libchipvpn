@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include "chipvpn.h"
 #include "packet.h"
-#include "crypto.h"
 #include "util.h"
 #include "sha256.h"
 #include "hmac_sha256.h"

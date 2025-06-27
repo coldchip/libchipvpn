@@ -1,13 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include "crypto.h"
+#include "chacha20poly1305.h"
 #include "chacha20.h"
 #include "poly1305.h"
-
-void chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter) {
-	
-}
 
 void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
 	char nonce[12];
