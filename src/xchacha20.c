@@ -1,11 +1,13 @@
 #include "xchacha20.h"
 
 
-static uint32_t rotl32(uint32_t x, int n) {
+static uint32_t rotl32(uint32_t x, int n) 
+{
     return (x << n) | (x >> (32 - n));
 }
 
-static uint32_t pack4(const uint8_t *a) {
+static uint32_t pack4(const uint8_t *a)
+{
     uint32_t res = 0;
     res |= (uint32_t)a[0] << 0 * 8;
     res |= (uint32_t)a[1] << 1 * 8;
@@ -14,7 +16,8 @@ static uint32_t pack4(const uint8_t *a) {
     return res;
 }
 
-static void chacha20_init_block(struct chacha20_context *ctx, uint8_t key[], uint8_t nonce[]) {
+static void chacha20_init_block(struct chacha20_context *ctx, uint8_t key[], uint8_t nonce[])
+{
     memcpy(ctx->key, key, sizeof(ctx->key));
     memcpy(ctx->nonce, nonce, sizeof(ctx->nonce));
 
@@ -23,15 +26,6 @@ static void chacha20_init_block(struct chacha20_context *ctx, uint8_t key[], uin
     ctx->state[1] = pack4(magic_constant + 1 * 4);
     ctx->state[2] = pack4(magic_constant + 2 * 4);
     ctx->state[3] = pack4(magic_constant + 3 * 4);
-    chacha20_block_set_key(ctx, nonce);
-    // 64 bit counter initialized to zero by default.
-    ctx->state[12] = 0;
-    chacha20_block_set_nonce(ctx, nonce);
-
-    memcpy(ctx->nonce, nonce, sizeof(ctx->nonce));
-}
-
-void chacha20_block_set_key(struct chacha20_context *ctx, uint8_t key[]) {
     ctx->state[4] = pack4(key + 0 * 4);
     ctx->state[5] = pack4(key + 1 * 4);
     ctx->state[6] = pack4(key + 2 * 4);
@@ -40,15 +34,17 @@ void chacha20_block_set_key(struct chacha20_context *ctx, uint8_t key[]) {
     ctx->state[9] = pack4(key + 5 * 4);
     ctx->state[10] = pack4(key + 6 * 4);
     ctx->state[11] = pack4(key + 7 * 4);
-}
-
-void chacha20_block_set_nonce(struct chacha20_context *ctx, uint8_t nonce[]) {
+    // 64 bit counter initialized to zero by default.
+    ctx->state[12] = 0;
     ctx->state[13] = pack4(nonce + 0 * 4);
     ctx->state[14] = pack4(nonce + 1 * 4);
     ctx->state[15] = pack4(nonce + 2 * 4);
+
+    memcpy(ctx->nonce, nonce, sizeof(ctx->nonce));
 }
 
-static void chacha20_block_set_counter(struct chacha20_context *ctx, uint64_t counter) {
+static void chacha20_block_set_counter(struct chacha20_context *ctx, uint64_t counter)
+{
     ctx->state[12] = (uint32_t)counter;
     ctx->state[13] = pack4(ctx->nonce + 0 * 4) + (uint32_t)(counter >> 32);
 }
