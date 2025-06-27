@@ -118,6 +118,6 @@ void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t n_bytes)
 
 void chacha20_xor2(char *data, int size, char *key, char *nonce, uint32_t counter) {
     struct chacha20_context ctx;
-    chacha20_init_context(&ctx, key, nonce, counter);
-    chacha20_xor(&ctx, data, size);
+    chacha20_init_context(&ctx, (uint8_t*)key, (uint8_t*)nonce, counter);
+    chacha20_xor(&ctx, (uint8_t*)data, size);
 }
