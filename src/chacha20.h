@@ -30,7 +30,7 @@ extern "C" {
 	x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7);
 
 struct chacha20_context {
-	uint32_t keystream32[16];
+	uint32_t keystream[16];
 	uint32_t state[16];
 	size_t position;
 };

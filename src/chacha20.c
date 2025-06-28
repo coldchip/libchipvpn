@@ -24,27 +24,25 @@ static void chacha20_block_set_counter(struct chacha20_context *ctx, uint32_t co
 }
 
 static void chacha20_block_next(struct chacha20_context *ctx) {
-    for(int i = 0; i < 16; i++) ctx->keystream32[i] = ctx->state[i];
+    for(int i = 0; i < 16; i++) ctx->keystream[i] = ctx->state[i];
 
     for(int i = 0; i < 10; i++)  {
-        CHACHA20_QUARTERROUND(ctx->keystream32, 0, 4, 8, 12)
-        CHACHA20_QUARTERROUND(ctx->keystream32, 1, 5, 9, 13)
-        CHACHA20_QUARTERROUND(ctx->keystream32, 2, 6, 10, 14)
-        CHACHA20_QUARTERROUND(ctx->keystream32, 3, 7, 11, 15)
-        CHACHA20_QUARTERROUND(ctx->keystream32, 0, 5, 10, 15)
-        CHACHA20_QUARTERROUND(ctx->keystream32, 1, 6, 11, 12)
-        CHACHA20_QUARTERROUND(ctx->keystream32, 2, 7, 8, 13)
-        CHACHA20_QUARTERROUND(ctx->keystream32, 3, 4, 9, 14)
+        CHACHA20_QUARTERROUND(ctx->keystream, 0, 4, 8, 12)
+        CHACHA20_QUARTERROUND(ctx->keystream, 1, 5, 9, 13)
+        CHACHA20_QUARTERROUND(ctx->keystream, 2, 6, 10, 14)
+        CHACHA20_QUARTERROUND(ctx->keystream, 3, 7, 11, 15)
+        CHACHA20_QUARTERROUND(ctx->keystream, 0, 5, 10, 15)
+        CHACHA20_QUARTERROUND(ctx->keystream, 1, 6, 11, 12)
+        CHACHA20_QUARTERROUND(ctx->keystream, 2, 7, 8, 13)
+        CHACHA20_QUARTERROUND(ctx->keystream, 3, 4, 9, 14)
     }
 
-    for(int i = 0; i < 16; i++) ctx->keystream32[i] += ctx->state[i];
+    for(int i = 0; i < 16; i++) ctx->keystream[i] += ctx->state[i];
 
     ctx->state[12] += 1;
 }
 
 void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t nonce[], uint32_t counter) {
-    memset(ctx, 0, sizeof(struct chacha20_context));
-
     chacha20_init_block(ctx, key, nonce);
     chacha20_block_set_counter(ctx, counter);
 
@@ -52,13 +50,13 @@ void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t 
 }
 
 void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t n_bytes) {
-    uint8_t *keystream8 = (uint8_t*)ctx->keystream32;
+    uint8_t *keystream_8 = (uint8_t*)ctx->keystream;
     for(size_t i = 0; i < n_bytes; i++) {
         if(ctx->position >= 64) {
             chacha20_block_next(ctx);
             ctx->position = 0;
         }
-        bytes[i] ^= keystream8[ctx->position];
+        bytes[i] ^= keystream_8[ctx->position];
         ctx->position++;
     }
 }
