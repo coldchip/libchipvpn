@@ -5,16 +5,19 @@
 #include "chacha20.h"
 #include "poly1305.h"
 
-void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
+void chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
 	char nonce[12];
 	memset(nonce, 0, sizeof(nonce));
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
+	struct chacha20_context chacha20_ctx;
+    chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
+
 	char block0[64];
 	memset(block0, 0, sizeof(block0));
-	chacha20_xor2(block0, sizeof(block0), crypto->key, nonce, 0);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)block0, sizeof(block0));
 
-	chacha20_xor2(data, size, crypto->key, nonce, 1);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)data, size);
 
 	poly1305_context ctx;
 	poly1305_init(&ctx, (unsigned char*)&block0);
@@ -30,14 +33,17 @@ void chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *d
 	poly1305_finish(&ctx, (unsigned char*)mac);
 }
 
-void chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
+void chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
 	char nonce[12];
 	memset(nonce, 0, sizeof(nonce));
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
+	struct chacha20_context chacha20_ctx;
+    chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
+
 	char block0[64];
 	memset(block0, 0, sizeof(block0));
-	chacha20_xor2(block0, sizeof(block0), crypto->key, nonce, 0);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)block0, sizeof(block0));
 
 	poly1305_context ctx;
 	poly1305_init(&ctx, (unsigned char*)&block0);
@@ -52,5 +58,5 @@ void chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *d
 
 	poly1305_finish(&ctx, (unsigned char*)mac);
 
-	chacha20_xor2(data, size, crypto->key, nonce, 1);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)data, size);
 }
