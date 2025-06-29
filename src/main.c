@@ -271,10 +271,7 @@ int main(int argc, char const *argv[]) {
 		chipvpn_poll(vpn, 250);
 		chipvpn_service(vpn);
 
-		if(chipvpn_get_time() - last_check > 2000) {
-			read_peer_config(argv[1], vpn->device);
-			last_check = chipvpn_get_time();
-		}
+		
 	}
 
 	chipvpn_log_append("cleanup\n");

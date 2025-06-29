@@ -9,14 +9,13 @@ void chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *da
 	char nonce[12] = {0};
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
-	struct chacha20_ctx chacha20_ctx;
-	chacha_keysetup(&chacha20_ctx, (uint8_t*)crypto->key);
-	chacha_ivsetup(&chacha20_ctx, (uint8_t*)nonce, NULL);
+	struct chacha20_context chacha20_ctx;
+	chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
 
 	char block0[64] = {0};
-	chacha20_encrypt_bytes(&chacha20_ctx, (uint8_t*)block0, (uint8_t*)block0, sizeof(block0));
+	chacha20_xor(&chacha20_ctx, (uint8_t*)block0, sizeof(block0));
 
-	chacha20_encrypt_bytes(&chacha20_ctx, (uint8_t*)data, (uint8_t*)data, size);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)data, size);
 
 	poly1305_context poly1305_ctx;
 	poly1305_init(&poly1305_ctx, (unsigned char*)&block0);
@@ -36,12 +35,11 @@ void chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *da
 	char nonce[12] = {0};
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
-	struct chacha20_ctx chacha20_ctx;
-	chacha_keysetup(&chacha20_ctx, (uint8_t*)crypto->key);
-	chacha_ivsetup(&chacha20_ctx, (uint8_t*)nonce, NULL);
+	struct chacha20_context chacha20_ctx;
+	chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
 
 	char block0[64] = {0};
-	chacha20_encrypt_bytes(&chacha20_ctx, (uint8_t*)block0, (uint8_t*)block0, sizeof(block0));
+	chacha20_xor(&chacha20_ctx, (uint8_t*)block0, sizeof(block0));
 
 	poly1305_context poly1305_ctx;
 	poly1305_init(&poly1305_ctx, (unsigned char*)&block0);
@@ -56,5 +54,5 @@ void chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *da
 
 	poly1305_finish(&poly1305_ctx, (unsigned char*)mac);
 
-	chacha20_encrypt_bytes(&chacha20_ctx, (uint8_t*)data, (uint8_t*)data, size);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)data, size);
 }
