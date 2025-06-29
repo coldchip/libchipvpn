@@ -59,11 +59,11 @@ void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size) {
     uint32_t *bytes_32 = (uint32_t*)bytes;
 
     for(size_t i = 0; i < blocks; i++) {
-        uint32_t keystream_position = ctx->position % 64;
+        uint32_t keystream_position = i % 16;
         if(keystream_position == 0) {
             chacha20_block_next(ctx);
         }
-        bytes_32[i] ^= keystream_32[i % 16];
+        bytes_32[i] ^= keystream_32[keystream_position];
         ctx->position += 4;
     }
 
