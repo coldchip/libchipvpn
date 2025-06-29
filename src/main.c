@@ -265,13 +265,12 @@ int main(int argc, char const *argv[]) {
 		exit(1);
 	}
 
-	uint64_t last_check = 0;
+	read_peer_config(argv[1], vpn->device);
 
 	while(!quit) {
 		chipvpn_poll(vpn, 250);
 		chipvpn_service(vpn);
 
-		
 	}
 
 	chipvpn_log_append("cleanup\n");
