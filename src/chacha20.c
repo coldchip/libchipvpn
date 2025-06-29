@@ -49,9 +49,9 @@ void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t 
     ctx->position = 0;
 }
 
-void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t n_bytes) {
+void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size) {
     uint8_t *keystream_8 = (uint8_t*)ctx->keystream;
-    for(size_t i = 0; i < n_bytes; i++) {
+    for(size_t i = 0; i < size; i++) {
         uint32_t keystream_position = ctx->position % 64;
         if(keystream_position == 0) {
             chacha20_block_next(ctx);
