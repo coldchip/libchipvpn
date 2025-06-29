@@ -26,7 +26,7 @@ static void chacha20_block_set_counter(struct chacha20_context *ctx, uint32_t co
 static void chacha20_block_next(struct chacha20_context *ctx) {
     for(int i = 0; i < 16; i++) ctx->keystream[i] = ctx->state[i];
 
-    for(int i = 0; i < 10; i++)  {
+    for(int i = 0; i < 10; i++) {
         CHACHA20_QUARTERROUND(ctx->keystream, 0, 4, 8, 12)
         CHACHA20_QUARTERROUND(ctx->keystream, 1, 5, 9, 13)
         CHACHA20_QUARTERROUND(ctx->keystream, 2, 6, 10, 14)
@@ -37,9 +37,9 @@ static void chacha20_block_next(struct chacha20_context *ctx) {
         CHACHA20_QUARTERROUND(ctx->keystream, 3, 4, 9, 14)
     }
 
-    for(int i = 0; i < 16; i++) ctx->keystream[i] += ctx->state[i];
+    for(int i = 0; i < 16; i++) ctx->keystream[i] = PLUS(ctx->keystream[i], ctx->state[i]);
 
-    ctx->state[12] += 1;
+    ctx->state[12] = PLUS(ctx->state[12], 1);
 }
 
 void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t nonce[], uint32_t counter) {

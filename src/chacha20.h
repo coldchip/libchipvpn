@@ -23,11 +23,15 @@ extern "C" {
 #define ROTL32(v, n) \
 	(U32V((v) << (n)) | ((v) >> (32 - (n))))
 
+#define ROTATE(v,c) (ROTL32(v,c))
+#define XOR(v,w) ((v) ^ (w))
+#define PLUS(v,w) (U32V((v) + (w)))
+
 #define CHACHA20_QUARTERROUND(x, a, b, c, d) \
-	x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 16); \
-	x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 12); \
-	x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 8); \
-	x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7);
+	x[a] = PLUS(x[a], x[b]); x[d] = ROTATE(XOR(x[d], x[a]), 16); \
+	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 12); \
+	x[a] = PLUS(x[a], x[b]); x[d] = ROTATE(XOR(x[d], x[a]), 8); \
+	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 7);
 
 struct chacha20_context {
 	uint32_t keystream[16];
