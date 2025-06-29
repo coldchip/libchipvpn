@@ -37,7 +37,7 @@ struct chacha20_context {
 
 void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t nounc[], uint32_t counter);
 void chacha20_block_set_nonce(struct chacha20_context *ctx, uint8_t nonce[]);
-void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t n_bytes);
+void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size);
 
 #ifdef __cplusplus 
 }

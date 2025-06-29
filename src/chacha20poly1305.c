@@ -7,7 +7,7 @@
 
 void chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
 	char nonce[12];
-	memset(nonce, 0, sizeof(nonce));
+	memset(nonce, 0, 4);
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
 	struct chacha20_context chacha20_ctx;
@@ -35,7 +35,7 @@ void chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *da
 
 void chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
 	char nonce[12];
-	memset(nonce, 0, sizeof(nonce));
+	memset(nonce, 0, 4);
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
 	struct chacha20_context chacha20_ctx;
