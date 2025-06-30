@@ -212,11 +212,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
-					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
-					return 0;
-				}
-
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
 					chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
 					return 0;
@@ -224,8 +219,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				char mac[16];
 				chipvpn_crypto_chacha20_poly1305_decrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), mac);
-				if(memcmp(mac, packet->mac, sizeof(packet->mac) != 0)) {
+				if(memcmp(mac, packet->mac, sizeof(mac) != 0)) {
 					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
+					return 0;
+				}
+
+				if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
+					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
 					return 0;
 				}
 
