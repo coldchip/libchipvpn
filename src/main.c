@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <net/if.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -55,7 +56,7 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 			}
 
 			if(section == DEVICE_SECTION && strcmp(key, "name") == 0) {
-				char name[IFNAMSIZ + 1];
+				char name[IF_NAMESIZE + 1];
 				if(sscanf(value, "%16[^\n]", name) == 1) {
 					strcpy(config->name, name);
 				}
