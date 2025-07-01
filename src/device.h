@@ -41,7 +41,7 @@ typedef struct {
 	int fd;
     int can_read;
     int can_write;
-	char dev[IFNAMSIZ + 1];
+	char dev[IF_NAMESIZE + 1];
     chipvpn_list_t peers;
 } chipvpn_device_t;
 
