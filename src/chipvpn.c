@@ -224,10 +224,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
-					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
-					return 0;
-				}
+				// if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
+				// 	chipvpn_log_append("%p says: rejected replayed packet\n", peer);
+				// 	return 0;
+				// }
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
