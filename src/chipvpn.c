@@ -168,8 +168,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		// chipvpn_crypto_chacha20_poly1305_encrypt(&peer->outbound_crypto, data, r, vpn->counter++, header->mac);
 
-		vpn->counter++
-		
+		vpn->counter++;
+
 		peer->tx += r;
 		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
