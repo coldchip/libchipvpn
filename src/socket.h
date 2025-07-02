@@ -10,7 +10,7 @@ extern "C"
 #include "address.h"
 #include "list.h"
 
-#define SOCKET_QUEUE_SIZE 64
+#define SOCKET_QUEUE_SIZE 16
 #define SOCKET_QUEUE_ENTRY_SIZE 16000
 
 typedef struct {
