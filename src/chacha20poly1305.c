@@ -56,3 +56,26 @@ void chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *da
 
 	chacha20_xor(&chacha20_ctx, (uint8_t*)data, size);
 }
+
+int chipvpn_crypto_memcmp16(const uint8_t *a, const uint8_t *b) {
+    uint8_t diff = 0;
+
+    diff |= a[0] ^ b[0];
+    diff |= a[1] ^ b[1];
+    diff |= a[2] ^ b[2];
+    diff |= a[3] ^ b[3];
+    diff |= a[4] ^ b[4];
+    diff |= a[5] ^ b[5];
+    diff |= a[6] ^ b[6];
+    diff |= a[7] ^ b[7];
+    diff |= a[8] ^ b[8];
+    diff |= a[9] ^ b[9];
+    diff |= a[10] ^ b[10];
+    diff |= a[11] ^ b[11];
+    diff |= a[12] ^ b[12];
+    diff |= a[13] ^ b[13];
+    diff |= a[14] ^ b[14];
+    diff |= a[15] ^ b[15];
+
+    return diff;
+}
