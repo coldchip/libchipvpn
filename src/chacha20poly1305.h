@@ -10,14 +10,14 @@ extern "C"
 
 typedef struct {
 	char key[32];
+	char nonce[24];
 } chipvpn_crypto_t;
 
-static const unsigned char _pad0[16] = { 0 };
-
-void                  chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac);
-void                  chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac);
-
-int                   chipvpn_crypto_memcmp16(const uint8_t *a, const uint8_t *b);
+void                  chipvpn_crypto_set_key(chipvpn_crypto_t *crypto, char *key);
+void                  chipvpn_crypto_set_nonce(chipvpn_crypto_t *crypto, char *nonce);
+void                  chipvpn_crypto_xchacha20(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter);
+void                  chipvpn_crypto_xchacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac);
+void                  chipvpn_crypto_xchacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac);
 
 #ifdef __cplusplus
 }

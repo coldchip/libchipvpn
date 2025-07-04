@@ -166,7 +166,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		header->session     = htonl(peer->outbound_session);
 		header->counter     = htonll(vpn->counter);
 
-		chipvpn_crypto_chacha20_poly1305_encrypt(&peer->outbound_crypto, data, r, vpn->counter++, header->mac);
+		chipvpn_crypto_xchacha20_poly1305_encrypt(&peer->outbound_crypto, data, r, vpn->counter++, header->mac);
 
 		peer->tx += r;
 		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
@@ -218,11 +218,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				char mac[16];
-				chipvpn_crypto_chacha20_poly1305_decrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), mac);
-				if(chipvpn_crypto_memcmp16((uint8_t*)mac, (uint8_t*)packet->mac) != 0) {
-					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
-					return 0;
-				}
+				chipvpn_crypto_xchacha20_poly1305_decrypt(&peer->inbound_crypto, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), mac);
 
 				if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
 					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
