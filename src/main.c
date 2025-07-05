@@ -32,7 +32,7 @@ typedef enum {
 void read_device_config(const char *path, chipvpn_config_t *config) {
 	FILE *fp = fopen(path, "r");
 	if(!fp) {
-		fprintf(stderr, "config read failed\n");
+		chipvpn_log_append("config read failed\n");
 		exit(1);
 	}
 
@@ -67,7 +67,7 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 				int prefix;
 				if(sscanf(value, "%24[^/]/%i", address, &prefix) == 2) {
 					if(!chipvpn_address_set_ip(&config->network, address)) {
-						fprintf(stderr, "invalid address from config\n");
+						chipvpn_log_append("invalid address from config\n");
 						exit(1);
 					}
 					config->network.prefix = prefix;
@@ -86,7 +86,7 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 				int port;
 				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
 					if(!chipvpn_address_set_ip(&config->bind, address)) {
-						fprintf(stderr, "invalid address from config\n");
+						chipvpn_log_append("invalid address from config\n");
 						exit(1);
 					}
 					config->bind.port = port;
@@ -116,7 +116,7 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 void read_peer_config(const char *path, chipvpn_device_t *device) {
 	FILE *fp = fopen(path, "r");
 	if(!fp) {
-		fprintf(stderr, "config read failed\n");
+		chipvpn_log_append("config read failed\n");
 		exit(1);
 	}
 
@@ -262,7 +262,7 @@ int main(int argc, char const *argv[]) {
 
 	chipvpn_t *vpn = chipvpn_create(&config, -1);
 	if(!vpn) {
-		fprintf(stderr, "unable to create vpn tunnel interface\n");
+		chipvpn_log_append("unable to create vpn tunnel interface\n");
 		exit(1);
 	}
 
