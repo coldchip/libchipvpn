@@ -30,6 +30,7 @@ extern "C" {
 #if defined(__x86_64__)
 	#define CHACHA20_QUARTERROUND(x, a, b, c, d) chacha20_quarterround_x86(x, a, b, c, d);
 #elif defined(__aarch64__)
+	#error "aarch64 chacha20 not supported"
 	#define CHACHA20_QUARTERROUND(x, a, b, c, d) chacha20_quarterround_arm64(x, a, b, c, d);
 #else
 	#define CHACHA20_QUARTERROUND(x, a, b, c, d) \
