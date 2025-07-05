@@ -20,7 +20,7 @@ void chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *da
 	poly1305_context poly1305_ctx;
 	poly1305_init(&poly1305_ctx, (unsigned char*)&block0);
 	poly1305_update(&poly1305_ctx, (unsigned char*)data, size);
-	poly1305_update(&poly1305_ctx, (unsigned char*)_pad0, (0x10 - size) & 0xf);
+	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - size) & 0xf);
 
 	uint64_t aad_size = 0l;
 	uint64_t data_size = size;
@@ -44,7 +44,7 @@ void chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *da
 	poly1305_context poly1305_ctx;
 	poly1305_init(&poly1305_ctx, (unsigned char*)&block0);
 	poly1305_update(&poly1305_ctx, (unsigned char*)data, size);
-	poly1305_update(&poly1305_ctx, (unsigned char*)_pad0, (0x10 - size) & 0xf);
+	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - size) & 0xf);
 
 	uint64_t aad_size = 0l;
 	uint64_t data_size = size;

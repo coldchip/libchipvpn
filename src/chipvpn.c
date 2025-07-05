@@ -153,6 +153,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
+		if(ip_hdr->version != 4) {
+			return 0;
+		}
+
 		chipvpn_address_t dst = {
 			.ip = ip_hdr->dst_addr
 		};
@@ -230,6 +234,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
+				if(ip_hdr->version != 4) {
+					return 0;
+				}
 
 				chipvpn_address_t src = {
 					.ip = ip_hdr->src_addr
