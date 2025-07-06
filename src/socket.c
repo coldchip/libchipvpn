@@ -57,15 +57,15 @@ bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
 	return true;
 }
 
-void chipvpn_socket_preselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset, int *max) {
-	if(!chipvpn_socket_can_enqueue(socket))  FD_CLR(socket->fd, rdset); else FD_SET(socket->fd, rdset);
-	if(!chipvpn_socket_can_dequeue(socket))  FD_CLR(socket->fd, wdset); else FD_SET(socket->fd, wdset);
-	*max = socket->fd;
+void chipvpn_socket_preselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset, int *max) {
+	if(!chipvpn_socket_can_enqueue(sock))  FD_CLR(sock->fd, rdset); else FD_SET(sock->fd, rdset);
+	if(!chipvpn_socket_can_dequeue(sock))  FD_CLR(sock->fd, wdset); else FD_SET(sock->fd, wdset);
+	*max = sock->fd;
 }
 
-void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *wdset) {
-	if(FD_ISSET(socket->fd, rdset)) {
-		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&socket->rx_queue);
+void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset) {
+	if(FD_ISSET(sock->fd, rdset)) {
+		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&sock->rx_queue);
 		if(!entry) {
 			return;
 		}
@@ -73,7 +73,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		struct sockaddr_in sa;
 		int len = sizeof(sa);
 
-		int r = recvfrom(socket->fd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+		int r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 		if(r <= 0) {
 			return;
 		}
@@ -83,11 +83,11 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		entry->addr.ip = sa.sin_addr.s_addr;
 		entry->addr.port = ntohs(sa.sin_port);
 
-		chipvpn_socket_enqueue_commit(&socket->rx_queue, entry);
+		chipvpn_socket_enqueue_commit(&sock->rx_queue, entry);
 		
 	}
-	if(FD_ISSET(socket->fd, wdset)) {
-		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&socket->tx_queue);
+	if(FD_ISSET(sock->fd, wdset)) {
+		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&sock->tx_queue);
 		if(!entry) {
 			return;
 		}
@@ -99,12 +99,12 @@ void chipvpn_socket_postselect(chipvpn_socket_t *socket, fd_set *rdset, fd_set *
 		sa.sin_addr.s_addr = entry->addr.ip;
 		sa.sin_port = htons(entry->addr.port);
 
-		int w = sendto(socket->fd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
+		int w = sendto(sock->fd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
 		if(w <= 0) {
 			return;
 		}
 
-		chipvpn_socket_dequeue_commit(entry);
+		chipvpn_socket_dequeue_commit(&sock->tx_queue, entry);
 	}
 }
 
@@ -114,11 +114,13 @@ void chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue) {
 		current->is_used = false;
 	}
 
+	queue->size = 0;
+
 	chipvpn_list_clear(&queue->queue);
 }
 
 int chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue) {
-	return (int)chipvpn_list_size(&queue->queue);
+	return queue->size;
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue) {
@@ -142,9 +144,11 @@ chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire(chipvpn_socket_queu
 void chipvpn_socket_enqueue_commit(chipvpn_socket_queue_t *queue, chipvpn_socket_queue_entry_t *entry) {
 	entry->is_used = true;
 	chipvpn_list_insert(chipvpn_list_end(&queue->queue), entry);
+	queue->size++;
 }
 
-void chipvpn_socket_dequeue_commit(chipvpn_socket_queue_entry_t *entry) {
+void chipvpn_socket_dequeue_commit(chipvpn_socket_queue_t *queue, chipvpn_socket_queue_entry_t *entry) {
+	queue->size--;
 	chipvpn_list_remove(&entry->node);
 	entry->is_used = false;
 }
@@ -183,7 +187,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	memcpy(data, entry->buffer, r);
 	entry->size = 0;
 
-	chipvpn_socket_dequeue_commit(entry);
+	chipvpn_socket_dequeue_commit(&sock->rx_queue, entry);
 
 	return r;
 }
