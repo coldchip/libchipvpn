@@ -10,6 +10,7 @@ extern "C"
 #include "address.h"
 #include "list.h"
 
+// Allocate about 1MB of buffer
 #define SOCKET_QUEUE_SIZE 64
 #define SOCKET_QUEUE_ENTRY_SIZE 16000
 
