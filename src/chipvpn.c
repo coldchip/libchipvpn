@@ -72,8 +72,6 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 	vpn->device = device;
 	vpn->socket = socket;
 
-	vpn->counter = 0;
-
 	return vpn;
 }
 
@@ -168,9 +166,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		header->header.type = CHIPVPN_PACKET_DATA;
 		header->session     = htonl(peer->outbound_session);
-		header->counter     = htonll(vpn->counter);
+		header->counter     = htonll(peer->counter);
 
-		if(!chipvpn_crypto_chacha20_poly1305_encrypt(&peer->outbound_crypto, data, r, vpn->counter++, header->mac)) {
+		if(!chipvpn_crypto_chacha20_poly1305_encrypt(&peer->outbound_crypto, data, r, peer->counter++, header->mac)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			return 0;
 		}
