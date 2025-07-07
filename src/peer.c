@@ -127,7 +127,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 
 	if(packet->ack) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(vpn, peer, &peer->address, 0);
+		chipvpn_peer_send_connect(vpn, peer, addr, 0);
 	}
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
