@@ -125,24 +125,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		return 0;
 	}
 
-	if(packet->ack) {
-		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(vpn, peer, addr, 0);
-	}
-
-	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-
-	peer->session ^= ntohl(packet->session);
-	peer->address = *addr;
-	peer->timestamp = ntohll(packet->timestamp);
-	peer->tx = 0l;
-	peer->rx = 0l;
-	peer->counter = 0l;
-	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
-	chipvpn_bitmap_reset(&peer->bitmap);
-
-	chipvpn_peer_set_state(peer, PEER_CONNECTED);
-
+	// Auth successful
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
@@ -151,6 +134,22 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		peer->outbound_crypto.key,
 		sizeof(peer->outbound_crypto.key)
 	);
+
+	if(packet->ack) {
+		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
+		chipvpn_peer_send_connect(vpn, peer, addr, 0);
+	}
+
+	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+	peer->session ^= ntohl(packet->session);
+	peer->address = *addr;
+	peer->timestamp = ntohll(packet->timestamp);
+	peer->tx = 0l;
+	peer->rx = 0l;
+	peer->counter = 0l;
+	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+	chipvpn_bitmap_reset(&peer->bitmap);
+	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
