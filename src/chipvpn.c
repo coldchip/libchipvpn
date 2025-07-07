@@ -165,7 +165,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		header->header.type = CHIPVPN_PACKET_DATA;
-		header->session     = htonl(peer->outbound_session);
+		header->session     = htonl(peer->session);
 		header->counter     = htonll(peer->counter);
 
 		if(!chipvpn_crypto_chacha20_poly1305_encrypt(&peer->outbound_crypto, data, r, peer->counter++, header->mac)) {
