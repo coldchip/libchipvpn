@@ -17,6 +17,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 
 	/* use setter to set? */
 	peer->state = PEER_DISCONNECTED;
+	peer->session = 0;
 	peer->tx = 0l;
 	peer->rx = 0l;
 	peer->last_check = 0l;
@@ -35,12 +36,12 @@ chipvpn_peer_t *chipvpn_peer_create() {
 }
 
 int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack) {
-	chipvpn_secure_random((char*)&peer->inbound_session, sizeof(peer->inbound_session));
+	chipvpn_secure_random((char*)&peer->session, sizeof(peer->session));
 
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
-		.session = htonl(peer->inbound_session),
+		.session = htonl(peer->session),
 		.timestamp = htonll(chipvpn_get_time()),
 		.ack = ack
 	};
@@ -126,7 +127,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 
-	peer->outbound_session = ntohl(packet->session);
+	peer->session ^= ntohl(packet->session);
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
@@ -152,7 +153,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	}
 
 	chipvpn_log_append("%p says: hello\n", peer);
-	chipvpn_log_append("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
+	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
 	
 	chipvpn_log_append("%p says: nonce: ", peer);
 	for(int i = 0; i < sizeof(packet->nonce); i++) {
@@ -168,7 +169,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 	chipvpn_packet_ping_t packet = {};
 	packet.header.type = CHIPVPN_PACKET_PING;
-	packet.session = htonl(peer->outbound_session);
+	packet.session = htonl(peer->session);
 	packet.counter = htonll(peer->counter);
 
 	peer->counter += 1;
@@ -315,7 +316,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t sess
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 		
-		if(session == peer->inbound_session) {
+		if(session == peer->session) {
 			return peer;
 		}
 	}
