@@ -125,6 +125,11 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		return 0;
 	}
 
+	if(packet->ack) {
+		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
+		chipvpn_peer_send_connect(vpn, peer, &peer->address, 0);
+	}
+
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 
 	peer->session ^= ntohl(packet->session);
@@ -146,11 +151,6 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		peer->outbound_crypto.key,
 		sizeof(peer->outbound_crypto.key)
 	);
-
-	if(packet->ack) {
-		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(vpn, peer, &peer->address, 0);
-	}
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
