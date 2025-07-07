@@ -153,6 +153,13 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session ids: inbound [%u] outbound [%u]\n", peer, peer->inbound_session, peer->outbound_session);
+	
+	chipvpn_log_append("%p says: nonce: ", peer);
+	for(int i = 0; i < sizeof(packet->nonce); i++) {
+		chipvpn_log_append("%02x", packet->nonce[i] & 0xff);
+	}
+	chipvpn_log_append("\n");
+
 	chipvpn_log_append("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	return 0;
