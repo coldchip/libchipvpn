@@ -36,12 +36,9 @@ chipvpn_peer_t *chipvpn_peer_create() {
 }
 
 int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack) {
-	chipvpn_secure_random((char*)&peer->session, sizeof(peer->session));
-
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
-		.session = htonl(peer->session),
 		.timestamp = htonll(chipvpn_get_time()),
 		.ack = ack
 	};
@@ -119,17 +116,6 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		chipvpn_peer_send_connect(vpn, peer, addr, 0);
 	}
 
-	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	peer->session ^= ntohl(packet->session);
-	peer->address = *addr;
-	peer->timestamp = ntohll(packet->timestamp);
-	peer->tx = 0l;
-	peer->rx = 0l;
-	peer->counter = 0l;
-	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
-	chipvpn_bitmap_reset(&peer->bitmap);
-	chipvpn_peer_set_state(peer, PEER_CONNECTED);
-
 	// Mix random from peer and ownself to derive chacha20 key. This ensure the entropy of key is contributed from both parties. 
 	char mixed_random[32];
 	for(int i = 0; i < sizeof(mixed_random); i++) {
@@ -145,6 +131,17 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		peer->crypto.key,
 		sizeof(peer->crypto.key)
 	);
+
+	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+	memcpy(&peer->session, mixed_random, sizeof(peer->session));
+	peer->address = *addr;
+	peer->timestamp = ntohll(packet->timestamp);
+	peer->tx = 0l;
+	peer->rx = 0l;
+	peer->counter = 0l;
+	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+	chipvpn_bitmap_reset(&peer->bitmap);
+	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
