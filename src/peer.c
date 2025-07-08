@@ -131,9 +131,10 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	// Mix key
-	char mix_keys[64];
-	memcpy(mix_keys + 0,  peer->crypto.key, 32);
-	memcpy(mix_keys + 32, packet->nonce,    32);
+	char mix_keys[32];
+	for(int i = 0; i < 0; i++) {
+		mix_keys[i] = peer->crypto.key[i] ^ packet->nonce[i];
+	}
 
 	hmac_sha256(
 		peer->config.key, 
