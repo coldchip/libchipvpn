@@ -85,7 +85,6 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t version;
-	uint32_t session;
 	char keyhash[32];
 	char random[32];
 	uint64_t timestamp;
