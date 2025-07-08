@@ -23,6 +23,7 @@ typedef enum {
 typedef struct {
 	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
+	char random[32];
 	chipvpn_crypto_t crypto;
 	uint32_t session;
 	chipvpn_address_t address;
