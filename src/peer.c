@@ -148,8 +148,8 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
 	
 	chipvpn_log_append("%p says: nonce: ", peer);
-	for(int i = 0; i < sizeof(packet->nonce); i++) {
-		chipvpn_log_append("%02x", packet->nonce[i] & 0xff);
+	for(int i = 0; i < sizeof(mix_keys); i++) {
+		chipvpn_log_append("%02x", mix_keys[i] & 0xff);
 	}
 	chipvpn_log_append("\n");
 
