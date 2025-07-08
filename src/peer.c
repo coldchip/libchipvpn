@@ -50,15 +50,15 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
-		"#CHIPVPN_KEYHASH",
-		16,
+		"#CHIPVPN_KEYHASH/1.0",
+		20,
 		packet.keyhash, 
 		sizeof(packet.keyhash)
 	);
 
-	/* generate nonce and sha256 the key */
-	chipvpn_secure_random(packet.nonce, sizeof(packet.nonce));
-	memcpy(peer->crypto.key, packet.nonce, sizeof(packet.nonce));
+	/* generate random for key derivation later on */
+	chipvpn_secure_random(packet.random, sizeof(packet.random));
+	memcpy(peer->random, packet.random, sizeof(packet.random));
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
@@ -130,30 +130,24 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	chipvpn_bitmap_reset(&peer->bitmap);
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
-	// Mix key
-	char mix_keys[32];
-	for(int i = 0; i < sizeof(mix_keys); i++) {
-		mix_keys[i] = peer->crypto.key[i] ^ packet->nonce[i];
+	// Mix random from peer and ownself to derive chacha20 key. This ensure the entropy of key is contributed from both parties. 
+	char mixed_random[32];
+	for(int i = 0; i < sizeof(mixed_random); i++) {
+		mixed_random[i] = peer->random[i] ^ packet->random[i];
 	}
 
+	// Securely derive chacha20 keys by hmac256 with shared keys since mixed random is sent through plaintext
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
-		mix_keys,
-		sizeof(mix_keys),
+		mixed_random,
+		sizeof(mixed_random),
 		peer->crypto.key,
 		sizeof(peer->crypto.key)
 	);
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
-	
-	chipvpn_log_append("%p says: nonce: ", peer);
-	for(int i = 0; i < sizeof(packet->nonce); i++) {
-		chipvpn_log_append("%02x", packet->nonce[i] & 0xff);
-	}
-	chipvpn_log_append("\n");
-
 	chipvpn_log_append("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	return 0;
@@ -281,8 +275,8 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
 		hmac_sha256(
 			peer->config.key, 
 			sizeof(peer->config.key),
-			"#CHIPVPN_KEYHASH",
-			16,
+			"#CHIPVPN_KEYHASH/1.0",
+			20,
 			current, 
 			sizeof(current)
 		);
@@ -357,8 +351,8 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 		hmac_sha256(
 			peer->config.key, 
 			sizeof(peer->config.key),
-			"#CHIPVPN_KEYHASH",
-			16,
+			"#CHIPVPN_KEYHASH/1.0",
+			20,
 			keyhash_buffer, 
 			sizeof(keyhash_buffer)
 		);
