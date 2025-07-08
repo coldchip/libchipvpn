@@ -58,14 +58,7 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 
 	/* generate nonce and sha256 the key */
 	chipvpn_secure_random(packet.nonce, sizeof(packet.nonce));
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		packet.nonce,
-		sizeof(packet.nonce),
-		peer->crypto.key,
-		sizeof(peer->crypto.key)
-	);
+	memcpy(peer->crypto.key, packet.nonce, sizeof(packet.nonce));
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
