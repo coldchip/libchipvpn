@@ -63,8 +63,8 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 		sizeof(peer->config.key),
 		packet.nonce,
 		sizeof(packet.nonce),
-		peer->inbound_crypto.key,
-		sizeof(peer->inbound_crypto.key)
+		peer->crypto.key,
+		sizeof(peer->crypto.key)
 	);
 
 	/* sign entire packet */
@@ -83,8 +83,22 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 }
 
 int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
-	if(chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session))) {
-		chipvpn_log_append("session collision\n");
+	char sign[32];
+	char computed_sign[32];
+	memcpy(sign, packet->sign, sizeof(sign));
+	memset(packet->sign, 0, sizeof(packet->sign));
+
+	hmac_sha256(
+		peer->config.key, 
+		sizeof(peer->config.key),
+		packet,
+		sizeof(chipvpn_packet_auth_t),
+		computed_sign,
+		sizeof(computed_sign)
+	);
+
+	if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+		chipvpn_log_append("invalid sign\n");
 		return 0;
 	}
 
@@ -106,35 +120,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		return 0;
 	}
 
-	char sign[32];
-	char computed_sign[32];
-	memcpy(sign, packet->sign, sizeof(sign));
-	memset(packet->sign, 0, sizeof(packet->sign));
-
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		packet,
-		sizeof(chipvpn_packet_auth_t),
-		computed_sign,
-		sizeof(computed_sign)
-	);
-
-	if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-		chipvpn_log_append("invalid sign\n");
-		return 0;
-	}
-
 	// Auth successful
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		packet->nonce,
-		sizeof(packet->nonce),
-		peer->outbound_crypto.key,
-		sizeof(peer->outbound_crypto.key)
-	);
-
 	if(packet->ack) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
 		chipvpn_peer_send_connect(vpn, peer, addr, 0);
@@ -150,6 +136,20 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 	chipvpn_bitmap_reset(&peer->bitmap);
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
+
+	// Mix key
+	char mix_keys[64];
+	memcpy(mix_keys + 0,  peer->crypto.key, 32);
+	memcpy(mix_keys + 32, packet->nonce,    32);
+
+	hmac_sha256(
+		peer->config.key, 
+		sizeof(peer->config.key),
+		mix_keys,
+		sizeof(mix_keys),
+		peer->crypto.key,
+		sizeof(peer->crypto.key)
+	);
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
