@@ -132,7 +132,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 
 	// Mix key
 	char mix_keys[32];
-	for(int i = 0; i < 0; i++) {
+	for(int i = 0; i < sizeof(mix_keys); i++) {
 		mix_keys[i] = peer->crypto.key[i] ^ packet->nonce[i];
 	}
 
