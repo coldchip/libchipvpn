@@ -129,7 +129,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		return 0;
 	}
 
-	// Securely derive chacha20 keys by hmac256 with shared keys
+	// Securely derive chacha20 keys by hmac256 with shared ecdh keys
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
