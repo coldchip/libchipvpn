@@ -7,6 +7,7 @@
 #include "util.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
+#include "ecdh.h"
 #include "log.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
@@ -43,6 +44,16 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 		.ack = ack
 	};
 
+	// Generate ecdh keys
+	chipvpn_secure_random((char*)peer->ecdh_private, sizeof(peer->ecdh_private));
+	if(!ecdh_generate_keys(peer->ecdh_public, peer->ecdh_private)) {
+		chipvpn_log_append("unable to generate ecdh keys\n");
+		return 0;
+	}
+
+	// Copy ecde public key to packet
+	memcpy(packet.ecdh_public, peer->ecdh_public, sizeof(peer->ecdh_public));
+
 	/* generate keyhash */
 	hmac_sha256(
 		peer->config.key, 
@@ -52,10 +63,6 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 		packet.keyhash, 
 		sizeof(packet.keyhash)
 	);
-
-	/* generate random for key derivation later on */
-	chipvpn_secure_random(packet.random, sizeof(packet.random));
-	memcpy(peer->random, packet.random, sizeof(packet.random));
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
@@ -116,24 +123,24 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		chipvpn_peer_send_connect(vpn, peer, addr, 0);
 	}
 
-	// Mix random from peer and ownself to derive chacha20 key. This ensure the entropy of key is contributed from both parties. 
-	char mixed_random[32];
-	for(int i = 0; i < sizeof(mixed_random); i++) {
-		mixed_random[i] = peer->random[i] ^ packet->random[i];
+	uint8_t ecde_shared[ECC_PUB_KEY_SIZE];
+	if(!ecdh_shared_secret(peer->ecdh_private, (uint8_t*)packet->ecdh_public, ecde_shared)) {
+		printf("unable to derive ecde shared secret\n");
+		return 0;
 	}
 
-	// Securely derive chacha20 keys by hmac256 with shared keys since mixed random is sent through plaintext
+	// Securely derive chacha20 keys by hmac256 with shared keys
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
-		mixed_random,
-		sizeof(mixed_random),
+		ecde_shared,
+		sizeof(ecde_shared),
 		peer->crypto.key,
 		sizeof(peer->crypto.key)
 	);
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	memcpy(&peer->session, mixed_random, sizeof(peer->session));
+	memcpy(&peer->session, ecde_shared, sizeof(ecde_shared));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
