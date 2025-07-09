@@ -88,7 +88,7 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t version;
 	char keyhash[32];
-	char ecdh_public[CURVE25519_KEY_SIZE];
+	char curve_public[CURVE25519_KEY_SIZE];
 	uint64_t timestamp;
 	bool ack;
 	char sign[32];
