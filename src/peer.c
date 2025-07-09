@@ -8,6 +8,7 @@
 #include "sha256.h"
 #include "hmac_sha256.h"
 #include "ecdh.h"
+#include "curve25519.h"
 #include "log.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
@@ -45,14 +46,15 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 	};
 
 	// Generate ecdh keys
-	chipvpn_secure_random((char*)peer->ecdh_private, sizeof(peer->ecdh_private));
-	if(!ecdh_generate_keys(peer->ecdh_public, peer->ecdh_private)) {
-		chipvpn_log_append("unable to generate ecdh keys\n");
-		return 0;
-	}
+	chipvpn_secure_random((char*)peer->curve25519_private, sizeof(peer->curve25519_private));
+	peer->curve25519_private[0] &= 248;
+	peer->curve25519_private[31] &= 127;
+	peer->curve25519_private[31] |= 64;
+	uint8_t basepoint[32] = {9};
+	curve25519_donna(peer->curve25519_public, peer->curve25519_private, basepoint);
 
 	// Copy ecde public key to packet
-	memcpy(packet.ecdh_public, peer->ecdh_public, sizeof(peer->ecdh_public));
+	memcpy(packet.ecdh_public, peer->curve25519_public, sizeof(peer->curve25519_public));
 
 	/* generate keyhash */
 	hmac_sha256(
@@ -123,24 +125,21 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		chipvpn_peer_send_connect(vpn, peer, addr, 0);
 	}
 
-	uint8_t ecde_shared[ECC_PUB_KEY_SIZE];
-	if(!ecdh_shared_secret(peer->ecdh_private, (uint8_t*)packet->ecdh_public, ecde_shared)) {
-		printf("unable to derive ecde shared secret\n");
-		return 0;
-	}
+	uint8_t curve25519_shared[CURVE25519_KEY_SIZE];
+	curve25519_donna(curve25519_shared, peer->curve25519_private, packet->ecdh_public);
 
 	// Securely derive chacha20 keys by hmac256 with shared ecdh keys
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
-		ecde_shared,
-		sizeof(ecde_shared),
+		curve25519_shared,
+		sizeof(curve25519_shared),
 		peer->crypto.key,
 		sizeof(peer->crypto.key)
 	);
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	memcpy(&peer->session, ecde_shared, sizeof(peer->session));
+	memcpy(&peer->session, curve25519_shared, sizeof(peer->session));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
