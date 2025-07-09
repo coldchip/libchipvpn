@@ -7,8 +7,8 @@
 #include "util.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
-#include "ecdh.h"
 #include "curve25519.h"
+#include "crc32.h"
 #include "log.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
@@ -47,11 +47,11 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 
 	// Generate curve25519 keys
 	chipvpn_secure_random(peer->curve_private, sizeof(peer->curve_private));
-	char basepoint[32] = {9};
-	curve25519_donna(
+	char curve_basepoint[32] = {9};
+	curve25519(
 		(uint8_t*)peer->curve_public, 
 		(uint8_t*)peer->curve_private, 
-		(uint8_t*)basepoint
+		(uint8_t*)curve_basepoint
 	);
 
 	// Copy ecde public key to packet
@@ -127,13 +127,13 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	}
 
 	uint8_t curve_shared[CURVE25519_KEY_SIZE];
-	curve25519_donna(
+	curve25519(
 		(uint8_t*)curve_shared, 
 		(uint8_t*)peer->curve_private, 
 		(uint8_t*)packet->curve_public
 	);
 
-	// Securely derive chacha20 keys by hmac256 with shared ecdh keys
+	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
@@ -144,7 +144,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	);
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	memcpy(&peer->session, curve_shared, sizeof(peer->session));
+	peer->session = crc32(curve_shared, sizeof(peer->session));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
