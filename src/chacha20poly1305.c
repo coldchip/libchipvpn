@@ -5,11 +5,11 @@
 #include "chacha20.h"
 #include "poly1305.h"
 
-bool chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
+bool chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
 	struct chacha20_context chacha20_ctx;
 	poly1305_context poly1305_ctx;
-	char     nonce[12] = {0};
-	char     block0[64] = {0};
+	uint8_t  nonce[12] = {0};
+	uint8_t  block0[64] = {0};
 	uint64_t aad_size = 0l;
 	uint64_t data_size = size;
 
@@ -40,12 +40,12 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *da
 	return true;
 }
 
-bool chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac) {
+bool chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
 	struct chacha20_context chacha20_ctx;
 	poly1305_context poly1305_ctx;
-	char     computed_mac[16] = {0};
-	char     nonce[12] = {0};
-	char     block0[64] = {0};
+	uint8_t  computed_mac[16] = {0};
+	uint8_t  nonce[12] = {0};
+	uint8_t  block0[64] = {0};
 	uint64_t aad_size = 0l;
 	uint64_t data_size = size;
 

@@ -140,10 +140,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* tunnel => socket */
 	if(chipvpn_device_can_read(vpn->device) && chipvpn_socket_can_write(vpn->socket)) {
-		char buffer[SOCKET_QUEUE_ENTRY_SIZE];
+		uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 
 		chipvpn_packet_data_t *header = (chipvpn_packet_data_t*)buffer;
-		char                  *data   = buffer + sizeof(chipvpn_packet_data_t);
+		uint8_t               *data   = buffer + sizeof(chipvpn_packet_data_t);
 
 		int r = chipvpn_device_read(vpn->device, data, sizeof(buffer) - sizeof(chipvpn_packet_data_t));
 		if(r <= 0) {
@@ -179,7 +179,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* socket => tunnel */
 	if(chipvpn_socket_can_read(vpn->socket) && chipvpn_device_can_write(vpn->device)) {
-		char buffer[SOCKET_QUEUE_ENTRY_SIZE];
+		uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);
@@ -210,7 +210,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_packet_data_t *packet = (chipvpn_packet_data_t*)buffer;
-				char                  *data   = buffer + sizeof(chipvpn_packet_data_t);
+				uint8_t               *data   = buffer + sizeof(chipvpn_packet_data_t);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_session(&vpn->device->peers, ntohl(packet->session));
 				if(!peer || peer->state != PEER_CONNECTED) {

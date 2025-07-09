@@ -157,17 +157,14 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
   }
 }
 
-void* sha256(const void* data,
-                    const size_t datalen,
-                    void* out,
-                    const size_t outlen) {
+void *sha256(const uint8_t* data, const size_t datalen, uint8_t* out, const size_t outlen) {
   size_t sz;
   SHA256_CTX ctx;
-  char hash[32];
+  uint8_t hash[32];
 
   sha256_init(&ctx);
   sha256_update(&ctx, data, datalen);
-  sha256_final(&ctx, (unsigned char*)&hash);
+  sha256_final(&ctx, hash);
 
   sz = (outlen > SHA256_HASH_SIZE) ? SHA256_HASH_SIZE : outlen;
   return memcpy(out, hash, sz);
