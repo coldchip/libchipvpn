@@ -47,11 +47,11 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 
 	// Generate curve25519 keys
 	chipvpn_secure_random(peer->curve_private, sizeof(peer->curve_private));
-	char curve_basepoint[32] = {9};
+	uint8_t curve_basepoint[32] = {9};
 	curve25519(
-		(uint8_t*)peer->curve_public, 
-		(uint8_t*)peer->curve_private, 
-		(uint8_t*)curve_basepoint
+		peer->curve_public, 
+		peer->curve_private, 
+		curve_basepoint
 	);
 
 	// Copy ecde public key to packet
@@ -83,8 +83,8 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 }
 
 int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
-	char sign[32];
-	char computed_sign[32];
+	uint8_t sign[32];
+	uint8_t computed_sign[32];
 	memcpy(sign, packet->sign, sizeof(sign));
 	memset(packet->sign, 0, sizeof(packet->sign));
 
@@ -128,9 +128,9 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 
 	uint8_t curve_shared[CURVE25519_KEY_SIZE];
 	curve25519(
-		(uint8_t*)curve_shared, 
-		(uint8_t*)peer->curve_private, 
-		(uint8_t*)packet->curve_public
+		curve_shared, 
+		peer->curve_private, 
+		packet->curve_public
 	);
 
 	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
@@ -193,8 +193,8 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 		return 0;
 	}
 
-	char sign[32];
-	char computed_sign[32];
+	uint8_t sign[32];
+	uint8_t computed_sign[32];
 	memcpy(sign, packet->sign, sizeof(sign));
 	memset(packet->sign, 0, sizeof(packet->sign));
 
@@ -243,7 +243,7 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 }
 
 bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
-	sha256(key, strlen(key), peer->config.key, sizeof(peer->config.key));
+	sha256((uint8_t*)key, strlen(key), peer->config.key, sizeof(peer->config.key));
 
 	return true;
 }
@@ -263,22 +263,11 @@ bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command) {
 	return true;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_key(chipvpn_list_t *peers, char *key) {
+chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, uint8_t *key) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(memcmp(key, peer->config.key, sizeof(peer->config.key)) == 0) {
-			return peer;
-		}
-	}
-	return NULL;
-}
-
-chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, char *key) {
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-
-		char current[32];
+		uint8_t current[32];
 		
 		hmac_sha256(
 			peer->config.key, 
@@ -355,7 +344,7 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 		sprintf(tx, "%lu", peer->tx);
 		sprintf(rx, "%lu", peer->rx);
 
-		char keyhash_buffer[32];
+		uint8_t keyhash_buffer[32];
 		hmac_sha256(
 			peer->config.key, 
 			sizeof(peer->config.key),
@@ -364,6 +353,7 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 			keyhash_buffer, 
 			sizeof(keyhash_buffer)
 		);
+		memset(keyhash, 0, sizeof(keyhash));
 		for(int i = 0; i < 32; i++) {
 			sprintf(&keyhash[i * 2], "%02x", keyhash_buffer[i] & 0xff);
 		}

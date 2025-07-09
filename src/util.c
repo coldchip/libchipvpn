@@ -133,7 +133,7 @@ char *chipvpn_format_bytes(uint64_t bytes) {
     return output;
 }
 
-bool chipvpn_secure_random(char *buf, int size) {
+bool chipvpn_secure_random(uint8_t *buf, int size) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) {
         return false;

@@ -10,13 +10,13 @@ extern "C"
 #include <stdbool.h>
 
 typedef struct {
-	char key[32];
+	uint8_t key[32];
 } chipvpn_crypto_t;
 
-static const unsigned char pad0[16] = { 0 };
+static const uint8_t pad0[16] = { 0 };
 
-bool                  chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac);
-bool                  chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, void *data, int size, uint64_t counter, char *mac);
+bool                  chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
+bool                  chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
 
 int                   chipvpn_crypto_memcmp16(const uint8_t *a, const uint8_t *b);
 
