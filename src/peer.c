@@ -144,7 +144,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	);
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	peer->session = crc32(curve_shared, sizeof(peer->session));
+	peer->session = crc32(curve_shared, sizeof(curve_shared));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
