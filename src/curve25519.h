@@ -8,7 +8,7 @@ extern "C" {
 
 #define CURVE25519_KEY_SIZE 32
 
-void curve25519_donna(unsigned char *output, const unsigned char *a,
+void curve25519(unsigned char *output, const unsigned char *a,
                              const unsigned char *b);
 
 #ifdef __cplusplus
