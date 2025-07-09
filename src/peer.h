@@ -25,8 +25,8 @@ typedef struct {
 	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
 
-	uint8_t curve25519_public[CURVE25519_KEY_SIZE];
-	uint8_t curve25519_private[CURVE25519_KEY_SIZE];
+	char curve_public[CURVE25519_KEY_SIZE];
+	char curve_private[CURVE25519_KEY_SIZE];
 
 	chipvpn_crypto_t crypto;
 	uint32_t session;

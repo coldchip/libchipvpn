@@ -45,16 +45,17 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 		.ack = ack
 	};
 
-	// Generate ecdh keys
-	chipvpn_secure_random((char*)peer->curve25519_private, sizeof(peer->curve25519_private));
-	peer->curve25519_private[0] &= 248;
-	peer->curve25519_private[31] &= 127;
-	peer->curve25519_private[31] |= 64;
-	uint8_t basepoint[32] = {9};
-	curve25519_donna(peer->curve25519_public, peer->curve25519_private, basepoint);
+	// Generate curve25519 keys
+	chipvpn_secure_random(peer->curve_private, sizeof(peer->curve_private));
+	char basepoint[32] = {9};
+	curve25519_donna(
+		(uint8_t*)peer->curve_public, 
+		(uint8_t*)peer->curve_private, 
+		(uint8_t*)basepoint
+	);
 
 	// Copy ecde public key to packet
-	memcpy(packet.ecdh_public, peer->curve25519_public, sizeof(peer->curve25519_public));
+	memcpy(packet.curve_public, peer->curve_public, sizeof(peer->curve_public));
 
 	/* generate keyhash */
 	hmac_sha256(
@@ -125,21 +126,25 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		chipvpn_peer_send_connect(vpn, peer, addr, 0);
 	}
 
-	uint8_t curve25519_shared[CURVE25519_KEY_SIZE];
-	curve25519_donna(curve25519_shared, peer->curve25519_private, packet->ecdh_public);
+	uint8_t curve_shared[CURVE25519_KEY_SIZE];
+	curve25519_donna(
+		(uint8_t*)curve_shared, 
+		(uint8_t*)peer->curve_private, 
+		(uint8_t*)packet->curve_public
+	);
 
 	// Securely derive chacha20 keys by hmac256 with shared ecdh keys
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
-		curve25519_shared,
-		sizeof(curve25519_shared),
+		curve_shared,
+		sizeof(curve_shared),
 		peer->crypto.key,
 		sizeof(peer->crypto.key)
 	);
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	memcpy(&peer->session, curve25519_shared, sizeof(peer->session));
+	memcpy(&peer->session, curve_shared, sizeof(peer->session));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
