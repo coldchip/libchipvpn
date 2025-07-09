@@ -14,7 +14,7 @@ extern "C"
 #include "list.h"
 #include "packet.h"
 #include "chipvpn.h"
-#include "ecdh.h"
+#include "curve25519.h"
 
 typedef enum {
 	PEER_DISCONNECTED,
@@ -24,10 +24,9 @@ typedef enum {
 typedef struct {
 	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
-	char random[32];
 
-	uint8_t ecdh_public[ECC_PUB_KEY_SIZE];
-	uint8_t ecdh_private[ECC_PRV_KEY_SIZE];
+	uint8_t curve25519_public[CURVE25519_KEY_SIZE];
+	uint8_t curve25519_private[CURVE25519_KEY_SIZE];
 
 	chipvpn_crypto_t crypto;
 	uint32_t session;

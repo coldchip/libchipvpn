@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "ecdh.h"
+#include "curve25519.h"
 
 typedef struct __attribute__((__packed__)) {
 # if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -88,7 +88,7 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t version;
 	char keyhash[32];
-	char ecdh_public[ECC_PUB_KEY_SIZE];
+	char ecdh_public[CURVE25519_KEY_SIZE];
 	uint64_t timestamp;
 	bool ack;
 	char sign[32];
