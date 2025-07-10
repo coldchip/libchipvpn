@@ -126,12 +126,17 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		chipvpn_peer_send_connect(vpn, peer, addr, 0);
 	}
 
+	// Derive curve25519 shared keys
 	uint8_t curve_shared[CURVE25519_KEY_SIZE];
 	curve25519(
 		curve_shared, 
 		peer->curve_private, 
 		packet->curve_public
 	);
+
+	// Clear curve25519 keys
+	memset(peer->curve_public, 0, sizeof(peer->curve_public));
+	memset(peer->curve_private, 0, sizeof(peer->curve_private));
 
 	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
 	hmac_sha256(
@@ -155,8 +160,8 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_log_append("%p says: hello\n", peer);
-	chipvpn_log_append("%p says: session id: [%08x]\n", peer, peer->session);
-	chipvpn_log_append("%p says: peer connected from [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+	chipvpn_log_append("%p says: session id: [%u]\n", peer, peer->session);
+	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	return 0;
 }
@@ -167,7 +172,7 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 	packet.session = htonl(peer->session);
 	packet.counter = htonll(peer->counter);
 
-	peer->counter += 1;
+	peer->counter++;
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
@@ -188,11 +193,6 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 }
 
 int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr) {
-	if(peer->address.ip != addr->ip || peer->address.port != addr->port) {
-		chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
-		return 0;
-	}
-
 	uint8_t sign[32];
 	uint8_t computed_sign[32];
 	memcpy(sign, packet->sign, sizeof(sign));
@@ -207,8 +207,18 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 		sizeof(computed_sign)
 	);
 
+	if(peer->address.ip != addr->ip || peer->address.port != addr->port) {
+		chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
+		return 0;
+	}
+
 	if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 		chipvpn_log_append("%p says: invalid ping sign\n", peer);
+		return 0;
+	}
+
+	if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
+		chipvpn_log_append("%p says: rejected replayed ping\n", peer);
 		return 0;
 	}
 
