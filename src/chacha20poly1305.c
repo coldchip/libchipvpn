@@ -22,6 +22,7 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, uint8_t 
 	chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
 
 	// Generate poly1305 key from key and nonce, internal counter = 0
+	memset(block0, 0, sizeof(block0));
 	chacha20_xor(&chacha20_ctx, (uint8_t*)block0, sizeof(block0));
 
 	// Encrypt payload, internal counter = 1..2.. and so on
@@ -59,6 +60,7 @@ bool chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, uint8_t 
 	chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
 
 	// Generate poly1305 key from key and nonce, internal counter = 0
+	memset(block0, 0, sizeof(block0));
 	chacha20_xor(&chacha20_ctx, (uint8_t*)block0, sizeof(block0));
 
 	// Update poly1305 with data and padding
