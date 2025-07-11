@@ -10,8 +10,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stddef.h>
 
-char *strdup(const char *s) {
+char *chipvpn_strdup(const char *s) {
 	size_t len = strlen(s) + 1;
 	void *new = malloc(len);
 	if (new == NULL) {
@@ -20,7 +21,7 @@ char *strdup(const char *s) {
 	return (char *) memcpy(new, s, len);
 }
 
-char* str_replace(const char* s, const char* oldW, const char* newW) { 
+char* chipvpn_str_replace(const char* s, const char* oldW, const char* newW) { 
     char* result; 
     int i, cnt = 0; 
     int newWlen = strlen(newW); 
@@ -56,7 +57,7 @@ char* str_replace(const char* s, const char* oldW, const char* newW) {
     return result; 
 }
 
-bool get_gateway(char *ip, char *dev) {
+bool chipvpn_get_gateway(char *ip, char *dev) {
 	bool success = true;
 
     if(ip) {
@@ -162,4 +163,16 @@ uint64_t chipvpn_get_time() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+}
+
+int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {
+    const uint8_t *a_ptr = (const uint8_t *)a;
+    const uint8_t *b_ptr = (const uint8_t *)b;
+    uint32_t result = 0;
+
+    for(size_t i = 0; i < size; i++) {
+        result |= a_ptr[i] ^ b_ptr[i];
+    }
+
+    return result;
 }

@@ -97,7 +97,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		sizeof(computed_sign)
 	);
 
-	if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 		chipvpn_log_append("invalid sign\n");
 		return 0;
 	}
@@ -212,7 +212,7 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 		return 0;
 	}
 
-	if(memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 		chipvpn_log_append("%p says: invalid ping sign\n", peer);
 		return 0;
 	}
@@ -259,17 +259,17 @@ bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 }
 
 bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
-	peer->config.onconnect = strdup(command);
+	peer->config.onconnect = chipvpn_strdup(command);
 	return true;
 }
 
 bool chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command) {
-	peer->config.onping = strdup(command);
+	peer->config.onping = chipvpn_strdup(command);
 	return true;
 }
 
 bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command) {
-	peer->config.ondisconnect = strdup(command);
+	peer->config.ondisconnect = chipvpn_strdup(command);
 	return true;
 }
 
@@ -288,7 +288,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, uint8_t *key)
 			sizeof(current)
 		);
 
-		if(memcmp(key, current, sizeof(current)) == 0) {
+		if(chipvpn_secure_memcmp(key, current, sizeof(current)) == 0) {
 			return peer;
 		}
 	}
@@ -340,7 +340,7 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	char gateway[16];
 	char dev[16];
-	if(!get_gateway(gateway, dev)) {
+	if(!chipvpn_get_gateway(gateway, dev)) {
 
 	}
 
@@ -372,13 +372,13 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 		sprintf(port, "%u", peer->address.port);
 	}
 
-	char *result1 = str_replace(command, "%gateway%", gateway);
-	char *result2 = str_replace(result1, "%gatewaydev%", dev);
-	char *result3 = str_replace(result2, "%tx%", tx);
-	char *result4 = str_replace(result3, "%rx%", rx);
-	char *result5 = str_replace(result4, "%keyhash%", keyhash);
-	char *result6 = str_replace(result5, "%paddr%", address);
-	char *result7 = str_replace(result6, "%pport%", port);
+	char *result1 = chipvpn_str_replace(command, "%gateway%", gateway);
+	char *result2 = chipvpn_str_replace(result1, "%gatewaydev%", dev);
+	char *result3 = chipvpn_str_replace(result2, "%tx%", tx);
+	char *result4 = chipvpn_str_replace(result3, "%rx%", rx);
+	char *result5 = chipvpn_str_replace(result4, "%keyhash%", keyhash);
+	char *result6 = chipvpn_str_replace(result5, "%paddr%", address);
+	char *result7 = chipvpn_str_replace(result6, "%pport%", port);
 	if(system(result7) == 0) {
 		chipvpn_log_append("%s\n", result7);
 	}

@@ -33,7 +33,6 @@ typedef struct {
 typedef struct {
 	chipvpn_device_t *device;
 	chipvpn_socket_t *socket;
-	chipvpn_list_t sessions;
 } chipvpn_t;
 
 chipvpn_t *    chipvpn_create(chipvpn_config_t *config, int tun_fd);
