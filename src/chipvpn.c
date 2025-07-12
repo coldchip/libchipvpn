@@ -302,6 +302,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				peer->config.address.ip   = ntohl(packet->address);
 				peer->config.address.port = ntohs(packet->port);
+				peer->config.connect      = true;
+
+				printf("%u %u\n", peer->config.address.ip, peer->config.address.port);
 				
 				return 0;
 			}
