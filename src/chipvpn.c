@@ -62,13 +62,15 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 		return NULL;
 	}
 
-	if(config->is_bind) {
+	if(config->has_bind) {
 		chipvpn_log_append("device has bind set\n");
 		if(!chipvpn_socket_bind(socket, &config->bind)) {
 			return NULL;
 		}
 	}
 
+	vpn->last_check = 0l;
+	vpn->config = config;
 	vpn->device = device;
 	vpn->socket = socket;
 
@@ -108,8 +110,29 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 }
 
 int chipvpn_service(chipvpn_t *vpn) {
-	/* peer lifecycle service */
+	/* peer discovery */
+	if(vpn->config->has_discovery) {
+		if(chipvpn_get_time() - vpn->last_check > 2000) {
 
+			for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
+				chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+				if(peer->state != PEER_DISCONNECTED) {
+					continue;
+				}
+			
+				chipvpn_packet_discovery_t packet = {
+					.header.type = CHIPVPN_PACKET_DISCOVERY
+				};
+				chipvpn_peer_get_keyhash(peer, packet.keyhash);
+				chipvpn_socket_write(vpn->socket, &packet, sizeof(packet), &vpn->config->discovery);
+			}
+			
+			vpn->last_check = chipvpn_get_time();
+		}
+	}
+
+	/* peer lifecycle service */
 	chipvpn_list_node_t *i = chipvpn_list_begin(&vpn->device->peers);
 	while(i != chipvpn_list_end(&vpn->device->peers)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)i;
@@ -263,6 +286,24 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 				
 				return chipvpn_peer_recv_ping(peer, packet, &addr);
+			}
+			break;
+			case CHIPVPN_PACKET_DISCOVERY: {
+				if(r < sizeof(chipvpn_packet_discovery_t)) {
+					return 0;
+				}
+
+				chipvpn_packet_discovery_t *packet = (chipvpn_packet_discovery_t*)buffer;
+
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
+				if(!peer || peer->state != PEER_DISCONNECTED) {
+					return 0;
+				}
+
+				peer->config.address.ip   = ntohl(packet->address);
+				peer->config.address.port = ntohs(packet->port);
+				
+				return 0;
 			}
 			break;
 		}

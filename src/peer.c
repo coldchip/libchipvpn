@@ -58,14 +58,7 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 	memcpy(packet.curve_public, peer->curve_public, sizeof(peer->curve_public));
 
 	/* generate keyhash */
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		"#CHIPVPN_KEYHASH/1.0",
-		20,
-		packet.keyhash, 
-		sizeof(packet.keyhash)
-	);
+	chipvpn_peer_get_keyhash(peer, packet.keyhash);
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
@@ -167,10 +160,11 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 }
 
 int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
-	chipvpn_packet_ping_t packet = {};
-	packet.header.type = CHIPVPN_PACKET_PING;
-	packet.session = htonl(peer->session);
-	packet.counter = htonll(peer->counter);
+	chipvpn_packet_ping_t packet = {
+		.header.type = CHIPVPN_PACKET_PING,
+		.session = htonl(peer->session),
+		.counter = htonll(peer->counter)
+	};
 
 	peer->counter++;
 
@@ -236,6 +230,17 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	return 0;
 }
 
+void chipvpn_peer_get_keyhash(chipvpn_peer_t *peer, uint8_t *keyhash) {
+	hmac_sha256(
+		peer->config.key, 
+		sizeof(peer->config.key),
+		"#CHIPVPN_KEYHASH/1.0",
+		20,
+		keyhash, 
+		32
+	);
+}
+
 bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
 	if(!chipvpn_address_set_ip(&peer->config.allow, address)) {
 		return false;
@@ -279,14 +284,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, uint8_t *key)
 
 		uint8_t current[32];
 		
-		hmac_sha256(
-			peer->config.key, 
-			sizeof(peer->config.key),
-			"#CHIPVPN_KEYHASH/1.0",
-			20,
-			current, 
-			sizeof(current)
-		);
+		chipvpn_peer_get_keyhash(peer, current);
 
 		if(chipvpn_secure_memcmp(key, current, sizeof(current)) == 0) {
 			return peer;
@@ -355,14 +353,8 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 		sprintf(rx, "%lu", peer->rx);
 
 		uint8_t keyhash_buffer[32];
-		hmac_sha256(
-			peer->config.key, 
-			sizeof(peer->config.key),
-			"#CHIPVPN_KEYHASH/1.0",
-			20,
-			keyhash_buffer, 
-			sizeof(keyhash_buffer)
-		);
+		chipvpn_peer_get_keyhash(peer, keyhash_buffer);
+
 		memset(keyhash, 0, sizeof(keyhash));
 		for(int i = 0; i < 32; i++) {
 			sprintf(&keyhash[i * 2], "%02x", keyhash_buffer[i] & 0xff);

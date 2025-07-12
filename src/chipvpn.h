@@ -24,13 +24,17 @@ typedef struct {
 	char name[IF_NAMESIZE + 1];
 	chipvpn_address_t network;
 	int mtu;
-	bool is_bind;
+	bool has_bind;
 	chipvpn_address_t bind;
+	bool has_discovery;
+	chipvpn_address_t discovery;
 	int sendbuf;
 	int recvbuf;
 } chipvpn_config_t;
 
 typedef struct {
+	uint64_t last_check;
+	chipvpn_config_t *config;
 	chipvpn_device_t *device;
 	chipvpn_socket_t *socket;
 } chipvpn_t;
