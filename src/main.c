@@ -90,7 +90,7 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 						exit(1);
 					}
 					config->bind.port = port;
-					config->is_bind = true;
+					config->has_bind = true;
 				}
 			}
 
@@ -105,6 +105,19 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 				int recvbuf;
 				if(sscanf(value, "%i", &recvbuf) == 1) {
 					config->recvbuf = recvbuf;
+				}
+			}
+
+			if(section == DEVICE_SECTION && strcmp(key, "discovery") == 0) {
+				char address[24];
+				int port;
+				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
+					if(!chipvpn_address_set_ip(&config->discovery, address)) {
+						chipvpn_log_append("invalid address from config\n");
+						exit(1);
+					}
+					config->discovery.port = port;
+					config->has_discovery = true;
 				}
 			}
 		}
@@ -254,6 +267,8 @@ int main(int argc, char const *argv[]) {
 		.mtu = 1420,
 		.sendbuf = 0,
 		.recvbuf = 0,
+		.has_bind = false,
+		.has_discovery = false
 	};
 	
 	read_device_config(argv[1], &config);
