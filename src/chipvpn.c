@@ -121,9 +121,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 
 			/* attempt to connect to peer */
-			if(peer->state == PEER_DISCONNECTED && peer->config.connect == true) {
+			if(peer->state == PEER_DISCONNECTED && peer->config.connect) {
 				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
-				chipvpn_peer_send_connect(vpn, peer, &peer->config.address, true);
+				chipvpn_peer_send_connect(vpn, peer, &peer->config.address);
 			}
 
 			/* ping peers */

@@ -38,12 +38,11 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_address_t *addr, bool ack) {
+int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
-		.timestamp = htonll(chipvpn_get_time()),
-		.ack = ack
+		.timestamp = htonll(chipvpn_get_time())
 	};
 
 	// Generate curve25519 keys
@@ -117,16 +116,16 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		return 0;
 	}
 
-	// Reject if peer has same curve25519 public key
-	if(chipvpn_secure_memcmp(packet->curve_public, peer->curve_public, sizeof(packet->curve_public)) == 0) {
-		chipvpn_log_append("peer has same curve25519 keys\n");
-		return 0;
+	// Auth successful
+	if(!peer->config.connect) {
+		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
+		chipvpn_peer_send_connect(vpn, peer, addr);
 	}
 
-	// Auth successful
-	if(packet->ack) {
-		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(vpn, peer, addr, 0);
+	// Reject if peer has same curve25519 public key
+	if(chipvpn_secure_memcmp(packet->curve_public, peer->curve_public, sizeof(packet->curve_public)) == 0) {
+		chipvpn_log_append("peer has the same curve25519 keys\n");
+		return 0;
 	}
 
 	// Derive curve25519 shared keys
