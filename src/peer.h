@@ -28,8 +28,11 @@ typedef struct {
 	uint8_t curve_public[CURVE25519_KEY_SIZE];
 	uint8_t curve_private[CURVE25519_KEY_SIZE];
 
+	uint32_t inbound_session;
+	uint32_t outbound_session;
+
 	chipvpn_crypto_t crypto;
-	uint32_t session;
+
 	chipvpn_address_t address;
 
 	struct {

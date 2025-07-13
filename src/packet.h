@@ -111,9 +111,12 @@ typedef struct __attribute__((__packed__)) {
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
+	uint32_t session;
+	uint64_t counter;
 	uint8_t keyhash[32];
 	uint32_t address;
 	uint16_t port;
+	uint8_t sign[32];
 } chipvpn_packet_discovery_t;
 
 #ifdef __cplusplus

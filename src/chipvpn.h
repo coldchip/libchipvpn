@@ -15,7 +15,7 @@ extern "C"
 #include "socket.h"
 
 #define CHIPVPN_VERSION 300005
-#define CHIPVPN_PROTOCOL_VERSION 191
+#define CHIPVPN_PROTOCOL_VERSION 192
 
 #define CHIPVPN_PEER_TIMEOUT 20000
 #define CHIPVPN_PEER_PING 2000
@@ -33,8 +33,6 @@ typedef struct {
 } chipvpn_config_t;
 
 typedef struct {
-	uint64_t last_check;
-	chipvpn_config_t *config;
 	chipvpn_device_t *device;
 	chipvpn_socket_t *socket;
 } chipvpn_t;
