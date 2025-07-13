@@ -163,7 +163,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_log_append("%p says: hello\n", peer);
-	chipvpn_log_append("%p says: session ids: [%u] [%u]\n", peer, peer->inbound_session, peer->outbound_session);
+	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->inbound_session, peer->outbound_session);
 	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	return 0;
@@ -318,7 +318,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t sess
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 		
-		if(session == peer->outbound_session) {
+		if(session == peer->inbound_session) {
 			return peer;
 		}
 	}
