@@ -57,7 +57,7 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 	// Set peer inbound session
 	peer->inbound_session = crc32(peer->curve_public, sizeof(peer->curve_public));
 
-	// Copy ecde public key to packet
+	// Copy curve25519 public key to packet
 	memcpy(packet.curve_public, peer->curve_public, sizeof(peer->curve_public));
 
 	/* generate keyhash */

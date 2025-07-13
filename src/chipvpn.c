@@ -274,4 +274,6 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 
 	chipvpn_device_free(vpn->device);
 	chipvpn_socket_free(vpn->socket);
+
+	free(vpn);
 }
