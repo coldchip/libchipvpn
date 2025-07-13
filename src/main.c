@@ -107,19 +107,6 @@ void read_device_config(const char *path, chipvpn_config_t *config) {
 					config->recvbuf = recvbuf;
 				}
 			}
-
-			if(section == DEVICE_SECTION && strcmp(key, "discovery") == 0) {
-				char address[24];
-				int port;
-				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
-					if(!chipvpn_address_set_ip(&config->discovery, address)) {
-						chipvpn_log_append("invalid address from config\n");
-						exit(1);
-					}
-					config->discovery.port = port;
-					config->has_discovery = true;
-				}
-			}
 		}
 	}
 

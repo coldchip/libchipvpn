@@ -19,7 +19,8 @@ chipvpn_peer_t *chipvpn_peer_create() {
 
 	/* use setter to set? */
 	peer->state = PEER_DISCONNECTED;
-	peer->session = 0;
+	peer->inbound_session = 0;
+	peer->outbound_session = 0;
 	peer->tx = 0l;
 	peer->rx = 0l;
 	peer->last_check = 0l;
@@ -53,6 +54,9 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 		peer->curve_private, 
 		curve_basepoint
 	);
+
+	// Set peer inbound session
+	peer->inbound_session = crc32(peer->curve_public, sizeof(peer->curve_public));
 
 	// Copy ecde public key to packet
 	memcpy(packet.curve_public, peer->curve_public, sizeof(peer->curve_public));
@@ -113,6 +117,12 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		return 0;
 	}
 
+	// Reject if peer has same curve25519 public key
+	if(chipvpn_secure_memcmp(packet->curve_public, peer->curve_public, sizeof(packet->curve_public)) == 0) {
+		chipvpn_log_append("peer has same curve25519 keys\n");
+		return 0;
+	}
+
 	// Auth successful
 	if(packet->ack) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
@@ -142,7 +152,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	);
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	peer->session = crc32(curve_shared, sizeof(curve_shared));
+	peer->outbound_session = crc32(packet->curve_public, sizeof(packet->curve_public));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
@@ -153,7 +163,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_log_append("%p says: hello\n", peer);
-	chipvpn_log_append("%p says: session id: [%u]\n", peer, peer->session);
+	chipvpn_log_append("%p says: session ids: [%u] [%u]\n", peer, peer->inbound_session, peer->outbound_session);
 	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	return 0;
@@ -162,7 +172,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 	chipvpn_packet_ping_t packet = {
 		.header.type = CHIPVPN_PACKET_PING,
-		.session = htonl(peer->session),
+		.session = htonl(peer->outbound_session),
 		.counter = htonll(peer->counter)
 	};
 
@@ -308,7 +318,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t sess
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 		
-		if(session == peer->session) {
+		if(session == peer->outbound_session) {
 			return peer;
 		}
 	}
