@@ -77,8 +77,7 @@ typedef struct {
 typedef enum {
 	CHIPVPN_PACKET_AUTH = 0,
 	CHIPVPN_PACKET_DATA,
-	CHIPVPN_PACKET_PING,
-	CHIPVPN_PACKET_DISCOVERY
+	CHIPVPN_PACKET_PING
 } chipvpn_packet_type_e;
 
 typedef struct __attribute__((__packed__)) {
@@ -107,16 +106,6 @@ typedef struct __attribute__((__packed__)) {
 	uint64_t counter;
 	uint8_t sign[32];
 } chipvpn_packet_ping_t;
-
-typedef struct __attribute__((__packed__)) {
-	chipvpn_packet_header_t header;
-	uint32_t session;
-	uint64_t counter;
-	uint8_t keyhash[32];
-	uint32_t address;
-	uint16_t port;
-	uint8_t sign[32];
-} chipvpn_packet_discovery_t;
 
 #ifdef __cplusplus
 }
