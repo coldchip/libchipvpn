@@ -6,7 +6,7 @@
 #include "poly1305.h"
 #include "util.h"
 
-bool chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
+bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
 	struct chacha20_context chacha20_ctx;
 	poly1305_context poly1305_ctx;
 	uint8_t  nonce[12];
@@ -19,7 +19,7 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, uint8_t 
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
 	// Initialize chacha20 from key and nonce
-	chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
+	chacha20_init_context(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce, 0);
 
 	// Generate poly1305 key from key and nonce, internal counter = 0
 	memset(block0, 0, sizeof(block0));
@@ -43,7 +43,7 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, uint8_t 
 	return true;
 }
 
-bool chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
+bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
 	struct chacha20_context chacha20_ctx;
 	poly1305_context poly1305_ctx;
 	uint8_t  computed_mac[16];
@@ -57,7 +57,7 @@ bool chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, uint8_t 
 	memcpy(nonce + 4, &counter, sizeof(counter));
 
 	// Initialize chacha20 from key and nonce
-	chacha20_init_context(&chacha20_ctx, (uint8_t*)crypto->key, (uint8_t*)nonce, 0);
+	chacha20_init_context(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce, 0);
 
 	// Generate poly1305 key from key and nonce, internal counter = 0
 	memset(block0, 0, sizeof(block0));

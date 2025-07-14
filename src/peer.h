@@ -31,8 +31,8 @@ typedef struct {
 	uint32_t inbound_session;
 	uint32_t outbound_session;
 
-	chipvpn_crypto_t inbound_crypto;
-	chipvpn_crypto_t outbound_crypto;
+	uint8_t inbound_key[CHACHA20_KEY_SIZE];
+	uint8_t outbound_key[CHACHA20_KEY_SIZE];
 
 	chipvpn_address_t address;
 
