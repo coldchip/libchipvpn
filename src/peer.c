@@ -141,26 +141,35 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		sizeof(curve_shared),
 		"#CHIPVPN_KEY_A/1.0",
 		18,
-		role ? peer->inbound_crypto.key : peer->outbound_crypto.key,
-		sizeof(peer->inbound_crypto.key)
+		role ? peer->inbound_key : peer->outbound_key,
+		sizeof(peer->inbound_key)
 	);
 	hmac_sha256(
 		curve_shared,
 		sizeof(curve_shared),
 		"#CHIPVPN_KEY_B/1.0",
 		18,
-		role ? peer->outbound_crypto.key : peer->inbound_crypto.key,
-		sizeof(peer->inbound_crypto.key)
+		role ? peer->outbound_key : peer->inbound_key,
+		sizeof(peer->inbound_key)
 	);
 
 	// Clear curve25519 keys
 	memset(peer->curve_public, 0, sizeof(peer->curve_public));
 	memset(peer->curve_private, 0, sizeof(peer->curve_private));
 
+	// Derive session id from keys
+	uint32_t inbound_session  = crc32(peer->inbound_key, sizeof(peer->inbound_key));
+	uint32_t outbound_session = crc32(peer->outbound_key, sizeof(peer->outbound_key));
+
+	if(inbound_session == outbound_session) {
+		chipvpn_log_append("inbound session and outbound session collision\n");
+		return 0;
+	}
+
 	// Set peer state
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	peer->inbound_session  = crc32(peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
-	peer->outbound_session = crc32(peer->outbound_crypto.key, sizeof(peer->outbound_crypto.key));
+	peer->inbound_session  = inbound_session;
+	peer->outbound_session = outbound_session;
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
@@ -189,8 +198,8 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
 	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
+		peer->outbound_key, 
+		sizeof(peer->outbound_key),
 		&packet,
 		sizeof(packet),
 		packet.sign, 

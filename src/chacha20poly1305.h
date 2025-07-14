@@ -9,14 +9,12 @@ extern "C"
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct {
-	uint8_t key[32];
-} chipvpn_crypto_t;
+#define CHACHA20_KEY_SIZE 32
 
 static const uint8_t pad0[16] = { 0 };
 
-bool                  chipvpn_crypto_chacha20_poly1305_encrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
-bool                  chipvpn_crypto_chacha20_poly1305_decrypt(chipvpn_crypto_t *crypto, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
+bool                  chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
+bool                  chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
 
 #ifdef __cplusplus
 }
