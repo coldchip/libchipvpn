@@ -76,6 +76,11 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 }
 
 int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
+	if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
+		chipvpn_log_append("invalid protocol version\n");
+		return 0;
+	}
+
 	uint8_t sign[32];
 	uint8_t computed_sign[32];
 	memcpy(sign, packet->sign, sizeof(sign));
@@ -92,11 +97,6 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 
 	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 		chipvpn_log_append("invalid sign\n");
-		return 0;
-	}
-
-	if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
-		chipvpn_log_append("invalid protocol version\n");
 		return 0;
 	}
 
@@ -134,14 +134,14 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	);
 
 	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
-	int key_order = memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0;
+	int role = memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0;
 
 	hmac_sha256(
 		curve_shared,
 		sizeof(curve_shared),
 		"#CHIPVPN_KEY_A/1.0",
 		18,
-		key_order ? peer->inbound_crypto.key : peer->outbound_crypto.key,
+		role ? peer->inbound_crypto.key : peer->outbound_crypto.key,
 		sizeof(peer->inbound_crypto.key)
 	);
 	hmac_sha256(
@@ -149,7 +149,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		sizeof(curve_shared),
 		"#CHIPVPN_KEY_B/1.0",
 		18,
-		key_order ? peer->outbound_crypto.key : peer->inbound_crypto.key,
+		role ? peer->outbound_crypto.key : peer->inbound_crypto.key,
 		sizeof(peer->inbound_crypto.key)
 	);
 
@@ -159,8 +159,8 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 
 	// Set peer state
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	peer->outbound_session = crc32(peer->outbound_crypto.key, sizeof(peer->outbound_crypto.key));
 	peer->inbound_session  = crc32(peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
+	peer->outbound_session = crc32(peer->outbound_crypto.key, sizeof(peer->outbound_crypto.key));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
@@ -322,7 +322,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_addre
 	return NULL;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_session(chipvpn_list_t *peers, uint32_t session) {
+chipvpn_peer_t *chipvpn_peer_get_by_inbound_session(chipvpn_list_t *peers, uint32_t session) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 		
