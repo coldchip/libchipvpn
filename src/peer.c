@@ -136,19 +136,38 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		packet->curve_public
 	);
 
+	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
+	uint8_t crypto_key_a[32];
+	uint8_t crypto_key_b[32];
+
+	hmac_sha256(
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_KEY_A/1.0",
+		18,
+		crypto_key_a,
+		sizeof(crypto_key_a)
+	);
+	hmac_sha256(
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_KEY_B/1.0",
+		18,
+		crypto_key_b,
+		sizeof(crypto_key_b)
+	);
+
+	if(memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0) {
+		memcpy(peer->inbound_crypto.key, crypto_key_a, sizeof(crypto_key_a));
+		memcpy(peer->outbound_crypto.key, crypto_key_b, sizeof(crypto_key_b));
+	} else {
+		memcpy(peer->outbound_crypto.key, crypto_key_a, sizeof(crypto_key_a));
+		memcpy(peer->inbound_crypto.key, crypto_key_b, sizeof(crypto_key_b));
+	}
+
 	// Clear curve25519 keys
 	memset(peer->curve_public, 0, sizeof(peer->curve_public));
 	memset(peer->curve_private, 0, sizeof(peer->curve_private));
-
-	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		curve_shared,
-		sizeof(curve_shared),
-		peer->crypto.key,
-		sizeof(peer->crypto.key)
-	);
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 	peer->outbound_session = crc32(packet->curve_public, sizeof(packet->curve_public));
