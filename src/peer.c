@@ -54,9 +54,6 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 		curve_basepoint
 	);
 
-	// Set peer inbound session
-	peer->inbound_session = crc32(peer->curve_public, sizeof(peer->curve_public));
-
 	// Copy curve25519 public key to packet
 	memcpy(packet.curve_public, peer->curve_public, sizeof(peer->curve_public));
 
@@ -137,40 +134,33 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	);
 
 	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
-	uint8_t crypto_key_a[32];
-	uint8_t crypto_key_b[32];
+	int key_order = memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0;
 
 	hmac_sha256(
 		curve_shared,
 		sizeof(curve_shared),
 		"#CHIPVPN_KEY_A/1.0",
 		18,
-		crypto_key_a,
-		sizeof(crypto_key_a)
+		key_order ? peer->inbound_crypto.key : peer->outbound_crypto.key,
+		sizeof(peer->inbound_crypto.key)
 	);
 	hmac_sha256(
 		curve_shared,
 		sizeof(curve_shared),
 		"#CHIPVPN_KEY_B/1.0",
 		18,
-		crypto_key_b,
-		sizeof(crypto_key_b)
+		key_order ? peer->outbound_crypto.key : peer->inbound_crypto.key,
+		sizeof(peer->inbound_crypto.key)
 	);
-
-	if(memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0) {
-		memcpy(peer->inbound_crypto.key, crypto_key_a, sizeof(crypto_key_a));
-		memcpy(peer->outbound_crypto.key, crypto_key_b, sizeof(crypto_key_b));
-	} else {
-		memcpy(peer->outbound_crypto.key, crypto_key_a, sizeof(crypto_key_a));
-		memcpy(peer->inbound_crypto.key, crypto_key_b, sizeof(crypto_key_b));
-	}
 
 	// Clear curve25519 keys
 	memset(peer->curve_public, 0, sizeof(peer->curve_public));
 	memset(peer->curve_private, 0, sizeof(peer->curve_private));
 
+	// Set peer state
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	peer->outbound_session = crc32(packet->curve_public, sizeof(packet->curve_public));
+	peer->outbound_session = crc32(peer->outbound_crypto.key, sizeof(peer->outbound_crypto.key));
+	peer->inbound_session  = crc32(peer->inbound_crypto.key, sizeof(peer->inbound_crypto.key));
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
 	peer->tx = 0l;
