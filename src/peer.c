@@ -169,7 +169,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		0, 
 		peer->inbound_key, 
 		sizeof(peer->inbound_key),
-		"#CHIPVPN_SESSION_SIGN/1.0",
+		"#CHIPVPN_SESSION_HASH/1.0",
 		25,
 		peer->inbound_hash, 
 		sizeof(peer->inbound_hash)
@@ -180,7 +180,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		0, 
 		peer->outbound_key, 
 		sizeof(peer->outbound_key),
-		"#CHIPVPN_SESSION_SIGN/1.0",
+		"#CHIPVPN_SESSION_HASH/1.0",
 		25,
 		peer->outbound_hash, 
 		sizeof(peer->outbound_hash)
