@@ -7,6 +7,7 @@
 #include "util.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
+#include "hkdf_sha256.h"
 #include "curve25519.h"
 #include "crc32.h"
 #include "log.h"
@@ -136,20 +137,25 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	// Securely derive chacha20 keys by hmac256 with shared curve25519 keys
 	int role = memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0;
 
-	hmac_sha256(
+	hkdf_sha256(
+		NULL, 
+		0, 
 		curve_shared,
 		sizeof(curve_shared),
-		"#CHIPVPN_KEY_A/1.0",
+		"#CHIPVPN_DIRECTIONAL_KEY_A/1.0",
 		18,
 		role ? peer->inbound_key : peer->outbound_key,
 		sizeof(peer->inbound_key)
 	);
-	hmac_sha256(
+
+	hkdf_sha256(
+		NULL, 
+		0, 
 		curve_shared,
 		sizeof(curve_shared),
-		"#CHIPVPN_KEY_B/1.0",
+		"#CHIPVPN_DIRECTIONAL_KEY_B/1.0",
 		18,
-		role ? peer->outbound_key : peer->inbound_key,
+		role ? peer->inbound_key : peer->outbound_key,
 		sizeof(peer->inbound_key)
 	);
 
@@ -193,9 +199,19 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 		.counter = htonll(peer->counter)
 	};
 
-	peer->counter++;
+	// Derive session hash from key(so this packet cannot be replayed for other session)
+	hkdf_sha256(
+		NULL, 
+		0, 
+		peer->outbound_key, 
+		sizeof(peer->outbound_key),
+		"#CHIPVPN_SESSION_HASH/1.0",
+		30,
+		packet.session_hash, 
+		sizeof(packet.session_hash)
+	);
 
-	/* sign entire packet */
+	/* sign packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
 	hmac_sha256(
 		peer->outbound_key, 
@@ -206,6 +222,8 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 		sizeof(packet.sign)
 	);
 
+	peer->counter++;
+
 	if(peer->config.onping) {
 		chipvpn_peer_run_command(peer, peer->config.onping);
 	}
@@ -214,11 +232,11 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 }
 
 int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr) {
+	/* sign packet */
 	uint8_t sign[32];
 	uint8_t computed_sign[32];
 	memcpy(sign, packet->sign, sizeof(sign));
 	memset(packet->sign, 0, sizeof(packet->sign));
-
 	hmac_sha256(
 		peer->inbound_key, 
 		sizeof(peer->inbound_key),
@@ -228,13 +246,31 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 		sizeof(computed_sign)
 	);
 
-	if(peer->address.ip != addr->ip || peer->address.port != addr->port) {
-		chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
+	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+		chipvpn_log_append("%p says: invalid ping sign\n", peer);
 		return 0;
 	}
 
-	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-		chipvpn_log_append("%p says: invalid ping sign\n", peer);
+	// Derive session hash from key(so this packet cannot be replayed for other session)
+	uint8_t session_hash[32];
+	hkdf_sha256(
+		NULL, 
+		0, 
+		peer->inbound_key, 
+		sizeof(peer->inbound_key),
+		"#CHIPVPN_SESSION_HASH/1.0",
+		30,
+		session_hash, 
+		sizeof(session_hash)
+	);
+
+	if(chipvpn_secure_memcmp(packet->session_hash, session_hash, sizeof(packet->session_hash)) != 0) {
+		chipvpn_log_append("%p says: invalid session hash\n", peer);
+		return 0;
+	}
+
+	if(peer->address.ip != addr->ip || peer->address.port != addr->port) {
+		chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
 		return 0;
 	}
 

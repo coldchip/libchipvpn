@@ -11,23 +11,23 @@ extern "C" {
 #endif  // __cplusplus
 
 #include <stddef.h>
+#include "sha256.h"
 
-size_t  // Returns the number of bytes written to `out`
-hmac_sha256(
-    // [in]: The key and its length.
-    //      Should be at least 32 bytes long for optimal security.
-    const void* key,
-    const size_t keylen,
+typedef struct {
+    SHA256_CTX hashctx;
+    unsigned char key0[64];
+    size_t key0_length;
+} HMAC_CTX;
 
-    // [in]: The data to hash alongside the key.
-    const void* data,
-    const size_t datalen,
+void hmac_sha256_init(HMAC_CTX *ctx, const void *v_key, size_t key_length);
+void hmac_sha256_update(HMAC_CTX *ctx, const void *message,
+                        size_t message_length);
+void hmac_sha256_final(HMAC_CTX *ctx, unsigned char *digest,
+                       size_t digest_length);
 
-    // [out]: The output hash.
-    //      Should be 32 bytes long. If it's less than 32 bytes,
-    //      the resulting hash will be truncated to the specified length.
-    void* out,
-    const size_t outlen);
+void hmac_sha256(const void *key, size_t key_length, const void *message,
+                        size_t message_length, unsigned char *digest,
+                        size_t digest_length);
 
 #ifdef __cplusplus
 }
