@@ -28,8 +28,15 @@ typedef struct {
 	uint8_t curve_public[CURVE25519_KEY_SIZE];
 	uint8_t curve_private[CURVE25519_KEY_SIZE];
 
-	uint32_t inbound_session;
-	uint32_t outbound_session;
+	union {
+		uint32_t inbound_session;
+		uint8_t inbound_hash[32];
+	};
+
+	union {
+		uint32_t outbound_session;
+		uint8_t outbound_hash[32];
+	};
 
 	uint8_t inbound_key[CHACHA20_KEY_SIZE];
 	uint8_t outbound_key[CHACHA20_KEY_SIZE];
