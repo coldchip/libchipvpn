@@ -159,15 +159,6 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		sizeof(peer->outbound_key)
 	);
 
-	for(int i = 0; i < 32; i++) {
-		printf("%02x", peer->inbound_key[i] & 0xff);
-	}
-	printf("\n");
-	for(int i = 0; i < 32; i++) {
-		printf("%02x", peer->outbound_key[i] & 0xff);
-	}
-	printf("\n");
-
 	// Clear curve25519 keys
 	memset(peer->curve_public, 0, sizeof(peer->curve_public));
 	memset(peer->curve_private, 0, sizeof(peer->curve_private));
