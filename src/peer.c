@@ -143,7 +143,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		curve_shared,
 		sizeof(curve_shared),
 		"#CHIPVPN_DIRECTIONAL_KEY_A/1.0",
-		18,
+		30,
 		role ? peer->inbound_key : peer->outbound_key,
 		sizeof(peer->inbound_key)
 	);
@@ -154,7 +154,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		curve_shared,
 		sizeof(curve_shared),
 		"#CHIPVPN_DIRECTIONAL_KEY_B/1.0",
-		18,
+		30,
 		role ? peer->inbound_key : peer->outbound_key,
 		sizeof(peer->inbound_key)
 	);
@@ -205,10 +205,10 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 		0, 
 		peer->outbound_key, 
 		sizeof(peer->outbound_key),
-		"#CHIPVPN_SESSION_HASH/1.0",
+		"#CHIPVPN_SESSION_SIGN/1.0",
 		30,
-		packet.session_hash, 
-		sizeof(packet.session_hash)
+		packet.session_sign, 
+		sizeof(packet.session_sign)
 	);
 
 	/* sign packet */
@@ -252,19 +252,19 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	}
 
 	// Derive session hash from key(so this packet cannot be replayed for other session)
-	uint8_t session_hash[32];
+	uint8_t session_sign[32];
 	hkdf_sha256(
 		NULL, 
 		0, 
 		peer->inbound_key, 
 		sizeof(peer->inbound_key),
-		"#CHIPVPN_SESSION_HASH/1.0",
+		"#CHIPVPN_SESSION_SIGN/1.0",
 		30,
-		session_hash, 
-		sizeof(session_hash)
+		session_sign, 
+		sizeof(session_sign)
 	);
 
-	if(chipvpn_secure_memcmp(packet->session_hash, session_hash, sizeof(packet->session_hash)) != 0) {
+	if(chipvpn_secure_memcmp(packet->session_sign, session_sign, sizeof(packet->session_sign)) != 0) {
 		chipvpn_log_append("%p says: invalid session hash\n", peer);
 		return 0;
 	}
