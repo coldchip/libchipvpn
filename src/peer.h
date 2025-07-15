@@ -28,18 +28,21 @@ typedef struct {
 	uint8_t curve_public[CURVE25519_KEY_SIZE];
 	uint8_t curve_private[CURVE25519_KEY_SIZE];
 
-	union {
-		uint32_t inbound_session;
-		uint8_t inbound_hash[32];
-	};
+	struct {
+		union {
+			uint32_t session;
+			uint8_t session_hash[32];
+		};
+		uint8_t key[CHACHA20_KEY_SIZE];
+	} inbound;
 
-	union {
-		uint32_t outbound_session;
-		uint8_t outbound_hash[32];
-	};
-
-	uint8_t inbound_key[CHACHA20_KEY_SIZE];
-	uint8_t outbound_key[CHACHA20_KEY_SIZE];
+	struct {
+		union {
+			uint32_t session;
+			uint8_t session_hash[32];
+		};
+		uint8_t key[CHACHA20_KEY_SIZE];
+	} outbound;
 
 	chipvpn_address_t address;
 

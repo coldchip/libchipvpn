@@ -160,10 +160,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		header->header.type = CHIPVPN_PACKET_DATA;
-		header->session     = htonl(peer->outbound_session);
+		header->session     = htonl(peer->outbound.session);
 		header->counter     = htonll(peer->counter);
 
-		if(!chipvpn_crypto_chacha20_poly1305_encrypt(peer->outbound_key, data, r, peer->counter++, header->mac)) {
+		if(!chipvpn_crypto_chacha20_poly1305_encrypt(peer->outbound.key, data, r, peer->counter++, header->mac)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			return 0;
 		}
@@ -217,7 +217,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(!chipvpn_crypto_chacha20_poly1305_decrypt(peer->inbound_key, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), packet->mac)) {
+				if(!chipvpn_crypto_chacha20_poly1305_decrypt(peer->inbound.key, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), packet->mac)) {
 					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
 					return 0;
 				}
