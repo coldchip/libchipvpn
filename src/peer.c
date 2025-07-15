@@ -155,8 +155,8 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 		sizeof(curve_shared),
 		"#CHIPVPN_DIRECTIONAL_KEY_B/1.0",
 		30,
-		role ? peer->inbound_key : peer->outbound_key,
-		sizeof(peer->inbound_key)
+		role ? peer->outbound_key : peer->inbound_key,
+		sizeof(peer->outbound_key)
 	);
 
 	for(int i = 0; i < 32; i++) {
