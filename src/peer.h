@@ -73,6 +73,8 @@ int                  chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *p
 int                  chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer);
 int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
 
+int                  chipvpn_peer_derive_keys(chipvpn_peer_t *peer, uint8_t *key, int key_size, bool role);
+
 void                 chipvpn_peer_get_keyhash(chipvpn_peer_t *peer, uint8_t *keyhash);
 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
