@@ -25,7 +25,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->tx = 0l;
 	peer->rx = 0l;
 	peer->last_check = 0l;
-	peer->timeout = 0l;
 	peer->config.connect = false;
 	peer->config.onconnect = NULL;
 	peer->config.onping = NULL;
@@ -169,11 +168,11 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	hkdf_sha256(
 		NULL, 
 		0, 
-		peer->inbound.key, 
-		sizeof(peer->inbound.key),
-		"#CHIPVPN_SESSION_HASH/1.0",
-		25,
-		peer->inbound.session_hash, 
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_SESSION_HASH_A/1.0",
+		27,
+		role ? peer->inbound.session_hash : peer->outbound.session_hash,
 		sizeof(peer->inbound.session_hash)
 	);
 
@@ -181,11 +180,11 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	hkdf_sha256(
 		NULL, 
 		0, 
-		peer->outbound.key, 
-		sizeof(peer->outbound.key),
-		"#CHIPVPN_SESSION_HASH/1.0",
-		25,
-		peer->outbound.session_hash, 
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_SESSION_HASH_B/1.0",
+		27,
+		role ? peer->outbound.session_hash : peer->inbound.session_hash,
 		sizeof(peer->outbound.session_hash)
 	);
 
