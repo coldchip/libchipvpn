@@ -136,16 +136,56 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	// Figure out roles (client or server)
 	int role = memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0;
 
-	// Derive keys
-	if(!chipvpn_peer_derive_keys(peer, curve_shared, sizeof(curve_shared), role)) {
-		chipvpn_log_append("unable to derive keys\n");
-		return 0;
-	}
-
 	// Clear curve25519 keys
-	memset(curve_shared, 0, sizeof(curve_shared));
 	memset(peer->curve_public, 0, sizeof(peer->curve_public));
 	memset(peer->curve_private, 0, sizeof(peer->curve_private));
+
+	// Derive keys
+	hkdf_sha256(
+		NULL, 
+		0, 
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_DIRECTIONAL_KEY_A/1.0",
+		30,
+		role ? peer->inbound.key : peer->outbound.key,
+		sizeof(peer->inbound.key)
+	);
+
+	hkdf_sha256(
+		NULL, 
+		0, 
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_DIRECTIONAL_KEY_B/1.0",
+		30,
+		role ? peer->outbound.key : peer->inbound.key,
+		sizeof(peer->outbound.key)
+	);
+
+	hkdf_sha256(
+		NULL, 
+		0, 
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_SESSION_HASH_A/1.0",
+		27,
+		role ? peer->inbound.session_hash : peer->outbound.session_hash,
+		sizeof(peer->inbound.session_hash)
+	);
+
+	hkdf_sha256(
+		NULL, 
+		0, 
+		curve_shared,
+		sizeof(curve_shared),
+		"#CHIPVPN_SESSION_HASH_B/1.0",
+		27,
+		role ? peer->outbound.session_hash : peer->inbound.session_hash,
+		sizeof(peer->outbound.session_hash)
+	);
+
+	memset(curve_shared, 0, sizeof(curve_shared));
 
 	// Set peer state
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
@@ -242,58 +282,6 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 
 	return 0;
-}
-
-int chipvpn_peer_derive_keys(chipvpn_peer_t *peer, uint8_t *key, int key_size, bool role) {
-	// Inbound/outbound key generation
-	hkdf_sha256(
-		NULL, 
-		0, 
-		key,
-		key_size,
-		"#CHIPVPN_DIRECTIONAL_KEY_A/1.0",
-		30,
-		role ? peer->inbound.key : peer->outbound.key,
-		sizeof(peer->inbound.key)
-	);
-
-	// Inbound/outbound key generation
-	hkdf_sha256(
-		NULL, 
-		0, 
-		key,
-		key_size,
-		"#CHIPVPN_DIRECTIONAL_KEY_B/1.0",
-		30,
-		role ? peer->outbound.key : peer->inbound.key,
-		sizeof(peer->outbound.key)
-	);
-
-	// Generate session id/hash from keys
-	hkdf_sha256(
-		NULL, 
-		0, 
-		key,
-		key_size,
-		"#CHIPVPN_SESSION_HASH_A/1.0",
-		27,
-		role ? peer->inbound.session_hash : peer->outbound.session_hash,
-		sizeof(peer->inbound.session_hash)
-	);
-
-	// Generate session id/hash from keys
-	hkdf_sha256(
-		NULL, 
-		0, 
-		key,
-		key_size,
-		"#CHIPVPN_SESSION_HASH_B/1.0",
-		27,
-		role ? peer->outbound.session_hash : peer->inbound.session_hash,
-		sizeof(peer->outbound.session_hash)
-	);
-
-	return true;
 }
 
 void chipvpn_peer_get_keyhash(chipvpn_peer_t *peer, uint8_t *keyhash) {
