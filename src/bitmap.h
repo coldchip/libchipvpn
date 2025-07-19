@@ -1,6 +1,10 @@
 #ifndef BITMAP_H
 #define BITMAP_H
 
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -18,5 +22,9 @@ typedef struct {
 
 void      chipvpn_bitmap_reset(chipvpn_bitmap_t *window);
 bool      chipvpn_bitmap_validate(chipvpn_bitmap_t *window, uint64_t counter);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif

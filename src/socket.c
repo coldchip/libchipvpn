@@ -93,7 +93,6 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 		}
 
 		struct sockaddr_in sa;
-	
 		memset(&sa, 0, sizeof(sa));
 		sa.sin_family = AF_INET;
 		sa.sin_addr.s_addr = entry->addr.ip;

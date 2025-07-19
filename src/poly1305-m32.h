@@ -1,6 +1,10 @@
 /*
 	poly1305 implementation using 32 bit * 32 bit = 64 bit multiplication and 64 bit addition
 */
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #if defined(_MSC_VER)
 	#define POLY1305_NOINLINE __declspec(noinline)
@@ -216,3 +220,7 @@ poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
 	st->pad[2] = 0;
 	st->pad[3] = 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
