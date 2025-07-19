@@ -254,8 +254,7 @@ int main(int argc, char const *argv[]) {
 		.mtu = 1420,
 		.sendbuf = 0,
 		.recvbuf = 0,
-		.has_bind = false,
-		.has_discovery = false
+		.has_bind = false
 	};
 	
 	read_device_config(argv[1], &config);

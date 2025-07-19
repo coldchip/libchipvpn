@@ -14,7 +14,7 @@ extern "C"
 #include "device.h"
 #include "socket.h"
 
-#define CHIPVPN_VERSION 300005
+#define CHIPVPN_VERSION 300006
 #define CHIPVPN_PROTOCOL_VERSION 196
 
 #define CHIPVPN_PEER_TIMEOUT 20000
@@ -26,8 +26,6 @@ typedef struct {
 	int mtu;
 	bool has_bind;
 	chipvpn_address_t bind;
-	bool has_discovery;
-	chipvpn_address_t discovery;
 	int sendbuf;
 	int recvbuf;
 } chipvpn_config_t;

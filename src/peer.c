@@ -217,8 +217,8 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 	/* sign packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
 	hmac_sha256(
-		peer->outbound.key, 
-		sizeof(peer->outbound.key),
+		peer->config.key, 
+		sizeof(peer->config.key),
 		&packet,
 		sizeof(packet),
 		packet.sign, 
@@ -241,8 +241,8 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	memcpy(sign, packet->sign, sizeof(sign));
 	memset(packet->sign, 0, sizeof(packet->sign));
 	hmac_sha256(
-		peer->inbound.key, 
-		sizeof(peer->inbound.key),
+		peer->config.key, 
+		sizeof(peer->config.key),
 		packet,
 		sizeof(chipvpn_packet_ping_t),
 		computed_sign,
