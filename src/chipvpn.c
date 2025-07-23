@@ -193,6 +193,16 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
 				if(!peer) {
+					chipvpn_log_append("auth no keyhash %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", 
+						packet->keyhash[0] & 0xff, packet->keyhash[1] & 0xff, packet->keyhash[2] & 0xff, packet->keyhash[3] & 0xff,
+						packet->keyhash[4] & 0xff, packet->keyhash[5] & 0xff, packet->keyhash[6] & 0xff, packet->keyhash[7] & 0xff,
+						packet->keyhash[8] & 0xff, packet->keyhash[9] & 0xff, packet->keyhash[10] & 0xff, packet->keyhash[11] & 0xff,
+						packet->keyhash[12] & 0xff, packet->keyhash[13] & 0xff, packet->keyhash[14] & 0xff, packet->keyhash[15] & 0xff,
+						packet->keyhash[16] & 0xff, packet->keyhash[17] & 0xff, packet->keyhash[18] & 0xff, packet->keyhash[19] & 0xff,
+						packet->keyhash[20] & 0xff, packet->keyhash[21] & 0xff, packet->keyhash[22] & 0xff, packet->keyhash[23] & 0xff,
+						packet->keyhash[24] & 0xff, packet->keyhash[25] & 0xff, packet->keyhash[26] & 0xff, packet->keyhash[27] & 0xff,
+						packet->keyhash[28] & 0xff, packet->keyhash[29] & 0xff, packet->keyhash[30] & 0xff, packet->keyhash[31] & 0xff
+					);
 					return 0;
 				}
 
