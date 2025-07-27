@@ -21,6 +21,24 @@ char *chipvpn_strdup(const char *s) {
 	return (char *) memcpy(new, s, len);
 }
 
+char *chipvpn_read_file(const char *file) {
+    FILE *infp = fopen(file, "rb");
+    if(!infp) {
+        return NULL;
+    }
+    fseek(infp, 0, SEEK_END);
+    long fsize = ftell(infp);
+    char *p = malloc(fsize + 1);
+    fseek(infp, 0, SEEK_SET);
+
+    if(fread((char*)p, 1, fsize, infp)) {}
+
+    fclose(infp);
+    *(p + fsize) = '\0';
+
+    return p;
+}
+
 char* chipvpn_str_replace(const char* s, const char* oldW, const char* newW) { 
     char* result; 
     int i, cnt = 0; 
@@ -55,6 +73,23 @@ char* chipvpn_str_replace(const char* s, const char* oldW, const char* newW) {
  
     result[i] = '\0'; 
     return result; 
+}
+
+
+char *chipvpn_sgets(char *buf, int n, const char **str) {
+    const char *s = *str;
+    const char *lf = strchr(s, '\n');
+    int len = (lf == NULL) ? strlen(s) : (lf - s) + 1;
+
+    if (len == 0)
+        return NULL;
+    if (len > n - 1)
+        len = n - 1;
+
+    memcpy(buf, s, len);
+    buf[len] = 0;
+    *str += len;
+    return buf;
 }
 
 bool chipvpn_get_gateway(char *ip, char *dev) {
