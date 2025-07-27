@@ -13,6 +13,7 @@ typedef struct {
 	uint32_t ip;
 	uint16_t port;
 	uint8_t prefix;
+	char path[100];
 } chipvpn_address_t;
 
 bool           chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip);

@@ -71,9 +71,9 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 		}
 
 		struct sockaddr_in sa;
-		int len = sizeof(sa);
+		socklen_t len = sizeof(sa);
 
-		int r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+		int r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, &len);
 		if(r <= 0) {
 			return;
 		}

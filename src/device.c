@@ -14,7 +14,6 @@
  */
 
 #include "device.h"
-#include "socket.h"
 #include "peer.h"
 #include <stdint.h>
 #include <sys/stat.h>
@@ -25,6 +24,7 @@
 #include <stdio.h>
 #include "chipvpn.h"
 #include "address.h"
+#include "util.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>

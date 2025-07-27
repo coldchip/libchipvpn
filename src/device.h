@@ -37,7 +37,13 @@ extern "C"
 #define TUNSETPERSIST _IOW('T', 203, int)
 #endif
 
+typedef enum {
+    COMMAND_DEVICE_SECTION,
+    COMMAND_PEER_SECTION
+} chipvpn_command_section_e;
+
 typedef struct {
+    chipvpn_list_node_t node;
 	int fd;
     int can_read;
     int can_write;
@@ -48,18 +54,18 @@ typedef struct {
 chipvpn_device_t       *chipvpn_device_create(int tun_fd);
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
 bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
-bool                    chipvpn_device_set_mtu(chipvpn_device_t *tun, int mtu);
-bool                    chipvpn_device_set_enabled(chipvpn_device_t *tun);
-bool                    chipvpn_device_set_disabled(chipvpn_device_t *tun);
+bool                    chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu);
+bool                    chipvpn_device_set_enabled(chipvpn_device_t *device);
+bool                    chipvpn_device_set_disabled(chipvpn_device_t *device);
 void                    chipvpn_device_preselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset, int *max);
 void                    chipvpn_device_postselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset);
 void                    chipvpn_device_set_read(chipvpn_device_t *device, bool status);
 void                    chipvpn_device_set_write(chipvpn_device_t *device, bool status);
 bool                    chipvpn_device_can_read(chipvpn_device_t *device);
 bool                    chipvpn_device_can_write(chipvpn_device_t *device);
-int                     chipvpn_device_read(chipvpn_device_t *tun, void *buf, int size);
-int                     chipvpn_device_write(chipvpn_device_t *tun, void *buf, int size);
-void                    chipvpn_device_free(chipvpn_device_t *tun);
+int                     chipvpn_device_read(chipvpn_device_t *device, void *buf, int size);
+int                     chipvpn_device_write(chipvpn_device_t *device, void *buf, int size);
+void                    chipvpn_device_free(chipvpn_device_t *device);
 
 #ifdef __cplusplus
 }

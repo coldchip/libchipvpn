@@ -22,7 +22,9 @@ extern "C"
 #endif
 
 char        *chipvpn_strdup(const char *s);
+char        *chipvpn_read_file(const char *file);
 char        *chipvpn_str_replace(const char* s, const char* oldW, const char* newW);
+char        *chipvpn_sgets(char *buf, int n, const char **str);
 bool         chipvpn_get_gateway(char *ip, char *dev);
 char        *chipvpn_format_bytes(uint64_t bytes);
 bool         chipvpn_secure_random(uint8_t *buf, int size);

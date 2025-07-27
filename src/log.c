@@ -10,5 +10,6 @@ void chipvpn_log_append(char* format, ...) {
 	vsprintf(buffer, format, args);
 	va_end(args);
 
-	printf("%s", buffer);
+	fprintf(stdout, "%s", buffer);
+
 }

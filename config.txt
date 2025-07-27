@@ -6,4 +6,4 @@ mtu:1500
 section:peer
 address:127.0.0.1:4433
 allow:0.0.0.0/0
-key:66367765cf941
+key:nokeyhash

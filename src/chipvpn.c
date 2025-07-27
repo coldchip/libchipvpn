@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/un.h>
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
@@ -10,9 +11,12 @@
 #include "chacha20poly1305.h"
 #include "chipvpn.h"
 #include "socket.h"
+#include "device.h"
+#include "config.h"
 #include "packet.h"
 #include "address.h"
 #include "peer.h"
+#include "ipc.h"
 #include "bitmap.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
@@ -31,46 +35,20 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 	}
 
 	/* create vpn socket */
-	chipvpn_socket_t *socket = chipvpn_socket_create();
-	if(!socket) {
+	chipvpn_socket_t *sock = chipvpn_socket_create();
+	if(!sock) {
 		return NULL;
 	}
 
-	if(tun_fd < 0) {
-		if(!chipvpn_device_set_name(device, config->name)) {
-			return NULL;
-		}
-
-		if(!chipvpn_device_set_address(device, &config->network)) {
-			return NULL;
-		}
-
-		if(!chipvpn_device_set_mtu(device, config->mtu)) {
-			return NULL;
-		}
-		
-		if(!chipvpn_device_set_enabled(device)) {
-			return NULL;
-		}
-	}
-
-	if(config->sendbuf > 0 && !chipvpn_socket_set_sendbuf(socket, config->sendbuf)) {
+	/* create control/config socket */
+	chipvpn_ipc_t *ipc = chipvpn_ipc_create(config->ipc_path);
+	if(!ipc) {
 		return NULL;
-	}
-
-	if(config->recvbuf > 0 && !chipvpn_socket_set_recvbuf(socket, config->recvbuf)) {
-		return NULL;
-	}
-
-	if(config->has_bind) {
-		chipvpn_log_append("device has bind set\n");
-		if(!chipvpn_socket_bind(socket, &config->bind)) {
-			return NULL;
-		}
 	}
 
 	vpn->device = device;
-	vpn->socket = socket;
+	vpn->socket = sock;
+	vpn->ipc = ipc;
 
 	return vpn;
 }
@@ -94,20 +72,33 @@ void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
 }
 
 void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
-	int device_max = 0, socket_max = 0;
+	int device_max = 0, socket_max = 0, config_max = 0;
 
 	chipvpn_device_preselect(vpn->device, rdset, wdset, &device_max);
 	chipvpn_socket_preselect(vpn->socket, rdset, wdset, &socket_max);
+	chipvpn_ipc_preselect(vpn->ipc, rdset, wdset, &config_max);
 
-	*max = MAX(device_max, socket_max);
+	*max = MAX(device_max, MAX(socket_max, config_max));
 }
 
 void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 	chipvpn_device_postselect(vpn->device, rdset, wdset);
 	chipvpn_socket_postselect(vpn->socket, rdset, wdset);
+	chipvpn_ipc_postselect(vpn->ipc, rdset, wdset);
 }
 
 int chipvpn_service(chipvpn_t *vpn) {
+	/* ipc */
+	if(chipvpn_ipc_can_read(vpn->ipc) && chipvpn_ipc_can_write(vpn->ipc)) {
+		char buffer[8192] = {0};
+		chipvpn_address_t addr;
+
+		int x = chipvpn_ipc_read(vpn->ipc, buffer, sizeof(buffer), &addr);
+		buffer[x] = '\0';
+		chipvpn_config_command(vpn, buffer);
+		chipvpn_ipc_write(vpn->ipc, "OK\n", 3, &addr);
+	}
+
 	/* peer lifecycle service */
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
@@ -193,16 +184,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
 				if(!peer) {
-					chipvpn_log_append("auth no keyhash %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", 
-						packet->keyhash[0] & 0xff, packet->keyhash[1] & 0xff, packet->keyhash[2] & 0xff, packet->keyhash[3] & 0xff,
-						packet->keyhash[4] & 0xff, packet->keyhash[5] & 0xff, packet->keyhash[6] & 0xff, packet->keyhash[7] & 0xff,
-						packet->keyhash[8] & 0xff, packet->keyhash[9] & 0xff, packet->keyhash[10] & 0xff, packet->keyhash[11] & 0xff,
-						packet->keyhash[12] & 0xff, packet->keyhash[13] & 0xff, packet->keyhash[14] & 0xff, packet->keyhash[15] & 0xff,
-						packet->keyhash[16] & 0xff, packet->keyhash[17] & 0xff, packet->keyhash[18] & 0xff, packet->keyhash[19] & 0xff,
-						packet->keyhash[20] & 0xff, packet->keyhash[21] & 0xff, packet->keyhash[22] & 0xff, packet->keyhash[23] & 0xff,
-						packet->keyhash[24] & 0xff, packet->keyhash[25] & 0xff, packet->keyhash[26] & 0xff, packet->keyhash[27] & 0xff,
-						packet->keyhash[28] & 0xff, packet->keyhash[29] & 0xff, packet->keyhash[30] & 0xff, packet->keyhash[31] & 0xff
-					);
+					chipvpn_log_append("keyhash hot found\n");
 					return 0;
 				}
 
@@ -284,6 +266,7 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 
 	chipvpn_device_free(vpn->device);
 	chipvpn_socket_free(vpn->socket);
+	chipvpn_ipc_free(vpn->ipc);
 
 	free(vpn);
 }
