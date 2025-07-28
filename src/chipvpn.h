@@ -21,7 +21,7 @@ extern "C"
 #define CHIPVPN_PEER_PING 2000
 
 typedef struct {
-	char ipc_path[100];
+	chipvpn_address_t ipc_bind;
 } chipvpn_config_t;
 
 typedef struct {

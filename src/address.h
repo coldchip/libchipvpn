@@ -8,12 +8,15 @@ extern "C"
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/un.h>
+
+#define UNIX_PATH_MAX sizeof(((struct sockaddr_un *)0)->sun_path)
 
 typedef struct {
 	uint32_t ip;
 	uint16_t port;
 	uint8_t prefix;
-	char path[100];
+	char path[UNIX_PATH_MAX];
 } chipvpn_address_t;
 
 bool           chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip);

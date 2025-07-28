@@ -49,7 +49,7 @@ int main(int argc, char const *argv[]) {
 	signal(SIGQUIT, terminate);
 
 	chipvpn_config_t config = {
-		.ipc_path = "/var/run/chipvpn.sock"
+		.ipc_bind.path = "/var/run/chipvpn.sock"
 	};
 	
 	chipvpn_t *vpn = chipvpn_create(&config, -1);
