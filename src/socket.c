@@ -56,16 +56,18 @@ bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
 			sa_inet->sin_family = AF_INET;
 			sa_inet->sin_addr.s_addr = addr->ip;
 			sa_inet->sin_port = htons(addr->port);
+
 			len = sizeof(*sa_inet);
 		} 
 		break;
 		case AF_UNIX: {
+			unlink(addr->path);
+
 			struct sockaddr_un *sa_unix = (struct sockaddr_un *)&sa;
 			sa_unix->sun_family = AF_UNIX;
 			memcpy(sa_unix->sun_path, addr->path, sizeof(addr->path));
-			len = sizeof(*sa_unix);
 
-			unlink(addr->path);
+			len = sizeof(*sa_unix);
 		} 
 		break;
 	}
@@ -131,6 +133,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 				sa_inet->sin_family = AF_INET;
 				sa_inet->sin_addr.s_addr = entry->addr.ip;
 				sa_inet->sin_port = htons(entry->addr.port);
+
 				len = sizeof(*sa_inet);
 			} 
 			break;
@@ -138,6 +141,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 				struct sockaddr_un *sa_unix = (struct sockaddr_un *)&sa;
 				sa_unix->sun_family = AF_UNIX;
 				memcpy(sa_unix->sun_path, entry->addr.path, sizeof(entry->addr.path));
+
 				len = sizeof(*sa_unix);
 			} 
 			break;
