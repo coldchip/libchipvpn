@@ -240,7 +240,7 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	HMAC_CTX ctx;
 	hmac_sha256_init(&ctx, peer->config.key, sizeof(peer->config.key));
 	hmac_sha256_update(&ctx, peer->inbound.session_hash, sizeof(peer->inbound.session_hash));
-	hmac_sha256_update(&ctx, &packet, sizeof(chipvpn_packet_ping_t));
+	hmac_sha256_update(&ctx, packet, sizeof(chipvpn_packet_ping_t));
 	hmac_sha256_final(&ctx, computed_sign, sizeof(computed_sign));
 
 	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
