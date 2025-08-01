@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
-#include <net/if.h>
-#include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <time.h>

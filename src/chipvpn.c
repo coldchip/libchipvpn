@@ -49,6 +49,8 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 		return NULL;
 	}
 
+	chipvpn_event_init(&vpn->event);
+
 	vpn->device = device;
 	vpn->socket = sock;
 	vpn->ipc = ipc;
@@ -105,6 +107,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				char reply[8192];
 				sprintf(reply, "%p %i\n", peer, peer->state);
+				chipvpn_socket_write(vpn->ipc, reply, strlen(reply), &addr);
+			}
+		} else if(strstr(buffer, "event") != 0) {
+			while(chipvpn_event_size(&vpn->event) > 0) {
+				chipvpn_event_entry_t *entry = chipvpn_event_pop(&vpn->event);
+
+				char reply[8192];
+				sprintf(reply, "%i %s\n", entry->type, entry->message);
 				chipvpn_socket_write(vpn->ipc, reply, strlen(reply), &addr);
 			}
 		} else {
@@ -168,7 +178,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 		header->session     = htonl(peer->outbound.session);
 		header->counter     = htonll(peer->counter);
 
-		if(!chipvpn_crypto_chacha20_poly1305_encrypt(peer->outbound.key, data, r, peer->counter++, header->mac)) {
+		if(!chipvpn_crypto_chacha20_poly1305_encrypt(
+			peer->outbound.key, 
+			data, 
+			r, 
+			peer->counter++, 
+			peer->outbound.session_hash, 
+			sizeof(peer->outbound.session_hash), 
+			header->mac
+		)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			return 0;
 		}
@@ -198,6 +216,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
 				if(!peer) {
+					chipvpn_event_push(&vpn->event, CHIPVPN_EVENT_REJECTED, "KEYHASH NOT FOUND");
+
 					chipvpn_log_append("keyhash hot found\n");
 					return 0;
 				}
@@ -223,7 +243,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(!chipvpn_crypto_chacha20_poly1305_decrypt(peer->inbound.key, data, r - sizeof(chipvpn_packet_data_t), ntohll(packet->counter), packet->mac)) {
+				if(!chipvpn_crypto_chacha20_poly1305_decrypt(
+					peer->inbound.key, 
+					data, 
+					r - sizeof(chipvpn_packet_data_t), 
+					ntohll(packet->counter), 
+					peer->inbound.session_hash, 
+					sizeof(peer->inbound.session_hash), 
+					packet->mac
+				)) {
 					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
 					return 0;
 				}

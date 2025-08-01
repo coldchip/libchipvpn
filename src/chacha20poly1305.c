@@ -6,13 +6,11 @@
 #include "poly1305.h"
 #include "util.h"
 
-bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
+bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, uint64_t data_size, uint64_t counter, uint8_t *aad, uint64_t aad_size, uint8_t *mac) {
 	struct chacha20_context chacha20_ctx;
 	poly1305_context poly1305_ctx;
 	uint8_t  nonce[12];
 	uint8_t  block0[64];
-	uint64_t aad_size = 0l;
-	uint64_t data_size = size;
 
 	// Create 96bit nonce from 64bit counter by copying to 32-96bit region 
 	memset(nonce, 0, 4);
@@ -26,14 +24,20 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, int s
 	chacha20_xor(&chacha20_ctx, (uint8_t*)block0, sizeof(block0));
 
 	// Encrypt payload, internal counter = 1..2.. and so on
-	chacha20_xor(&chacha20_ctx, (uint8_t*)data, size);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)data, data_size);
 
 	// Update poly1305 with data and padding
 	poly1305_init(&poly1305_ctx, (unsigned char*)&block0);
-	poly1305_update(&poly1305_ctx, (unsigned char*)data, size);
-	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - size) & 0xf);
 
-	// Update poly1305 with aad(not needed) and size
+	// Update poly1305 with aad
+	poly1305_update(&poly1305_ctx, (unsigned char*)aad, aad_size);
+	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - aad_size) & 0xf);
+
+	// Update poly1305 with data
+	poly1305_update(&poly1305_ctx, (unsigned char*)data, data_size);
+	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - data_size) & 0xf);
+
+	// Update poly1305 with size
 	poly1305_update(&poly1305_ctx, (unsigned char*)&aad_size, sizeof(aad_size));
 	poly1305_update(&poly1305_ctx, (unsigned char*)&data_size, sizeof(data_size));
 
@@ -43,14 +47,12 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, int s
 	return true;
 }
 
-bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
+bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, uint64_t data_size, uint64_t counter, uint8_t *aad, uint64_t aad_size, uint8_t *mac) {
 	struct chacha20_context chacha20_ctx;
 	poly1305_context poly1305_ctx;
 	uint8_t  computed_mac[16];
 	uint8_t  nonce[12];
 	uint8_t  block0[64];
-	uint64_t aad_size = 0l;
-	uint64_t data_size = size;
 
 	// Create 96bit nonce from 64bit counter by copying to 32-96bit region 
 	memset(nonce, 0, 4);
@@ -65,10 +67,16 @@ bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, int s
 
 	// Update poly1305 with data and padding
 	poly1305_init(&poly1305_ctx, (unsigned char*)&block0);
-	poly1305_update(&poly1305_ctx, (unsigned char*)data, size);
-	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - size) & 0xf);
 
-	// Update poly1305 with aad(not needed) and size
+	// Update poly1305 with aad
+	poly1305_update(&poly1305_ctx, (unsigned char*)aad, aad_size);
+	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - aad_size) & 0xf);
+
+	// Update poly1305 with data
+	poly1305_update(&poly1305_ctx, (unsigned char*)data, data_size);
+	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - data_size) & 0xf);
+
+	// Update poly1305 with size
 	poly1305_update(&poly1305_ctx, (unsigned char*)&aad_size, sizeof(aad_size));
 	poly1305_update(&poly1305_ctx, (unsigned char*)&data_size, sizeof(data_size));
 
@@ -81,7 +89,7 @@ bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, int s
 	}
 
 	// Finally, if mac matches, decrypt payload, internal counter = 1..2.. and so on
-	chacha20_xor(&chacha20_ctx, (uint8_t*)data, size);
+	chacha20_xor(&chacha20_ctx, (uint8_t*)data, data_size);
 
 	return true;
 }

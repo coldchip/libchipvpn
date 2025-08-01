@@ -13,8 +13,8 @@ extern "C"
 
 static const uint8_t pad0[16] = { 0 };
 
-bool                  chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
-bool                  chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
+bool                  chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, uint64_t data_size, uint64_t counter, uint8_t *aad, uint64_t aad_size, uint8_t *mac);
+bool                  chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, uint64_t data_size, uint64_t counter, uint8_t *aad, uint64_t aad_size, uint8_t *mac);
 
 #ifdef __cplusplus
 }
