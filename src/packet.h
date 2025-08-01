@@ -104,7 +104,6 @@ typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t session;
 	uint64_t counter;
-	uint8_t hash[32];
 	uint8_t sign[32];
 } chipvpn_packet_ping_t;
 

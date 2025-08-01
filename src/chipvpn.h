@@ -13,9 +13,10 @@ extern "C"
 
 #include "device.h"
 #include "socket.h"
+#include "event.h"
 
 #define CHIPVPN_VERSION 300006
-#define CHIPVPN_PROTOCOL_VERSION 196
+#define CHIPVPN_PROTOCOL_VERSION 197
 
 #define CHIPVPN_PEER_TIMEOUT 20000
 #define CHIPVPN_PEER_PING 2000
@@ -28,6 +29,8 @@ typedef struct {
 	chipvpn_device_t *device;
 	chipvpn_socket_t *socket;
 	chipvpn_socket_t *ipc;
+
+	chipvpn_event_t event;
 } chipvpn_t;
 
 chipvpn_t *    chipvpn_create(chipvpn_config_t *config, int tun_fd);

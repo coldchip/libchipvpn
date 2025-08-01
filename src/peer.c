@@ -212,18 +212,14 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 		.counter = htonll(peer->counter)
 	};
 
-	memcpy(packet.hash, peer->outbound.session_hash, sizeof(packet.hash));
-
 	/* sign packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		&packet,
-		sizeof(packet),
-		packet.sign, 
-		sizeof(packet.sign)
-	);
+
+	HMAC_CTX ctx;
+	hmac_sha256_init(&ctx, peer->config.key, sizeof(peer->config.key));
+	hmac_sha256_update(&ctx, peer->outbound.session_hash, sizeof(peer->outbound.session_hash));
+	hmac_sha256_update(&ctx, &packet, sizeof(packet));
+	hmac_sha256_final(&ctx, packet.sign, sizeof(packet.sign));
 
 	peer->counter++;
 
@@ -240,23 +236,15 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	uint8_t computed_sign[32];
 	memcpy(sign, packet->sign, sizeof(sign));
 	memset(packet->sign, 0, sizeof(packet->sign));
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		packet,
-		sizeof(chipvpn_packet_ping_t),
-		computed_sign,
-		sizeof(computed_sign)
-	);
+
+	HMAC_CTX ctx;
+	hmac_sha256_init(&ctx, peer->config.key, sizeof(peer->config.key));
+	hmac_sha256_update(&ctx, peer->inbound.session_hash, sizeof(peer->inbound.session_hash));
+	hmac_sha256_update(&ctx, &packet, sizeof(chipvpn_packet_ping_t));
+	hmac_sha256_final(&ctx, computed_sign, sizeof(computed_sign));
 
 	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
 		chipvpn_log_append("%p says: invalid ping sign\n", peer);
-		return 0;
-	}
-
-	// Compare session hash of packet
-	if(chipvpn_secure_memcmp(packet->hash, peer->inbound.session_hash, sizeof(packet->hash)) != 0) {
-		chipvpn_log_append("%p says: invalid session hash\n", peer);
 		return 0;
 	}
 
@@ -313,7 +301,6 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 
 bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 	sha256((uint8_t*)key, strlen(key), peer->config.key, sizeof(peer->config.key));
-
 	return true;
 }
 
