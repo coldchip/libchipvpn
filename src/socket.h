@@ -30,13 +30,12 @@ typedef struct {
 
 typedef struct {
 	int fd;
-	int family;
 	chipvpn_socket_queue_t tx_queue;
 	chipvpn_socket_queue_t rx_queue;
 	chipvpn_address_t addr;
 } chipvpn_socket_t;
 
-chipvpn_socket_t                *chipvpn_socket_create(int family);
+chipvpn_socket_t                *chipvpn_socket_create();
 bool                             chipvpn_socket_set_sendbuf(chipvpn_socket_t *sock, int size);
 bool                             chipvpn_socket_set_recvbuf(chipvpn_socket_t *sock, int size);
 bool                             chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *bind);

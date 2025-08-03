@@ -14,15 +14,6 @@
 #include "config.h"
 #include "chipvpn.h"
 
-int file_mtime(const char *path) {
-	struct stat file_stat;
-	int err = stat(path, &file_stat);
-	if(err != 0) {
-		return 0;
-	}
-	return file_stat.st_mtime;
-}
-
 volatile sig_atomic_t quit = 0;
 
 void terminate(int type) {
@@ -46,11 +37,7 @@ int main(int argc, char const *argv[]) {
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
 
-	chipvpn_config_t config = {
-		.ipc_bind.path = "/var/run/chipvpn.sock"
-	};
-	
-	chipvpn_t *vpn = chipvpn_create(&config, -1);
+	chipvpn_t *vpn = chipvpn_create(-1);
 	if(!vpn) {
 		chipvpn_log_append("unable to create vpn tunnel interface\n");
 		exit(1);

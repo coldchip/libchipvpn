@@ -38,7 +38,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_address_t *addr) {
+int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
@@ -72,10 +72,10 @@ int chipvpn_peer_send_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_addr
 	);
 
 	/* write to socket */
-	return chipvpn_socket_write(vpn->socket, &packet, sizeof(packet), addr);
+	return chipvpn_socket_write(socket, &packet, sizeof(packet), addr);
 }
 
-int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
+int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
 	if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
 		chipvpn_log_append("invalid protocol version\n");
 		return 0;
@@ -116,7 +116,7 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	// Auth successful
 	if(!peer->config.connect) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(vpn, peer, addr);
+		chipvpn_peer_send_connect(peer, socket, addr);
 	}
 
 	// Reject if peer has same curve25519 public key
@@ -205,7 +205,9 @@ int chipvpn_peer_recv_connect(chipvpn_t *vpn, chipvpn_peer_t *peer, chipvpn_pack
 	return 0;
 }
 
-int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
+int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_socket_t *socket) {
+	peer->counter++;
+
 	chipvpn_packet_ping_t packet = {
 		.header.type = CHIPVPN_PACKET_PING,
 		.session = htonl(peer->outbound.session),
@@ -221,13 +223,11 @@ int chipvpn_peer_send_ping(chipvpn_t *vpn, chipvpn_peer_t *peer) {
 	hmac_sha256_update(&ctx, &packet, sizeof(packet));
 	hmac_sha256_final(&ctx, packet.sign, sizeof(packet.sign));
 
-	peer->counter++;
-
 	if(peer->config.onping) {
 		chipvpn_peer_run_command(peer, peer->config.onping);
 	}
 
-	return chipvpn_socket_write(vpn->socket, &packet, sizeof(packet), &peer->address);
+	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
 }
 
 int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr) {
@@ -422,6 +422,57 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	free(result5);
 	free(result6);
 	free(result7);
+}
+
+void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_socket_t *socket) {
+	/* peer lifecycle service */
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+		if(chipvpn_get_time() - peer->last_check > CHIPVPN_PEER_PING) {
+			peer->last_check = chipvpn_get_time();
+
+			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
+			if(peer->state != PEER_DISCONNECTED && chipvpn_get_time() > peer->timeout) {
+				chipvpn_log_append("%p says: peer disconnected\n", peer);
+				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+			}
+
+			/* attempt to connect to peer */
+			if(peer->state == PEER_DISCONNECTED && peer->config.connect) {
+				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
+				chipvpn_peer_send_connect(peer, socket, &peer->config.address);
+			}
+
+			/* ping peers */
+			if(peer->state == PEER_CONNECTED) {
+				chipvpn_peer_send_ping(peer, socket);
+			}
+		}
+	}
+}
+
+bool chipvpn_peer_encrypt_payload(chipvpn_peer_t *peer, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
+	return chipvpn_crypto_chacha20_poly1305_encrypt(
+		peer->outbound.key, 
+		data, 
+		size, 
+		counter, 
+		peer->outbound.session_hash, 
+		sizeof(peer->outbound.session_hash), 
+		mac
+	);
+}
+
+bool chipvpn_peer_decrypt_payload(chipvpn_peer_t *peer, uint8_t *data, int size, uint64_t counter, uint8_t *mac) {
+	return chipvpn_crypto_chacha20_poly1305_decrypt(
+		peer->inbound.key, 
+		data, 
+		size, 
+		counter, 
+		peer->inbound.session_hash, 
+		sizeof(peer->inbound.session_hash), 
+		mac
+	);
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {

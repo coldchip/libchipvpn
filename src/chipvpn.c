@@ -22,7 +22,7 @@
 #include "log.h"
 #include "util.h"
 
-chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
+chipvpn_t *chipvpn_create(int tun_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
@@ -34,22 +34,16 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 	}
 
 	/* create vpn socket */
-	chipvpn_socket_t *sock = chipvpn_socket_create(AF_INET);
+	chipvpn_socket_t *sock = chipvpn_socket_create();
 	if(!sock) {
 		return NULL;
 	}
 
-	/* create control/config socket */
-	chipvpn_socket_t *ipc = chipvpn_socket_create(AF_UNIX);
+	/* create control socket */
+	chipvpn_socket_t *ipc = chipvpn_socket_create();
 	if(!ipc) {
 		return NULL;
 	}
-
-	if(!chipvpn_socket_bind(ipc, &config->ipc_bind)) {
-		return NULL;
-	}
-
-	chipvpn_event_init(&vpn->event);
 
 	vpn->device = device;
 	vpn->socket = sock;
@@ -59,15 +53,15 @@ chipvpn_t *chipvpn_create(chipvpn_config_t *config, int tun_fd) {
 }
 
 void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
-	fd_set rdset, wdset;
-	FD_ZERO(&rdset);
-	FD_ZERO(&wdset);
-
 	struct timeval tv;
 	tv.tv_sec = timeout / 1000;
 	tv.tv_usec = (timeout % 1000) * 1000;
 
 	int max = 0;
+
+	fd_set rdset, wdset;
+	FD_ZERO(&rdset);
+	FD_ZERO(&wdset);
 
 	chipvpn_fdset(vpn, &rdset, &wdset, &max);
 	
@@ -93,59 +87,20 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 }
 
 int chipvpn_service(chipvpn_t *vpn) {
+	/* peer lifecycle service */
+	chipvpn_peer_service(&vpn->device->peers, vpn->socket);
+
 	/* ipc */
 	if(chipvpn_socket_can_read(vpn->ipc) && chipvpn_socket_can_write(vpn->ipc)) {
-		char buffer[8192] = {0};
 		chipvpn_address_t addr;
 
+		char buffer[8192];
 		int x = chipvpn_socket_read(vpn->ipc, buffer, sizeof(buffer), &addr);
 		buffer[x] = '\0';
 
-		if(strstr(buffer, "peerlist") != 0) {
-			for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
-				chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+		chipvpn_config_command(vpn, buffer);
 
-				char reply[8192];
-				sprintf(reply, "%p %i\n", peer, peer->state);
-				chipvpn_socket_write(vpn->ipc, reply, strlen(reply), &addr);
-			}
-		} else if(strstr(buffer, "event") != 0) {
-			while(chipvpn_event_size(&vpn->event) > 0) {
-				chipvpn_event_entry_t *entry = chipvpn_event_pop(&vpn->event);
-
-				char reply[8192];
-				sprintf(reply, "%i %s\n", entry->type, entry->message);
-				chipvpn_socket_write(vpn->ipc, reply, strlen(reply), &addr);
-			}
-		} else {
-			chipvpn_config_command(vpn, buffer);
-			chipvpn_socket_write(vpn->ipc, "OK\n", 3, &addr);
-		}
-	}
-
-	/* peer lifecycle service */
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-		if(chipvpn_get_time() - peer->last_check > CHIPVPN_PEER_PING) {
-			peer->last_check = chipvpn_get_time();
-
-			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
-			if(peer->state != PEER_DISCONNECTED && chipvpn_get_time() > peer->timeout) {
-				chipvpn_log_append("%p says: peer disconnected\n", peer);
-				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-			}
-
-			/* attempt to connect to peer */
-			if(peer->state == PEER_DISCONNECTED && peer->config.connect) {
-				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
-				chipvpn_peer_send_connect(vpn, peer, &peer->config.address);
-			}
-
-			/* ping peers */
-			if(peer->state == PEER_CONNECTED) {
-				chipvpn_peer_send_ping(vpn, peer);
-			}
-		}
+		return chipvpn_socket_write(vpn->ipc, "OK\n", 3, &addr);
 	}
 
 	/* tunnel => socket */
@@ -165,34 +120,27 @@ int chipvpn_service(chipvpn_t *vpn) {
 			return 0;
 		}
 
-		chipvpn_address_t dst = {
-			.ip = ip_hdr->dst_addr
-		};
+		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
 		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(&vpn->device->peers, &dst);
 		if(!peer || peer->state != PEER_CONNECTED) {
 			return 0;
 		}
 
-		header->header.type = CHIPVPN_PACKET_DATA;
-		header->session     = htonl(peer->outbound.session);
-		header->counter     = htonll(peer->counter);
+		peer->counter++;
 
-		if(!chipvpn_crypto_chacha20_poly1305_encrypt(
-			peer->outbound.key, 
-			data, 
-			r, 
-			peer->counter++, 
-			peer->outbound.session_hash, 
-			sizeof(peer->outbound.session_hash), 
-			header->mac
-		)) {
+		if(!chipvpn_peer_encrypt_payload(peer, data, r, peer->counter, header->mac)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			return 0;
 		}
 
 		peer->tx += r;
-		chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
+
+		header->header.type = CHIPVPN_PACKET_DATA;
+		header->session     = htonl(peer->outbound.session);
+		header->counter     = htonll(peer->counter);
+
+		return chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
 
 	/* socket => tunnel */
@@ -216,13 +164,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
 				if(!peer) {
-					chipvpn_event_push(&vpn->event, CHIPVPN_EVENT_REJECTED, "KEYHASH NOT FOUND");
-
 					chipvpn_log_append("keyhash hot found\n");
 					return 0;
 				}
 
-				return chipvpn_peer_recv_connect(vpn, peer, packet, &addr);
+				return chipvpn_peer_recv_connect(peer, vpn->socket, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -230,10 +176,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				chipvpn_packet_data_t *packet = (chipvpn_packet_data_t*)buffer;
-				uint8_t               *data   = buffer + sizeof(chipvpn_packet_data_t);
+				chipvpn_packet_data_t *packet      = (chipvpn_packet_data_t*)buffer;
+				uint32_t               session     = ntohl(packet->session);
+				uint64_t               counter     = ntohll(packet->counter);
+				uint8_t               *data        = buffer + sizeof(chipvpn_packet_data_t);
+				int                    data_size   = r - sizeof(chipvpn_packet_data_t);
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, ntohl(packet->session));
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
 				if(!peer || peer->state != PEER_CONNECTED) {
 					return 0;
 				}
@@ -243,40 +192,32 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				if(!chipvpn_crypto_chacha20_poly1305_decrypt(
-					peer->inbound.key, 
-					data, 
-					r - sizeof(chipvpn_packet_data_t), 
-					ntohll(packet->counter), 
-					peer->inbound.session_hash, 
-					sizeof(peer->inbound.session_hash), 
-					packet->mac
-				)) {
+				if(!chipvpn_peer_decrypt_payload(peer, data, data_size, counter, packet->mac)) {
 					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
 					return 0;
 				}
 
-				if(!chipvpn_bitmap_validate(&peer->bitmap, ntohll(packet->counter))) {
+				/* must be after decrypt */
+				if(!chipvpn_bitmap_validate(&peer->bitmap, counter)) {
 					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
 					return 0;
 				}
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
+
 				if(ip_hdr->version != 4) {
 					return 0;
 				}
 
-				chipvpn_address_t src = {
-					.ip = ip_hdr->src_addr
-				};
+				chipvpn_address_t src = { .ip = ip_hdr->src_addr };
 
 				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
 					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					return 0;
 				}
 
-				peer->rx += r - sizeof(chipvpn_packet_data_t);
-				chipvpn_device_write(vpn->device, data, r - sizeof(chipvpn_packet_data_t));
+				peer->rx += data_size;
+				return chipvpn_device_write(vpn->device, data, data_size);
 			}
 			break;
 			case CHIPVPN_PACKET_PING: {
