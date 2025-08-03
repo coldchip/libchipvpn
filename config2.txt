@@ -7,4 +7,4 @@ ifup:ifup
 
 section:peer
 allow:10.64.0.2/32
-key:66367765cf941
+key:66367765cf942
