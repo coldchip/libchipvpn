@@ -9,7 +9,6 @@
 #include "hmac_sha256.h"
 #include "hkdf_sha256.h"
 #include "curve25519.h"
-#include "crc32.h"
 #include "log.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
@@ -412,9 +411,11 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	char *result5 = chipvpn_str_replace(result4, "%keyhash%", keyhash);
 	char *result6 = chipvpn_str_replace(result5, "%paddr%", address);
 	char *result7 = chipvpn_str_replace(result6, "%pport%", port);
+
 	if(system(result7) == 0) {
 		chipvpn_log_append("%s\n", result7);
 	}
+	
 	free(result1);
 	free(result2);
 	free(result3);

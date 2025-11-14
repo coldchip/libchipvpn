@@ -97,6 +97,13 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				chipvpn_device_set_disabled(vpn->device);
 			}
 
+			if(strcmp(key, "clear") == 0) {
+				while(!chipvpn_list_empty(&vpn->device->peers)) {
+					chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&vpn->device->peers));
+					chipvpn_peer_free(peer);
+				}
+			}
+
 			chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&vpn->device->peers);
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
