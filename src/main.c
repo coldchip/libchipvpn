@@ -29,7 +29,7 @@ int chipvpn_auth_main(int argc, char const *argv[], int rfd, int wfd) {
 		exit(1);
 	}
 
-	write(wfd, file, strlen(file));
+	write(wfd, file, strlen(file) + 1);
 
 	free(file);
 
