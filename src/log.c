@@ -12,4 +12,5 @@ void chipvpn_log_append(char* format, ...) {
 
 	fprintf(stdout, "%s", buffer);
 
+	fflush(stdout);
 }

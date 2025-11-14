@@ -12,6 +12,7 @@
 #include "chipvpn.h"
 #include "socket.h"
 #include "device.h"
+#include "ipc.h"
 #include "config.h"
 #include "packet.h"
 #include "address.h"
@@ -22,7 +23,7 @@
 #include "log.h"
 #include "util.h"
 
-chipvpn_t *chipvpn_create(int tun_fd) {
+chipvpn_t *chipvpn_create(int tun_fd, int ipc_rfd, int ipc_wfd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
@@ -40,7 +41,7 @@ chipvpn_t *chipvpn_create(int tun_fd) {
 	}
 
 	/* create control socket */
-	chipvpn_socket_t *ipc = chipvpn_socket_create();
+	chipvpn_ipc_t *ipc = chipvpn_ipc_create(ipc_rfd, ipc_wfd);
 	if(!ipc) {
 		return NULL;
 	}
@@ -75,7 +76,7 @@ void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
 
 	chipvpn_device_preselect(vpn->device, rdset, wdset, &device_max);
 	chipvpn_socket_preselect(vpn->socket, rdset, wdset, &socket_max);
-	chipvpn_socket_preselect(vpn->ipc,    rdset, wdset, &ipc_max);
+	chipvpn_ipc_preselect(   vpn->ipc,    rdset, wdset, &ipc_max);
 
 	*max = MAX(device_max, MAX(socket_max, ipc_max));
 }
@@ -83,7 +84,7 @@ void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
 void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 	chipvpn_device_postselect(vpn->device, rdset, wdset);
 	chipvpn_socket_postselect(vpn->socket, rdset, wdset);
-	chipvpn_socket_postselect(vpn->ipc,    rdset, wdset);
+	chipvpn_ipc_postselect(   vpn->ipc,    rdset, wdset);
 }
 
 int chipvpn_service(chipvpn_t *vpn) {
@@ -91,16 +92,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 	chipvpn_peer_service(&vpn->device->peers, vpn->socket);
 
 	/* ipc */
-	if(chipvpn_socket_can_read(vpn->ipc) && chipvpn_socket_can_write(vpn->ipc)) {
-		chipvpn_address_t addr;
-
+	if(chipvpn_ipc_can_read(vpn->ipc) && chipvpn_ipc_can_write(vpn->ipc)) {
 		char buffer[8192];
-		int x = chipvpn_socket_read(vpn->ipc, buffer, sizeof(buffer), &addr);
+		int x = chipvpn_ipc_read(vpn->ipc, buffer, sizeof(buffer));
 		buffer[x] = '\0';
 
 		chipvpn_config_command(vpn, buffer);
 
-		return chipvpn_socket_write(vpn->ipc, "OK\n", 3, &addr);
+		return chipvpn_ipc_write(vpn->ipc, "OK\n", 3);
 	}
 
 	/* tunnel => socket */
@@ -249,7 +248,7 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 
 	chipvpn_device_free(vpn->device);
 	chipvpn_socket_free(vpn->socket);
-	chipvpn_socket_free(vpn->ipc);
+	chipvpn_ipc_free(vpn->ipc);
 
 	free(vpn);
 }
