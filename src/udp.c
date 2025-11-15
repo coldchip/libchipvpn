@@ -62,11 +62,11 @@ bool chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size) {
 }
 
 bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
-	struct sockaddr_in sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = addr->ip;
-	sa.sin_port = htons(addr->port);
+	struct sockaddr_in sa = {
+		.sin_family = AF_INET,
+		.sin_addr.s_addr = addr->ip,
+		.sin_port = htons(addr->port)
+	};
 
 	if(bind(sock->fd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
 		return false;

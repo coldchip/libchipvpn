@@ -72,12 +72,12 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 		}
 
 		if(sock->type == CHIPVPN_SOCKET_DGRAM) {
-			struct sockaddr_in sa;
-			memset(&sa, 0, sizeof(sa));
-			sa.sin_family = AF_INET;
-			sa.sin_addr.s_addr = entry->addr.ip;
-			sa.sin_port = htons(entry->addr.port);
-
+			struct sockaddr_in sa = {
+				.sin_family = AF_INET,
+				.sin_addr.s_addr = entry->addr.ip,
+				.sin_port = htons(entry->addr.port)
+			};
+			
 			int w = sendto(sock->wfd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
 			if(w <= 0) {
 				return;
