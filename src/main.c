@@ -34,7 +34,7 @@ int chipvpn_auth_main(int argc, char const *argv[], int rfd, int wfd) {
 	free(file);
 
 	while(1) {
-		sleep(1);		
+		sleep(1);	
 	}
 
 	return 0;

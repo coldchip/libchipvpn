@@ -11,6 +11,7 @@
 #include "chacha20poly1305.h"
 #include "chipvpn.h"
 #include "socket.h"
+#include "udp.h"
 #include "device.h"
 #include "ipc.h"
 #include "config.h"
@@ -35,8 +36,8 @@ chipvpn_t *chipvpn_create(int tun_fd, int ipc_rfd, int ipc_wfd) {
 	}
 
 	/* create vpn socket */
-	chipvpn_socket_t *sock = chipvpn_socket_create();
-	if(!sock) {
+	chipvpn_udp_t *udp = chipvpn_udp_create();
+	if(!udp) {
 		return NULL;
 	}
 
@@ -47,7 +48,7 @@ chipvpn_t *chipvpn_create(int tun_fd, int ipc_rfd, int ipc_wfd) {
 	}
 
 	vpn->device = device;
-	vpn->socket = sock;
+	vpn->udp = udp;
 	vpn->ipc = ipc;
 
 	return vpn;
@@ -74,42 +75,42 @@ void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
 void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
 	int device_max = 0, socket_max = 0, ipc_max = 0;
 
-	chipvpn_device_preselect(vpn->device, rdset, wdset, &device_max);
-	chipvpn_socket_preselect(vpn->socket, rdset, wdset, &socket_max);
-	chipvpn_ipc_preselect(   vpn->ipc,    rdset, wdset, &ipc_max);
+	chipvpn_socket_preselect(vpn->device->socket, rdset, wdset, &device_max);
+	chipvpn_socket_preselect(vpn->udp->socket, rdset, wdset, &socket_max);
+	chipvpn_socket_preselect(vpn->ipc->socket, rdset, wdset, &ipc_max);
 
 	*max = MAX(device_max, MAX(socket_max, ipc_max));
 }
 
 void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
-	chipvpn_device_postselect(vpn->device, rdset, wdset);
-	chipvpn_socket_postselect(vpn->socket, rdset, wdset);
-	chipvpn_ipc_postselect(   vpn->ipc,    rdset, wdset);
+	chipvpn_socket_postselect(vpn->device->socket, rdset, wdset);
+	chipvpn_socket_postselect(vpn->udp->socket, rdset, wdset);
+	chipvpn_socket_postselect(vpn->ipc->socket, rdset, wdset);
 }
 
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
-	chipvpn_peer_service(&vpn->device->peers, vpn->socket);
+	chipvpn_peer_service(&vpn->device->peers, vpn->udp);
 
 	/* ipc */
-	if(chipvpn_ipc_can_read(vpn->ipc) && chipvpn_ipc_can_write(vpn->ipc)) {
+	if(chipvpn_socket_can_read(vpn->ipc->socket) && chipvpn_socket_can_write(vpn->ipc->socket)) {
 		char buffer[8192];
-		int x = chipvpn_ipc_read(vpn->ipc, buffer, sizeof(buffer));
+		int x = chipvpn_socket_read(vpn->ipc->socket, buffer, sizeof(buffer), NULL);
 		buffer[x] = '\0';
 
 		chipvpn_config_command(vpn, buffer);
 
-		return chipvpn_ipc_write(vpn->ipc, "OK\n", 3);
+		return chipvpn_socket_write(vpn->ipc->socket, "OK\n", 3, NULL);
 	}
 
 	/* tunnel => socket */
-	if(chipvpn_device_can_read(vpn->device) && chipvpn_socket_can_write(vpn->socket)) {
+	if(chipvpn_socket_can_read(vpn->device->socket) && chipvpn_socket_can_write(vpn->udp->socket)) {
 		uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 
 		chipvpn_packet_data_t *header = (chipvpn_packet_data_t*)buffer;
 		uint8_t               *data   = buffer + sizeof(chipvpn_packet_data_t);
 
-		int r = chipvpn_device_read(vpn->device, data, sizeof(buffer) - sizeof(chipvpn_packet_data_t));
+		int r = chipvpn_socket_read(vpn->device->socket, data, sizeof(buffer) - sizeof(chipvpn_packet_data_t), NULL);
 		if(r <= 0) {
 			return 0;
 		}
@@ -139,15 +140,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 		header->session     = htonl(peer->outbound.session);
 		header->counter     = htonll(peer->counter);
 
-		return chipvpn_socket_write(vpn->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
+		return chipvpn_socket_write(vpn->udp->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
 	}
 
 	/* socket => tunnel */
-	if(chipvpn_socket_can_read(vpn->socket) && chipvpn_device_can_write(vpn->device)) {
+	if(chipvpn_socket_can_read(vpn->udp->socket) && chipvpn_socket_can_write(vpn->device->socket)) {
 		uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 		chipvpn_address_t addr;
 
-		int r = chipvpn_socket_read(vpn->socket, buffer, sizeof(buffer), &addr);
+		int r = chipvpn_socket_read(vpn->udp->socket, buffer, sizeof(buffer), &addr);
 		if(r < sizeof(chipvpn_packet_header_t)) {
 			return 0;
 		}
@@ -167,7 +168,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					return 0;
 				}
 
-				return chipvpn_peer_recv_connect(peer, vpn->socket, packet, &addr);
+				return chipvpn_peer_recv_connect(peer, vpn->udp, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -216,7 +217,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				peer->rx += data_size;
-				return chipvpn_device_write(vpn->device, data, data_size);
+				return chipvpn_socket_write(vpn->device->socket, data, data_size, NULL);
 			}
 			break;
 			case CHIPVPN_PACKET_PING: {
@@ -247,7 +248,7 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 	}
 
 	chipvpn_device_free(vpn->device);
-	chipvpn_socket_free(vpn->socket);
+	chipvpn_udp_free(vpn->udp);
 	chipvpn_ipc_free(vpn->ipc);
 
 	free(vpn);

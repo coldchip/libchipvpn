@@ -13,8 +13,8 @@
  * See README for more details.
  */
 
-#ifndef IPC_H
-#define IPC_H
+#ifndef UDP_H
+#define UDP_H
 
 #ifdef __cplusplus
 extern "C"
@@ -27,11 +27,15 @@ extern "C"
 #include "socket.h"
 
 typedef struct {
+    int fd;
     chipvpn_socket_t *socket;
-} chipvpn_ipc_t;
+} chipvpn_udp_t;
 
-chipvpn_ipc_t          *chipvpn_ipc_create(int rfd, int wfd);
-void                    chipvpn_ipc_free(chipvpn_ipc_t *ipc);
+chipvpn_udp_t          *chipvpn_udp_create();
+bool                    chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size);
+bool                    chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size);
+bool                    chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *bind);
+void                    chipvpn_udp_free(chipvpn_udp_t *ipc);
 
 #ifdef __cplusplus
 }

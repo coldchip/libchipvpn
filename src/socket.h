@@ -14,6 +14,11 @@ extern "C"
 #define SOCKET_QUEUE_SIZE 64
 #define SOCKET_QUEUE_ENTRY_SIZE 16000
 
+typedef enum {
+	CHIPVPN_SOCKET_DGRAM = 0,
+	CHIPVPN_SOCKET_STREAM = 1
+} chipvpn_socket_type_e;
+
 typedef struct {
 	chipvpn_list_node_t node;
 	bool is_used;
@@ -29,16 +34,14 @@ typedef struct {
 } chipvpn_socket_queue_t;
 
 typedef struct {
-	int fd;
+	int rfd;
+	int wfd;
 	chipvpn_socket_queue_t tx_queue;
 	chipvpn_socket_queue_t rx_queue;
-	chipvpn_address_t addr;
+	chipvpn_socket_type_e type;
 } chipvpn_socket_t;
 
-chipvpn_socket_t                *chipvpn_socket_create();
-bool                             chipvpn_socket_set_sendbuf(chipvpn_socket_t *sock, int size);
-bool                             chipvpn_socket_set_recvbuf(chipvpn_socket_t *sock, int size);
-bool                             chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *bind);
+chipvpn_socket_t                *chipvpn_socket_create(int rfd, int wfd, int type);
 void                             chipvpn_socket_preselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset, int *max);
 void                             chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset);
 

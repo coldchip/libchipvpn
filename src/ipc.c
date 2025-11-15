@@ -31,44 +31,17 @@ chipvpn_ipc_t *chipvpn_ipc_create(int rfd, int wfd) {
 		return NULL;
 	}
 
-	ipc->rfd = rfd;
-	ipc->wfd = wfd;
+	chipvpn_socket_t *sock = chipvpn_socket_create(rfd, wfd, CHIPVPN_SOCKET_STREAM);
+	if(!sock) {
+		return NULL;
+	}
 
-	ipc->can_read  = 0;
-	ipc->can_write = 0;
+	ipc->socket = sock;
 
 	return ipc;
 }
 
-void chipvpn_ipc_preselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset, int *max) {
-	if(ipc->can_read)  FD_CLR(ipc->rfd, rdset); else FD_SET(ipc->rfd, rdset);
-	if(ipc->can_write) FD_CLR(ipc->wfd, wdset); else FD_SET(ipc->wfd, wdset);
-	*max = MAX(ipc->rfd, ipc->wfd);
-}
-
-void chipvpn_ipc_postselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset) {
-	if(FD_ISSET(ipc->rfd, rdset)) ipc->can_read  = 1;
-	if(FD_ISSET(ipc->wfd, wdset)) ipc->can_write = 1;
-}
-
-int chipvpn_ipc_can_read(chipvpn_ipc_t *ipc) {
-	return ipc->can_read;
-}
-
-int chipvpn_ipc_can_write(chipvpn_ipc_t *ipc) {
-	return ipc->can_write;
-}
-
-int chipvpn_ipc_read(chipvpn_ipc_t *ipc, void *buf, int size) {
-	ipc->can_read = 0;
-	return read(ipc->rfd, buf, size);
-}
-
-int chipvpn_ipc_write(chipvpn_ipc_t *ipc, void *buf, int size) {
-	ipc->can_write = 0;
-	return write(ipc->wfd, buf, size);
-}
-
 void chipvpn_ipc_free(chipvpn_ipc_t *ipc) {
+	chipvpn_socket_free(ipc->socket);
 	free(ipc);
 }

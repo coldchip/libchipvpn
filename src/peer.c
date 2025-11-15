@@ -37,7 +37,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, chipvpn_address_t *addr) {
+int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
@@ -71,10 +71,10 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, ch
 	);
 
 	/* write to socket */
-	return chipvpn_socket_write(socket, &packet, sizeof(packet), addr);
+	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
 }
 
-int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
+int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
 	if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
 		chipvpn_log_append("invalid protocol version\n");
 		return 0;
@@ -115,7 +115,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, ch
 	// Auth successful
 	if(!peer->config.connect) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(peer, socket, addr);
+		chipvpn_peer_send_connect(peer, udp, addr);
 	}
 
 	// Reject if peer has same curve25519 public key
@@ -204,7 +204,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, ch
 	return 0;
 }
 
-int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_socket_t *socket) {
+int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_udp_t *udp) {
 	peer->counter++;
 
 	chipvpn_packet_ping_t packet = {
@@ -226,7 +226,7 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_socket_t *socket) {
 		chipvpn_peer_run_command(peer, peer->config.onping);
 	}
 
-	return chipvpn_socket_write(socket, &packet, sizeof(packet), &peer->address);
+	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), &peer->address);
 }
 
 int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr) {
@@ -425,7 +425,7 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	free(result7);
 }
 
-void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_socket_t *socket) {
+void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_udp_t *udp) {
 	/* peer lifecycle service */
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
@@ -441,12 +441,12 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_socket_t *socket) {
 			/* attempt to connect to peer */
 			if(peer->state == PEER_DISCONNECTED && peer->config.connect) {
 				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
-				chipvpn_peer_send_connect(peer, socket, &peer->config.address);
+				chipvpn_peer_send_connect(peer, udp, &peer->config.address);
 			}
 
 			/* ping peers */
 			if(peer->state == PEER_CONNECTED) {
-				chipvpn_peer_send_ping(peer, socket);
+				chipvpn_peer_send_ping(peer, udp);
 			}
 		}
 	}
