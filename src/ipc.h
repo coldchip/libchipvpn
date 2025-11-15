@@ -24,21 +24,13 @@ extern "C"
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/select.h>
+#include "socket.h"
 
 typedef struct {
-    int rfd;
-    int wfd;
-    int can_read;
-    int can_write;
+    chipvpn_socket_t *socket;
 } chipvpn_ipc_t;
 
 chipvpn_ipc_t          *chipvpn_ipc_create(int rfd, int wfd);
-void                    chipvpn_ipc_preselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset, int *max);
-void                    chipvpn_ipc_postselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset);
-int                     chipvpn_ipc_can_read(chipvpn_ipc_t *ipc);
-int                     chipvpn_ipc_can_write(chipvpn_ipc_t *ipc);
-int                     chipvpn_ipc_read(chipvpn_ipc_t *ipc, void *buf, int size);
-int                     chipvpn_ipc_write(chipvpn_ipc_t *ipc, void *buf, int size);
 void                    chipvpn_ipc_free(chipvpn_ipc_t *ipc);
 
 #ifdef __cplusplus

@@ -11,18 +11,15 @@
 #include "chipvpn.h"
 #include "util.h"
 
-chipvpn_socket_t *chipvpn_socket_create() {
+chipvpn_socket_t *chipvpn_socket_create(int rfd, int wfd, int type) {
 	chipvpn_socket_t *sock = malloc(sizeof(chipvpn_socket_t));
 	if(!sock) {
 		return NULL;
 	}
 
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(fd < 0) {
-		return NULL;
-	}
-
-	sock->fd = fd;
+	sock->rfd = rfd;
+	sock->wfd = wfd;
+	sock->type = type;
 
 	chipvpn_socket_reset_queue(&sock->tx_queue);
 	chipvpn_socket_reset_queue(&sock->rx_queue);
@@ -30,79 +27,68 @@ chipvpn_socket_t *chipvpn_socket_create() {
 	return sock;
 }
 
-bool chipvpn_socket_set_sendbuf(chipvpn_socket_t *sock, int size) {
-	if(setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) < 0) {
-		return false;
-	}
-	return true;
-}
-
-bool chipvpn_socket_set_recvbuf(chipvpn_socket_t *sock, int size) {
-	if(setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0) {
-		return false;
-	}
-	return true;
-}
-
-bool chipvpn_socket_bind(chipvpn_socket_t *sock, chipvpn_address_t *addr) {
-	struct sockaddr_in sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = addr->ip;
-	sa.sin_port = htons(addr->port);
-
-	if(bind(sock->fd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
-		return false;
-	}
-	return true;
-}
-
 void chipvpn_socket_preselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset, int *max) {
-	if(chipvpn_socket_can_enqueue(sock)) FD_SET(sock->fd, rdset); else FD_CLR(sock->fd, rdset);
-	if(chipvpn_socket_can_dequeue(sock)) FD_SET(sock->fd, wdset); else FD_CLR(sock->fd, wdset);
-	*max = sock->fd;
+	if(chipvpn_socket_can_enqueue(sock)) FD_SET(sock->rfd, rdset); else FD_CLR(sock->rfd, rdset);
+	if(chipvpn_socket_can_dequeue(sock)) FD_SET(sock->wfd, wdset); else FD_CLR(sock->wfd, wdset);
+	*max = MAX(sock->rfd, sock->wfd);
 }
 
 void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset) {
-	if(FD_ISSET(sock->fd, rdset)) {
+	if(FD_ISSET(sock->rfd, rdset)) {
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&sock->rx_queue);
 		if(!entry) {
 			return;
 		}
 
-		struct sockaddr_in sa;
-		int len = sizeof(sa);
+		if(sock->type == CHIPVPN_SOCKET_DGRAM) {
+			struct sockaddr_in sa;
+			int len = sizeof(sa);
 
-		int r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
-		if(r <= 0) {
-			return;
+			int r = recvfrom(sock->rfd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+			if(r <= 0) {
+				return;
+			}
+
+			entry->size = r;
+
+			entry->addr.ip = sa.sin_addr.s_addr;
+			entry->addr.port = ntohs(sa.sin_port);
+		} else {
+			int r = read(sock->rfd, entry->buffer, sizeof(entry->buffer));
+			if(r <= 0) {
+				return;
+			}
+
+			entry->size = r;
 		}
-
-		entry->size = r;
-
-		entry->addr.ip = sa.sin_addr.s_addr;
-		entry->addr.port = ntohs(sa.sin_port);
 
 		chipvpn_socket_enqueue_commit(&sock->rx_queue, entry);
 		
 	}
-	if(FD_ISSET(sock->fd, wdset)) {
+	if(FD_ISSET(sock->wfd, wdset)) {
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&sock->tx_queue);
 		if(!entry) {
 			return;
 		}
 
-		struct sockaddr_in sa;
-		memset(&sa, 0, sizeof(sa));
-		sa.sin_family = AF_INET;
-		sa.sin_addr.s_addr = entry->addr.ip;
-		sa.sin_port = htons(entry->addr.port);
+		if(sock->type == CHIPVPN_SOCKET_DGRAM) {
+			struct sockaddr_in sa;
+			memset(&sa, 0, sizeof(sa));
+			sa.sin_family = AF_INET;
+			sa.sin_addr.s_addr = entry->addr.ip;
+			sa.sin_port = htons(entry->addr.port);
 
-		int w = sendto(sock->fd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
-		if(w <= 0) {
-			return;
+			int w = sendto(sock->wfd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
+			if(w <= 0) {
+				return;
+			}
+		} else {
+			int w = write(sock->wfd, entry->buffer, entry->size);
+			if(w <= 0) {
+				return;
+			}
 		}
-
+	
 		chipvpn_socket_dequeue_commit(&sock->tx_queue, entry);
 	}
 }
@@ -215,8 +201,6 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 }
 
 void chipvpn_socket_free(chipvpn_socket_t *sock) {
-	close(sock->fd);
-
 	chipvpn_socket_reset_queue(&sock->tx_queue);
 	chipvpn_socket_reset_queue(&sock->rx_queue);
 

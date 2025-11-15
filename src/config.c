@@ -69,7 +69,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 						return;
 					}
 					bind.port = port;
-					if(!chipvpn_socket_bind(vpn->socket, &bind)) {
+					if(!chipvpn_udp_bind(vpn->udp, &bind)) {
 						return;
 					}
 				}
@@ -78,14 +78,14 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "sendbuf") == 0) {
 				int sendbuf;
 				if(sscanf(value, "%i", &sendbuf) == 1) {
-					chipvpn_socket_set_sendbuf(vpn->socket, sendbuf);
+					chipvpn_udp_set_sendbuf(vpn->udp, sendbuf);
 				}
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "recvbuf") == 0) {
 				int recvbuf;
 				if(sscanf(value, "%i", &recvbuf) == 1) {
-					chipvpn_socket_set_recvbuf(vpn->socket, recvbuf);
+					chipvpn_udp_set_recvbuf(vpn->udp, recvbuf);
 				}
 			}
 

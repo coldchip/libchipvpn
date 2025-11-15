@@ -67,10 +67,10 @@ typedef struct {
 
 chipvpn_peer_t      *chipvpn_peer_create();
 
-int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, chipvpn_address_t *addr);
-int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_socket_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
+int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_udp_t *socket, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
 
-int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_socket_t *socket);
+int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_udp_t *socket);
 int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
 
 void                 chipvpn_peer_get_keyhash(chipvpn_peer_t *peer, uint8_t *keyhash);
@@ -86,7 +86,7 @@ chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_
 chipvpn_peer_t      *chipvpn_peer_get_by_inbound_session(chipvpn_list_t *peers, uint32_t session);
 void                 chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state);
 void                 chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command);
-void                 chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_socket_t *socket);
+void                 chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_udp_t *socket);
 bool                 chipvpn_peer_encrypt_payload(chipvpn_peer_t *peer, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
 bool                 chipvpn_peer_decrypt_payload(chipvpn_peer_t *peer, uint8_t *data, int size, uint64_t counter, uint8_t *mac);
 void                 chipvpn_peer_free(chipvpn_peer_t *peer);
