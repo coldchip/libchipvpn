@@ -49,43 +49,9 @@ void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t 
     ctx->position = 0;
 }
 
-
-#ifdef HAVE_NEON
-
-#define CHACHA20_BLOCK_SIZE 64
-
-void chacha20_doneon(uint32_t *state, uint8_t *dst, const uint8_t *src, unsigned int bytes) {
-    uint8_t buf[CHACHA20_BLOCK_SIZE];
-    while (bytes >= CHACHA20_BLOCK_SIZE * 4) {
-        chacha20_4block_xor_neon(state, dst, src);
-        bytes -= CHACHA20_BLOCK_SIZE * 4;
-        src += CHACHA20_BLOCK_SIZE * 4;
-        dst += CHACHA20_BLOCK_SIZE * 4;
-        state[12] += 4;
-    }
-    while (bytes >= CHACHA20_BLOCK_SIZE) {
-        chacha20_block_xor_neon(state, dst, src);
-        bytes -= CHACHA20_BLOCK_SIZE;
-        src += CHACHA20_BLOCK_SIZE;
-        dst += CHACHA20_BLOCK_SIZE;
-        state[12]++;
-    }
-    if (bytes) {
-        memcpy(buf, src, bytes);
-        chacha20_block_xor_neon(state, buf, buf);
-        memcpy(dst, buf, bytes);
-    }
-}
-#endif
-
 void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size) {
     uint8_t *keystream_8 = (uint8_t*)ctx->keystream;
     uint8_t *bytes_8 = (uint8_t*)bytes;
-
-
-    #ifdef HAVE_NEON
-    chacha20_doneon(ctx->state, bytes_8, bytes_8, size);
-    #else
 
     for(int i = 0; i < size; i++) {
         uint32_t keystream_position = ctx->position % 64;
@@ -95,5 +61,4 @@ void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size) {
         bytes_8[i] ^= keystream_8[i % 64];
         ctx->position++;
     }
-    #endif
 }
