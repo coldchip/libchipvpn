@@ -43,6 +43,12 @@ void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t 
 void chacha20_block_set_nonce(struct chacha20_context *ctx, uint8_t nonce[]);
 void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size);
 
+#ifdef HAVE_NEON
+void chacha20_block_xor_neon(uint32_t *state, uint8_t *dst, uint8_t *src);
+void chacha20_4block_xor_neon(uint32_t *state, uint8_t *dst, uint8_t *src);
+void chacha20_doneon(uint32_t *state, uint8_t *dst, const uint8_t *src, unsigned int bytes);
+#endif
+
 #ifdef __cplusplus 
 }
 #endif 
