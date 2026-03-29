@@ -1,5 +1,9 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <string.h>
+#include <sched.h>
+#include <stdlib.h>
 #include "peer.h"
 #include "device.h"
 #include "config.h"
@@ -25,6 +29,18 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				chipvpn_peer_t *peer = chipvpn_peer_create();
 				chipvpn_list_insert(chipvpn_list_end(&vpn->device->peers), peer);
 				continue;
+			}
+
+			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "cpu") == 0) {
+				int cpu;
+				if(sscanf(value, "%i", &cpu) == 1) {
+					cpu_set_t set;
+					CPU_SET(cpu, &set);
+
+					if(sched_setaffinity(0, sizeof(cpu_set_t), &set) != 0) {
+						return;
+					}
+				}
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "name") == 0) {
