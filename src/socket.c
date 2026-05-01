@@ -27,36 +27,36 @@ chipvpn_socket_t *chipvpn_socket_create(int rfd, int wfd, int type) {
 	return sock;
 }
 
-int chipvpn_socket_raw_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *address) {
+int chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
 	int r = -1;
 
-	if(address) {
+	if(sock->type == CHIPVPN_SOCKET_DGRAM) {
 		struct sockaddr_in sa;
 		int len = sizeof(sa);
 
-		r = recvfrom(sock->rfd, data, size, 0, (struct sockaddr*)&sa, (socklen_t*)&len);
+		r = recvfrom(sock->rfd, entry->buffer, sizeof(entry->buffer), 0, (struct sockaddr*)&sa, (socklen_t*)&len);
 
-		address->ip = sa.sin_addr.s_addr;
-		address->port = ntohs(sa.sin_port);
+		entry->addr.ip = sa.sin_addr.s_addr;
+		entry->addr.port = ntohs(sa.sin_port);
 	} else {
-		r = read(sock->rfd, data, size);
+		r = read(sock->rfd, entry->buffer, sizeof(entry->buffer));
 	}
 
 	return r;
 }
 
-int chipvpn_socket_raw_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *address) {
+int chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
 	int w = -1;
 
-	if(address) {
+	if(sock->type == CHIPVPN_SOCKET_DGRAM) {
 		struct sockaddr_in sa = {
 			.sin_family = AF_INET,
-			.sin_addr.s_addr = address->ip,
-			.sin_port = htons(address->port)
+			.sin_addr.s_addr = entry->addr.ip,
+			.sin_port = htons(entry->addr.port)
 		};
-		w = sendto(sock->wfd, data, size, 0, (struct sockaddr*)&sa, sizeof(sa));
+		w = sendto(sock->wfd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
 	} else {
-		w = write(sock->wfd, data, size);
+		w = write(sock->wfd, entry->buffer, entry->size);
 	}
 
 	return w;
@@ -75,12 +75,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 			return;
 		}
 
-		int r = chipvpn_socket_raw_read(
-			sock, 
-			entry->buffer, 
-			sizeof(entry->buffer),
-			sock->type == CHIPVPN_SOCKET_DGRAM ? &entry->addr : NULL
-		);
+		int r = chipvpn_socket_raw_read(sock, entry);
 
 		if(r <= 0) {
 			return;
@@ -97,12 +92,7 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 			return;
 		}
 
-		int w = chipvpn_socket_raw_write(
-			sock, 
-			entry->buffer, 
-			entry->size,
-			sock->type == CHIPVPN_SOCKET_DGRAM ? &entry->addr : NULL
-		);;
+		int w = chipvpn_socket_raw_write(sock, entry);
 
 		if(w <= 0) {
 			return;

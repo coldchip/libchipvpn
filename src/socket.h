@@ -42,8 +42,8 @@ typedef struct {
 
 chipvpn_socket_t                *chipvpn_socket_create(int rfd, int wfd, int type);
 
-int                              chipvpn_socket_raw_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *address);
-int                              chipvpn_socket_raw_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *address);
+int                              chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
+int                              chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
 
 void                             chipvpn_socket_preselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset, int *max);
 void                             chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset);
