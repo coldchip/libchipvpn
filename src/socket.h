@@ -29,7 +29,6 @@ typedef struct {
 
 typedef struct {
 	chipvpn_socket_queue_entry_t pool[SOCKET_QUEUE_SIZE];
-	chipvpn_list_t queue;
 	int size;
 } chipvpn_socket_queue_t;
 
