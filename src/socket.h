@@ -40,6 +40,11 @@ typedef struct {
 	chipvpn_socket_type_e type;
 } chipvpn_socket_t;
 
+typedef struct {
+	void *data;
+	int size;
+} chipvpn_socket_vector_t;
+
 chipvpn_socket_t                *chipvpn_socket_create(int rfd, int wfd, int type);
 
 int                              chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
@@ -65,6 +70,10 @@ bool                             chipvpn_socket_can_write(chipvpn_socket_t *sock
 
 int                              chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr);
 int                              chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr);
+
+int                              chipvpn_socket_read_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, int size, chipvpn_address_t *addr);
+int                              chipvpn_socket_write_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, int size, chipvpn_address_t *addr);
+
 void                             chipvpn_socket_free(chipvpn_socket_t *sock);
 
 #ifdef __cplusplus
