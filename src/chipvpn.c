@@ -107,15 +107,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 	if(chipvpn_socket_can_read(vpn->device->socket) && chipvpn_socket_can_write(vpn->udp->socket)) {
 		uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 
-		chipvpn_packet_data_t *header = (chipvpn_packet_data_t*)buffer;
-		uint8_t               *data   = buffer + sizeof(chipvpn_packet_data_t);
-
-		int r = chipvpn_socket_read(vpn->device->socket, data, sizeof(buffer) - sizeof(chipvpn_packet_data_t), NULL);
+		int r = chipvpn_socket_read(vpn->device->socket, buffer, sizeof(buffer), NULL);
 		if(r <= 0) {
 			return 0;
 		}
 
-		ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
+		ip_hdr_t *ip_hdr = (ip_hdr_t*)buffer;
 		if(ip_hdr->version != 4) {
 			return 0;
 		}
@@ -129,18 +126,28 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		peer->counter++;
 
-		if(!chipvpn_peer_encrypt_payload(peer, data, r, peer->counter, header->mac)) {
+		chipvpn_packet_data_t header = {
+			.header.type = CHIPVPN_PACKET_DATA,
+			.session     = htonl(peer->outbound.session),
+			.counter     = htonll(peer->counter)
+		};
+
+		if(!chipvpn_peer_encrypt_payload(peer, buffer, r, peer->counter, header.mac)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			return 0;
 		}
 
 		peer->tx += r;
 
-		header->header.type = CHIPVPN_PACKET_DATA;
-		header->session     = htonl(peer->outbound.session);
-		header->counter     = htonll(peer->counter);
+		chipvpn_socket_vector_t vector[] = {{
+			.data = &header,
+			.size = sizeof(chipvpn_packet_data_t)
+		}, {
+			.data = buffer,
+			.size = r
+		}};
 
-		return chipvpn_socket_write(vpn->udp->socket, buffer, sizeof(chipvpn_packet_data_t) + r, &peer->address);
+		return chipvpn_socket_write_vector(vpn->udp->socket, vector, 2, &peer->address);
 	}
 
 	/* socket => tunnel */
