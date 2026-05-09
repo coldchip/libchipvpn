@@ -1,7 +1,12 @@
 #include <arpa/inet.h>
+#include <string.h>
 #include "firewall.h"
 #include "packet.h"
 #include "util.h"
+
+void chipvpn_firewall_reset(chipvpn_firewall_t *firewall) {
+	memset(firewall, 0, sizeof(chipvpn_firewall_t));
+}
 
 int chipvpn_firewall_process_ip(chipvpn_firewall_t *firewall, ip_hdr_t *ip_hdr) {
 	if(ip_hdr->version != 4) {
@@ -17,16 +22,16 @@ int chipvpn_firewall_process_ip(chipvpn_firewall_t *firewall, ip_hdr_t *ip_hdr) 
 			while (opt < opt_end) {
 				uint8_t kind = opt[0];
 				
-				if (kind == 0) break; // End of Options List
-				if (kind == 1) {      // No-Operation (Padding)
+				if (kind == 0) break;
+				if (kind == 1) {
 					opt++;
 					continue;
 				}
 
 				uint8_t len = opt[1];
-				if (len < 2 || (opt + len) > opt_end) break; // Malformed option
+				if (len < 2 || (opt + len) > opt_end) break; 
 
-				if (kind == 2 && len == 4) { // MSS Option (Kind: 2, Length: 4)
+				if (kind == 2 && len == 4) {
 					uint16_t *mss_ptr = (uint16_t *)(opt + 2);
 					uint16_t current_mss = ntohs(*mss_ptr);
 					

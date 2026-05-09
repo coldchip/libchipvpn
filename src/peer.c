@@ -25,8 +25,8 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->tx = 0l;
 	peer->rx = 0l;
 	peer->last_check = 0l;
-	peer->config.firewall.mss = 0;
-	peer->config.connect = false;
+	peer->config.address.ip = 0;
+	peer->config.address.port = 0;
 	peer->config.onconnect = NULL;
 	peer->config.onping = NULL;
 	peer->config.ondisconnect = NULL;
@@ -34,6 +34,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->counter = 0l;
 	peer->timestamp = 0l;
 
+	chipvpn_firewall_reset(&peer->config.firewall);
 	chipvpn_bitmap_reset(&peer->bitmap);
 
 	return peer;
@@ -115,7 +116,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 	}
 
 	// Auth successful
-	if(!peer->config.connect) {
+	if(!(peer->config.address.ip > 0)) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
 		chipvpn_peer_send_connect(peer, udp, addr);
 	}
@@ -441,7 +442,7 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_udp_t *udp) {
 			}
 
 			/* attempt to connect to peer */
-			if(peer->state == PEER_DISCONNECTED && peer->config.connect) {
+			if(peer->state == PEER_DISCONNECTED && peer->config.address.ip > 0) {
 				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
 				chipvpn_peer_send_connect(peer, udp, &peer->config.address);
 			}

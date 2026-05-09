@@ -127,7 +127,6 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				int port;
 				if(sscanf(value, "%512[^:]:%i", address, &port) == 2) {
 					chipvpn_peer_set_address(peer, address, port);
-					peer->config.connect = true;
 				}
 			}
 
