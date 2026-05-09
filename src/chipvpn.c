@@ -1,12 +1,6 @@
-#include <stddef.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/un.h>
-#include <sys/time.h>
-#include <sys/select.h>
-#include <arpa/inet.h>
 #include <stdio.h>
 #include "chacha20poly1305.h"
 #include "chipvpn.h"
@@ -49,8 +43,8 @@ chipvpn_t *chipvpn_create(int tun_fd, int ipc_rfd, int ipc_wfd) {
 	}
 
 	vpn->device = device;
-	vpn->udp = udp;
-	vpn->ipc = ipc;
+	vpn->udp    = udp;
+	vpn->ipc    = ipc;
 
 	return vpn;
 }
@@ -142,7 +136,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		peer->tx += r;
 
 		chipvpn_socket_vector_t vector[] = {
-			{ .data = &header, .size = sizeof(chipvpn_packet_data_t) }, 
+			{ .data = &header, .size = sizeof(header) }, 
 			{ .data = buffer, .size = r }
 		};
 
