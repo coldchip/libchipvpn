@@ -9,6 +9,7 @@
 #include "hmac_sha256.h"
 #include "hkdf_sha256.h"
 #include "curve25519.h"
+#include "firewall.h"
 #include "log.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {

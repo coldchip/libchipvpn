@@ -20,7 +20,6 @@ typedef enum {
 } chipvpn_socket_type_e;
 
 typedef struct {
-	chipvpn_list_node_t node;
 	bool is_used;
 	int size;
 	chipvpn_address_t addr;
