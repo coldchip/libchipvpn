@@ -51,7 +51,6 @@ typedef struct {
 		chipvpn_address_t address;
 		chipvpn_address_t allow;
 		chipvpn_firewall_t firewall;
-		bool connect;
 		uint8_t key[32];
 		char *onconnect;
 		char *onping;
