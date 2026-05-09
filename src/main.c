@@ -9,7 +9,6 @@
 #include "log.h"
 #include "config.h"
 #include "chipvpn.h"
-
 #include <arpa/inet.h>
 
 

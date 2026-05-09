@@ -18,7 +18,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 		return NULL;
 	}
 
-	/* use setter to set? */
 	peer->state = PEER_DISCONNECTED;
 	peer->inbound.session = 0;
 	peer->outbound.session = 0;
