@@ -14,6 +14,7 @@
 #include "udp.h"
 #include "device.h"
 #include "ipc.h"
+#include "firewall.h"
 #include "config.h"
 #include "packet.h"
 #include "address.h"
@@ -113,14 +114,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		ip_hdr_t *ip_hdr = (ip_hdr_t*)buffer;
-		if(ip_hdr->version != 4) {
-			return 0;
-		}
 
 		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
 		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(&vpn->device->peers, &dst);
 		if(!peer || peer->state != PEER_CONNECTED) {
+			return 0;
+		}
+
+		if(!chipvpn_firewall_process_ip(&peer->config.firewall, ip_hdr)) {
 			return 0;
 		}
 
@@ -139,13 +141,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		peer->tx += r;
 
-		chipvpn_socket_vector_t vector[] = {{
-			.data = &header,
-			.size = sizeof(chipvpn_packet_data_t)
-		}, {
-			.data = buffer,
-			.size = r
-		}};
+		chipvpn_socket_vector_t vector[] = {
+			{ .data = &header, .size = sizeof(chipvpn_packet_data_t) }, 
+			{ .data = buffer, .size = r }
+		};
 
 		return chipvpn_socket_write_vector(vpn->udp->socket, vector, 2, &peer->address);
 	}
@@ -212,7 +211,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
-				if(ip_hdr->version != 4) {
+				if(!chipvpn_firewall_process_ip(&peer->config.firewall, ip_hdr)) {
 					return 0;
 				}
 

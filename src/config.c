@@ -146,6 +146,13 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				}
 			}
 
+			if(section == COMMAND_PEER_SECTION && strcmp(key, "mss") == 0) {
+				int mss;
+				if(sscanf(value, "%i", &mss) == 1) {
+					peer->config.firewall.mss = mss;
+				}
+			}
+
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "onconnect") == 0) {
 				chipvpn_peer_set_onconnect(peer, value);
 			}
