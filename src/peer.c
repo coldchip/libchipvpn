@@ -25,6 +25,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->tx = 0l;
 	peer->rx = 0l;
 	peer->last_check = 0l;
+	peer->config.firewall.mss = 0;
 	peer->config.connect = false;
 	peer->config.onconnect = NULL;
 	peer->config.onping = NULL;
