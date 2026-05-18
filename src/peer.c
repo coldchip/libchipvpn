@@ -147,8 +147,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 		0, 
 		curve_shared,
 		sizeof(curve_shared),
-		"#CHIPVPN_DIRECTIONAL_KEY_A/1.0",
-		30,
+		CHIPVPN_DIRECTIONAL_KEY_A,
+		sizeof(CHIPVPN_DIRECTIONAL_KEY_A) - 1,
 		role ? peer->inbound.key : peer->outbound.key,
 		sizeof(peer->inbound.key)
 	);
@@ -158,8 +158,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 		0, 
 		curve_shared,
 		sizeof(curve_shared),
-		"#CHIPVPN_DIRECTIONAL_KEY_B/1.0",
-		30,
+		CHIPVPN_DIRECTIONAL_KEY_B,
+		sizeof(CHIPVPN_DIRECTIONAL_KEY_B) - 1,
 		role ? peer->outbound.key : peer->inbound.key,
 		sizeof(peer->outbound.key)
 	);
@@ -169,8 +169,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 		0, 
 		curve_shared,
 		sizeof(curve_shared),
-		"#CHIPVPN_SESSION_HASH_A/1.0",
-		27,
+		CHIPVPN_SESSION_HASH_A,
+		sizeof(CHIPVPN_SESSION_HASH_A) - 1,
 		role ? peer->inbound.session_hash : peer->outbound.session_hash,
 		sizeof(peer->inbound.session_hash)
 	);
@@ -180,8 +180,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 		0, 
 		curve_shared,
 		sizeof(curve_shared),
-		"#CHIPVPN_SESSION_HASH_B/1.0",
-		27,
+		CHIPVPN_SESSION_HASH_B,
+		sizeof(CHIPVPN_SESSION_HASH_B) - 1,
 		role ? peer->outbound.session_hash : peer->inbound.session_hash,
 		sizeof(peer->outbound.session_hash)
 	);
