@@ -62,9 +62,11 @@ void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
 
 	chipvpn_fdset(vpn, &rdset, &wdset, &max);
 	
-	if(select(max + 1, &rdset, &wdset, NULL, &tv) > 0) {
-		chipvpn_isset(vpn, &rdset, &wdset);
+	if(select(max + 1, &rdset, &wdset, NULL, &tv) <= 0) {
+		return;
 	}
+
+	chipvpn_isset(vpn, &rdset, &wdset);
 }
 
 void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
