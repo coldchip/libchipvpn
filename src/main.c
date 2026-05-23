@@ -42,7 +42,7 @@ int chipvpn_auth_main(int argc, char const *argv[], int rfd, int wfd) {
 int chipvpn_main(int argc, char const *argv[], int rfd, int wfd) {
 	srand(time(NULL));
 
-	chipvpn_log_append("chipvpn %i alpha protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION); 
+	chipvpn_log_append("chipvpn v%i protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION); 
 
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
