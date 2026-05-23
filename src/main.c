@@ -44,11 +44,6 @@ int chipvpn_main(int argc, char const *argv[], int rfd, int wfd) {
 
 	chipvpn_log_append("chipvpn %i alpha protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION); 
 
-	if(!(argc > 1 && argv[1] != NULL)) {
-		chipvpn_log_append("config path required\n");
-		exit(1);
-	}
-
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
 	signal(SIGPIPE, SIG_IGN);
@@ -76,6 +71,11 @@ int chipvpn_main(int argc, char const *argv[], int rfd, int wfd) {
 }
 
 int main(int argc, char const *argv[]) {
+	if(!(argc > 1 && argv[1] != NULL)) {
+		chipvpn_log_append("config path required\n");
+		exit(1);
+	}
+
 	int sv[2];
 
 	if(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {

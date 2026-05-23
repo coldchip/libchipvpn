@@ -277,8 +277,8 @@ void chipvpn_peer_get_keyhash(chipvpn_peer_t *peer, uint8_t *keyhash) {
 	hmac_sha256(
 		peer->config.key, 
 		sizeof(peer->config.key),
-		"#CHIPVPN_KEYHASH/1.0",
-		20,
+		CHIPVPN_KEYHASH,
+		sizeof(CHIPVPN_KEYHASH) - 1,
 		keyhash, 
 		32
 	);
