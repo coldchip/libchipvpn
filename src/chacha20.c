@@ -1,6 +1,6 @@
 #include "chacha20.h"
 
-static void chacha20_init_block(struct chacha20_context *ctx, uint8_t key[], uint8_t nonce[]) {
+static void chacha20_init_block(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]) {
     ctx->state[0]  = 0x61707865;
     ctx->state[1]  = 0x3320646e;
     ctx->state[2]  = 0x79622d32;
@@ -19,11 +19,11 @@ static void chacha20_init_block(struct chacha20_context *ctx, uint8_t key[], uin
     ctx->state[15] = PACK4_LE(nonce + 2 * 4);
 }
 
-static void chacha20_block_set_counter(struct chacha20_context *ctx, uint32_t counter) {
+static void chacha20_block_set_counter(chacha20_t *ctx, uint32_t counter) {
     ctx->state[12] = (uint32_t)counter;
 }
 
-static void chacha20_block_next(struct chacha20_context *ctx) {
+static void chacha20_block_next(chacha20_t *ctx) {
     for(int i = 0; i < 16; i++) ctx->keystream[i] = ctx->state[i];
 
     for(int i = 0; i < 10; i++) {
@@ -42,20 +42,19 @@ static void chacha20_block_next(struct chacha20_context *ctx) {
     ctx->state[12] = PLUS(ctx->state[12], 1);
 }
 
-void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t nonce[], uint32_t counter) {
+void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nonce[], uint32_t counter) {
     chacha20_init_block(ctx, key, nonce);
     chacha20_block_set_counter(ctx, counter);
 
     ctx->position = 0;
 }
 
-void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size) {
+void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size) {
     uint8_t *keystream_8 = (uint8_t*)ctx->keystream;
     uint8_t *bytes_8 = (uint8_t*)bytes;
 
     for(int i = 0; i < size; i++) {
-        uint32_t keystream_position = ctx->position % 64;
-        if(keystream_position == 0) {
+        if(ctx->position % 64 == 0) {
             chacha20_block_next(ctx);
         }
         bytes_8[i] ^= keystream_8[i % 64];

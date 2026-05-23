@@ -33,15 +33,15 @@ extern "C" {
 	x[a] = PLUS(x[a], x[b]); x[d] = ROTATE(XOR(x[d], x[a]), 8); \
 	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 7);
 
-struct chacha20_context {
+typedef struct {
 	uint32_t keystream[16];
 	uint32_t state[16];
 	size_t position;
-};
+} chacha20_t;
 
-void chacha20_init_context(struct chacha20_context *ctx, uint8_t key[], uint8_t nounc[], uint32_t counter);
-void chacha20_block_set_nonce(struct chacha20_context *ctx, uint8_t nonce[]);
-void chacha20_xor(struct chacha20_context *ctx, uint8_t *bytes, size_t size);
+void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nounc[], uint32_t counter);
+void chacha20_block_set_nonce(chacha20_t *ctx, uint8_t nonce[]);
+void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size);
 
 #ifdef __cplusplus 
 }
