@@ -26,8 +26,8 @@
 
 
 chipvpn_udp_t *chipvpn_udp_create() {
-	chipvpn_udp_t *ipc = malloc(sizeof(chipvpn_udp_t));
-	if(!ipc) {
+	chipvpn_udp_t *udp = malloc(sizeof(chipvpn_udp_t));
+	if(!udp) {
 		return NULL;
 	}
 
@@ -41,10 +41,10 @@ chipvpn_udp_t *chipvpn_udp_create() {
 		return NULL;
 	}
 
-	ipc->fd = fd;
-	ipc->socket = sock;
+	udp->fd = fd;
+	udp->socket = sock;
 
-	return ipc;
+	return udp;
 }
 
 bool chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size) {
