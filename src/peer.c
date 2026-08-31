@@ -21,17 +21,17 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->state = PEER_DISCONNECTED;
 	peer->inbound.session = 0;
 	peer->outbound.session = 0;
-	peer->tx = 0l;
-	peer->rx = 0l;
-	peer->last_check = 0l;
+	peer->tx = 0llu;
+	peer->rx = 0llu;
+	peer->last_check = 0llu;
 	peer->config.address.ip = 0;
 	peer->config.address.port = 0;
 	peer->config.onconnect = NULL;
 	peer->config.onping = NULL;
 	peer->config.ondisconnect = NULL;
-	peer->timeout = 0l;
-	peer->counter = 0l;
-	peer->timestamp = 0l;
+	peer->timeout = 0llu;
+	peer->counter = 0llu;
+	peer->timestamp = 0llu;
 
 	chipvpn_firewall_reset(&peer->config.firewall);
 	chipvpn_bitmap_reset(&peer->bitmap);
@@ -192,9 +192,9 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
-	peer->tx = 0l;
-	peer->rx = 0l;
-	peer->counter = 0l;
+	peer->tx = 0llu;
+	peer->rx = 0llu;
+	peer->counter = 0llu;
 	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 	chipvpn_bitmap_reset(&peer->bitmap);
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
