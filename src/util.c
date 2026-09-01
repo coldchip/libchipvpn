@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stddef.h>
+#include <time.h>
 
 char *chipvpn_strdup(const char *s) {
 	size_t len = strlen(s) + 1;
@@ -195,9 +196,9 @@ bool chipvpn_secure_random(uint8_t *buf, int size) {
 }
 
 uint64_t chipvpn_get_time() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    return ((int64_t)ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
 int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {
