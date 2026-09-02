@@ -14,6 +14,9 @@ extern "C"
 #define SOCKET_QUEUE_SIZE 64
 #define SOCKET_QUEUE_ENTRY_SIZE 16000
 
+_Static_assert((SOCKET_QUEUE_SIZE & (SOCKET_QUEUE_SIZE - 1)) == 0, 
+               "SOCKET_QUEUE_SIZE must be a power of 2");
+
 typedef enum {
 	CHIPVPN_SOCKET_DGRAM = 0,
 	CHIPVPN_SOCKET_STREAM = 1
@@ -28,8 +31,8 @@ typedef struct {
 
 typedef struct {
     chipvpn_socket_queue_entry_t pool[SOCKET_QUEUE_SIZE];
-    int head; // index to read from (dequeue)
-    int tail; // index to write to (enqueue)
+    int head;
+    int tail;
     int size;
 } chipvpn_socket_queue_t;
 
