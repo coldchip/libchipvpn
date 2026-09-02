@@ -51,6 +51,8 @@ int                              chipvpn_socket_raw_write(chipvpn_socket_t *sock
 
 void                             chipvpn_socket_preselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset, int *max);
 void                             chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset);
+void                             chipvpn_socket_postselect_rdset(chipvpn_socket_t *sock, fd_set *rdset);
+void                             chipvpn_socket_postselect_wdset(chipvpn_socket_t *sock, fd_set *wdset);
 
 void                             chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue);
 int                              chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue);
