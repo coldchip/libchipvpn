@@ -16,10 +16,10 @@
 char *chipvpn_strdup(const char *s) {
 	size_t len = strlen(s) + 1;
 	void *new = malloc(len);
-	if (new == NULL) {
+	if(new == NULL) {
 		return NULL;
 	}
-	return (char *) memcpy(new, s, len);
+	return (char*)memcpy(new, s, len);
 }
 
 char *chipvpn_read_file(const char *file) {
@@ -48,7 +48,7 @@ char* chipvpn_str_replace(const char* s, const char* oldW, const char* newW) {
  
     // Counting the number of times old word 
     // occur in the string 
-    for (i = 0; s[i] != '\0'; i++) { 
+    for(i = 0; s[i] != '\0'; i++) { 
         if (strstr(&s[i], oldW) == &s[i]) { 
             cnt++; 
  
@@ -61,15 +61,15 @@ char* chipvpn_str_replace(const char* s, const char* oldW, const char* newW) {
     result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1); 
  
     i = 0; 
-    while (*s) { 
+    while(*s) { 
         // compare the substring with the result 
-        if (strstr(s, oldW) == s) { 
+        if(strstr(s, oldW) == s) { 
             strcpy(&result[i], newW); 
             i += newWlen; 
             s += oldWlen; 
-        } 
-        else
+        } else {
             result[i++] = *s++; 
+        }
     } 
  
     result[i] = '\0'; 

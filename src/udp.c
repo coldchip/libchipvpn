@@ -31,7 +31,7 @@ chipvpn_udp_t *chipvpn_udp_create() {
 		return NULL;
 	}
 
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	int fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
 	if(fd < 0) {
 		return NULL;
 	}
