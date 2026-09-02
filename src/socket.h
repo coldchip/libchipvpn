@@ -27,8 +27,10 @@ typedef struct {
 } chipvpn_socket_queue_entry_t;
 
 typedef struct {
-	chipvpn_socket_queue_entry_t pool[SOCKET_QUEUE_SIZE];
-	int size;
+    chipvpn_socket_queue_entry_t pool[SOCKET_QUEUE_SIZE];
+    int head; // index to read from (dequeue)
+    int tail; // index to write to (enqueue)
+    int size;
 } chipvpn_socket_queue_t;
 
 typedef struct {
