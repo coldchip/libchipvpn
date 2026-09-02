@@ -74,6 +74,11 @@ void chipvpn_socket_preselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wds
 }
 
 void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset) {
+	chipvpn_socket_postselect_rdset(sock, rdset);
+	chipvpn_socket_postselect_wdset(sock, wdset);
+}
+
+void chipvpn_socket_postselect_rdset(chipvpn_socket_t *sock, fd_set *rdset) {
 	if(FD_ISSET(sock->rfd, rdset)) {
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&sock->rx_queue);
 		if(!entry) {
@@ -89,6 +94,9 @@ void chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wd
 		chipvpn_socket_enqueue_commit(&sock->rx_queue, entry);
 		
 	}
+}
+
+void chipvpn_socket_postselect_wdset(chipvpn_socket_t *sock, fd_set *wdset) {
 	if(FD_ISSET(sock->wfd, wdset)) {
 		chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&sock->tx_queue);
 		if(!entry) {
