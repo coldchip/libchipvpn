@@ -302,6 +302,14 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 
 bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
 	sha256((uint8_t*)key, strlen(key), peer->config.key, sizeof(peer->config.key));
+	hmac_sha256(
+		peer->config.key, 
+		sizeof(peer->config.key),
+		CHIPVPN_KEYHASH,
+		sizeof(CHIPVPN_KEYHASH) - 1,
+		peer->config.keyhash, 
+		sizeof(peer->config.keyhash)
+	);
 	return true;
 }
 
@@ -320,15 +328,11 @@ bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command) {
 	return true;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, uint8_t *key) {
+chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, uint8_t *keyhash) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		uint8_t current[32];
-		
-		chipvpn_peer_get_keyhash(peer, current);
-
-		if(chipvpn_secure_memcmp(key, current, sizeof(current)) == 0) {
+		if(chipvpn_secure_memcmp(keyhash, peer->config.keyhash, sizeof(peer->config.keyhash)) == 0) {
 			return peer;
 		}
 	}
@@ -429,13 +433,15 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 
 void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_udp_t *udp) {
 	/* peer lifecycle service */
+	uint64_t now = chipvpn_get_time();
+
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-		if(chipvpn_get_time() - peer->last_check > CHIPVPN_PEER_PING) {
-			peer->last_check = chipvpn_get_time();
+		if(now - peer->last_check > CHIPVPN_PEER_PING) {
+			peer->last_check = now;
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
-			if(peer->state != PEER_DISCONNECTED && chipvpn_get_time() > peer->timeout) {
+			if(peer->state != PEER_DISCONNECTED && now > peer->timeout) {
 				chipvpn_log_append("%p says: peer disconnected\n", peer);
 				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 			}
