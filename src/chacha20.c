@@ -24,7 +24,7 @@ static void chacha20_block_set_counter(chacha20_t *ctx, uint32_t counter) {
 }
 
 static void chacha20_block_next(chacha20_t *ctx) {
-    for(int i = 0; i < 16; i++) ctx->keystream[i] = ctx->state[i];
+    memcpy(ctx->keystream, ctx->state, 64);
 
     for(int i = 0; i < 10; i++) {
         CHACHA20_QUARTERROUND(ctx->keystream, 0, 4, 8, 12)
@@ -37,7 +37,9 @@ static void chacha20_block_next(chacha20_t *ctx) {
         CHACHA20_QUARTERROUND(ctx->keystream, 3, 4, 9, 14)
     }
 
-    for(int i = 0; i < 16; i++) ctx->keystream[i] = PLUS(ctx->keystream[i], ctx->state[i]);
+    for(int i = 0; i < 16; i++) {
+        ctx->keystream[i] = PLUS(ctx->keystream[i], ctx->state[i]);
+    }
 
     ctx->state[12] = PLUS(ctx->state[12], 1);
 }
@@ -51,13 +53,37 @@ void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nonce[], uint
 
 void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size) {
     uint8_t *keystream_8 = (uint8_t*)ctx->keystream;
-    uint8_t *bytes_8 = (uint8_t*)bytes;
+    size_t i = 0;
 
-    for(int i = 0; i < size; i++) {
-        if(ctx->position % 64 == 0) {
-            chacha20_block_next(ctx);
+    size_t offset = ctx->position & 63; 
+    if(offset > 0) {
+        size_t len = 64 - offset;
+        if(len > size) len = size;
+        for(size_t j = 0; j < len; j++) {
+            bytes[i++] ^= keystream_8[offset + j];
         }
-        bytes_8[i] ^= keystream_8[i % 64];
-        ctx->position++;
+        ctx->position += len;
+    }
+
+    while(i + 64 <= size) {
+        chacha20_block_next(ctx);
+        
+        uint32_t *bytes_32 = (uint32_t*)(bytes + i);
+        
+        for(int k = 0; k < 16; k++) {
+            bytes_32[k] ^= ctx->keystream[k];
+        }
+        
+        i += 64;
+        ctx->position += 64;
+    }
+
+    if(i < size) {
+        chacha20_block_next(ctx);
+        size_t tail = size - i;
+        for(size_t j = 0; j < tail; j++) {
+            bytes[i++] ^= keystream_8[j];
+        }
+        ctx->position += tail;
     }
 }
