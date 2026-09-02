@@ -25,7 +25,7 @@ extern "C" {
 
 #define ROTATE(v,c) (ROTL32(v,c))
 #define XOR(v,w) ((v) ^ (w))
-#define PLUS(v,w) (U32V((v) + (w)))
+#define PLUS(v,w) ((uint32_t)((v) + (w)))
 
 #define CHACHA20_QUARTERROUND(x, a, b, c, d) \
 	x[a] = PLUS(x[a], x[b]); x[d] = ROTATE(XOR(x[d], x[a]), 16); \
@@ -34,12 +34,12 @@ extern "C" {
 	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 7);
 
 typedef struct {
-	uint32_t keystream[16];
-	uint32_t state[16];
+	uint32_t keystream[16] __attribute__((aligned(32)));
+	uint32_t state[16] __attribute__((aligned(32)));
 	size_t position;
 } chacha20_t;
 
-void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nounc[], uint32_t counter);
+void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nonce[], uint32_t counter);
 void chacha20_block_set_nonce(chacha20_t *ctx, uint8_t nonce[]);
 void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size);
 

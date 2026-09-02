@@ -52,38 +52,23 @@ void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nonce[], uint
 }
 
 void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size) {
-    uint8_t *keystream_8 = (uint8_t*)ctx->keystream;
-    size_t i = 0;
+    uint8_t *keystream = (uint8_t*)ctx->keystream;
 
-    size_t offset = ctx->position & 63; 
-    if(offset > 0) {
-        size_t len = 64 - offset;
-        if(len > size) len = size;
-        for(size_t j = 0; j < len; j++) {
-            bytes[i++] ^= keystream_8[offset + j];
+    while(size > 0) {
+        size_t offset = ctx->position & 63;
+        if(offset == 0) {
+            chacha20_block_next(ctx);
         }
-        ctx->position += len;
-    }
 
-    while(i + 64 <= size) {
-        chacha20_block_next(ctx);
-        
-        uint32_t *bytes_32 = (uint32_t*)(bytes + i);
-        
-        for(int k = 0; k < 16; k++) {
-            bytes_32[k] ^= ctx->keystream[k];
-        }
-        
-        i += 64;
-        ctx->position += 64;
-    }
+        size_t chunk = 64 - offset;
+        if(chunk > size) chunk = size;
 
-    if(i < size) {
-        chacha20_block_next(ctx);
-        size_t tail = size - i;
-        for(size_t j = 0; j < tail; j++) {
-            bytes[i++] ^= keystream_8[j];
+        for(size_t i = 0; i < chunk; i++) {
+            bytes[i] ^= keystream[offset + i];
         }
-        ctx->position += tail;
+
+        bytes += chunk;
+        size -= chunk;
+        ctx->position += chunk;
     }
 }
