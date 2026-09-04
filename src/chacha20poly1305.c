@@ -47,6 +47,9 @@ void chipvpn_crypto_chacha20_poly1305_init() {
     if(dl_sodium_init && dl_sodium_encrypt_detached && dl_sodium_decrypt_detached) {
     	if(dl_sodium_init() == 0) {
     		chipvpn_log_append("loaded libsodium\n");
+    		chipvpn_log_append("loaded dl_sodium_init @ %p\n", dl_sodium_init);
+    		chipvpn_log_append("loaded dl_sodium_encrypt_detached @ %p\n", dl_sodium_encrypt_detached);
+    		chipvpn_log_append("loaded dl_sodium_decrypt_detached @ %p\n", dl_sodium_decrypt_detached);
     		return;
     	}
 	}
