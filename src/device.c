@@ -55,7 +55,7 @@ chipvpn_device_t *chipvpn_device_create(int fd) {
 		strcpy(device->dev, ifr.ifr_name);
 	}
 
-	chipvpn_socket_t *sock = chipvpn_socket_create(fd, fd, CHIPVPN_SOCKET_STREAM);
+	chipvpn_socket_t *sock = chipvpn_socket_create(fd, CHIPVPN_SOCKET_STREAM);
 	if(!sock) {
 		return NULL;
 	}

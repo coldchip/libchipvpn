@@ -19,13 +19,10 @@
 #include "log.h"
 #include "util.h"
 
-chipvpn_t *chipvpn_create(int tun_fd, int ipc_rfd, int ipc_wfd) {
+chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
 
 	setbuf(stdout, 0);
-
-	/* init crypto */
-	chipvpn_crypto_chacha20_poly1305_init();
 
 	/* create vpn device */
 	chipvpn_device_t *device = chipvpn_device_create(tun_fd);
@@ -34,13 +31,13 @@ chipvpn_t *chipvpn_create(int tun_fd, int ipc_rfd, int ipc_wfd) {
 	}
 
 	/* create vpn socket */
-	chipvpn_udp_t *udp = chipvpn_udp_create();
+	chipvpn_udp_t *udp = chipvpn_udp_create(udp_fd);
 	if(!udp) {
 		return NULL;
 	}
 
 	/* create control socket */
-	chipvpn_ipc_t *ipc = chipvpn_ipc_create(ipc_rfd, ipc_wfd);
+	chipvpn_ipc_t *ipc = chipvpn_ipc_create(ipc_fd);
 	if(!ipc) {
 		return NULL;
 	}
@@ -252,8 +249,6 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 	chipvpn_device_free(vpn->device);
 	chipvpn_udp_free(vpn->udp);
 	chipvpn_ipc_free(vpn->ipc);
-
-	chipvpn_crypto_chacha20_poly1305_free();
 
 	free(vpn);
 }

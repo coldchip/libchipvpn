@@ -25,18 +25,20 @@
 #include <sys/un.h>
 
 
-chipvpn_udp_t *chipvpn_udp_create() {
+chipvpn_udp_t *chipvpn_udp_create(int fd) {
 	chipvpn_udp_t *udp = malloc(sizeof(chipvpn_udp_t));
 	if(!udp) {
 		return NULL;
 	}
 
-	int fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
 	if(fd < 0) {
-		return NULL;
+		fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+		if(fd < 0) {
+			return NULL;
+		}
 	}
 
-	chipvpn_socket_t *sock = chipvpn_socket_create(fd, fd, CHIPVPN_SOCKET_DGRAM);
+	chipvpn_socket_t *sock = chipvpn_socket_create(fd, CHIPVPN_SOCKET_DGRAM);
 	if(!sock) {
 		return NULL;
 	}

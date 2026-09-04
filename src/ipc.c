@@ -24,14 +24,13 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-
-chipvpn_ipc_t *chipvpn_ipc_create(int rfd, int wfd) {
+chipvpn_ipc_t *chipvpn_ipc_create(int fd) {
 	chipvpn_ipc_t *ipc = malloc(sizeof(chipvpn_ipc_t));
 	if(!ipc) {
 		return NULL;
 	}
 
-	chipvpn_socket_t *sock = chipvpn_socket_create(rfd, wfd, CHIPVPN_SOCKET_STREAM);
+	chipvpn_socket_t *sock = chipvpn_socket_create(fd, CHIPVPN_SOCKET_STREAM);
 	if(!sock) {
 		return NULL;
 	}

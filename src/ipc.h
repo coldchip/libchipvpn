@@ -30,7 +30,7 @@ typedef struct {
     chipvpn_socket_t *socket;
 } chipvpn_ipc_t;
 
-chipvpn_ipc_t          *chipvpn_ipc_create(int rfd, int wfd);
+chipvpn_ipc_t          *chipvpn_ipc_create(int fd);
 void                    chipvpn_ipc_free(chipvpn_ipc_t *ipc);
 
 #ifdef __cplusplus
