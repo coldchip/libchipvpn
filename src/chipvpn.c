@@ -24,6 +24,9 @@ chipvpn_t *chipvpn_create(int tun_fd, int ipc_rfd, int ipc_wfd) {
 
 	setbuf(stdout, 0);
 
+	/* init crypto */
+	chipvpn_crypto_chacha20_poly1305_init();
+
 	/* create vpn device */
 	chipvpn_device_t *device = chipvpn_device_create(tun_fd);
 	if(!device) {
@@ -249,6 +252,8 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 	chipvpn_device_free(vpn->device);
 	chipvpn_udp_free(vpn->udp);
 	chipvpn_ipc_free(vpn->ipc);
+
+	chipvpn_crypto_chacha20_poly1305_free();
 
 	free(vpn);
 }
