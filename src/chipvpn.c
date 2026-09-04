@@ -167,7 +167,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
 				if(!peer) {
-					chipvpn_log_append("keyhash hot found\n");
+					chipvpn_log_append("keyhash not found\n");
 					continue;
 				}
 

@@ -48,11 +48,11 @@ chipvpn_udp_t *chipvpn_udp_create() {
 }
 
 bool chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size) {
-	return setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0;
+	return setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == 0;
 }
 
 bool chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size) {
-	return setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) < 0;
+	return setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == 0;
 }
 
 bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
@@ -62,7 +62,7 @@ bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
 		.sin_port = htons(addr->port)
 	};
 
-	return bind(sock->fd, (struct sockaddr *)&sa, sizeof(sa)) < 0;
+	return bind(sock->fd, (struct sockaddr *)&sa, sizeof(sa)) == 0;
 }
 
 void chipvpn_udp_free(chipvpn_udp_t *ipc) {
