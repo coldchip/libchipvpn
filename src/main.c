@@ -11,7 +11,6 @@
 #include "chipvpn.h"
 #include <arpa/inet.h>
 
-
 volatile sig_atomic_t quit = 0;
 
 void terminate(int type) {
@@ -19,7 +18,7 @@ void terminate(int type) {
 	quit = 1;
 }
 
-int chipvpn_auth_main(int argc, char const *argv[], int rfd, int wfd) {
+int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 	signal(SIGPIPE, SIG_IGN);
 
 	char *file = chipvpn_read_file(argv[1]);
@@ -28,7 +27,7 @@ int chipvpn_auth_main(int argc, char const *argv[], int rfd, int wfd) {
 		exit(1);
 	}
 
-	write(wfd, file, strlen(file) + 1);
+	write(fd, file, strlen(file) + 1);
 
 	free(file);
 
@@ -39,10 +38,8 @@ int chipvpn_auth_main(int argc, char const *argv[], int rfd, int wfd) {
 	return 0;
 }
 
-int chipvpn_main(int argc, char const *argv[], int rfd, int wfd) {
-	srand(time(NULL));
-
-	chipvpn_log_append("chipvpn v%i protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION); 
+int chipvpn_main(int argc, char const *argv[], int fd) {
+	srand(time(NULL)); 
 
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
@@ -50,7 +47,7 @@ int chipvpn_main(int argc, char const *argv[], int rfd, int wfd) {
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
 
-	chipvpn_t *vpn = chipvpn_create(-1, rfd, wfd);
+	chipvpn_t *vpn = chipvpn_create(-1, -1, fd);
 	if(!vpn) {
 		chipvpn_log_append("unable to create vpn tunnel interface\n");
 		exit(1);
@@ -71,6 +68,8 @@ int chipvpn_main(int argc, char const *argv[], int rfd, int wfd) {
 }
 
 int main(int argc, char const *argv[]) {
+	chipvpn_log_append("chipvpn v%i protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION);
+
 	if(!(argc > 1 && argv[1] != NULL)) {
 		chipvpn_log_append("config path required\n");
 		exit(1);
@@ -93,14 +92,14 @@ int main(int argc, char const *argv[]) {
 		printf("fork fail");
 		exit(1);
 	} else if(p == 0) {
-		int ret = chipvpn_auth_main(argc, argv, auth_fd, auth_fd);
+		int ret = chipvpn_auth_main(argc, argv, auth_fd);
 
 		close(auth_fd);
 		close(vpn_fd);
 
 		exit(ret);
 	} else {
-		int ret = chipvpn_main(argc, argv, vpn_fd, vpn_fd);
+		int ret = chipvpn_main(argc, argv, vpn_fd);
 
 		kill(p, SIGTERM);
 		waitpid(p, NULL, 0);

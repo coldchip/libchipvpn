@@ -31,7 +31,7 @@ typedef struct {
     chipvpn_socket_t *socket;
 } chipvpn_udp_t;
 
-chipvpn_udp_t          *chipvpn_udp_create();
+chipvpn_udp_t          *chipvpn_udp_create(int fd);
 bool                    chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size);
 bool                    chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size);
 bool                    chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *bind);
