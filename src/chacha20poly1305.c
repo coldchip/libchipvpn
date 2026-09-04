@@ -33,9 +33,9 @@ sodium_encrypt_detached_t dl_sodium_encrypt_detached = NULL;
 sodium_decrypt_detached_t dl_sodium_decrypt_detached = NULL;
 
 void chipvpn_crypto_chacha20_poly1305_init() {
-	const char *libs[] = {"libsodium.so", "libsodium.so.23", "libsodium.so.18"};
+	const char *libs[] = {"libsodium.so", "libsodium.so.23", "libsodium.so.18", "libsodium.so.26.1.0"};
 
-	for(int i = 0; i < 3; i++) {
+	for(int i = 0; i < 4; i++) {
         handle = dlopen(libs[i], RTLD_LAZY);
         if(handle) break;
     }
