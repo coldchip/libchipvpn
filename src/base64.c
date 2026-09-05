@@ -8,6 +8,7 @@
 	http://www.codeproject.com/Tips/813146/Fast-base-functions-for-encode-decode
 */
 
+#include <stdint.h>
 #include "base64.h"
 
 //Base64 char table - used internally for encoding
@@ -53,7 +54,7 @@ unsigned int b64d_size(unsigned int in_size) {
 	return ((3*in_size)/4);
 }
 
-unsigned int b64_encode(const unsigned char* in, unsigned int in_len, unsigned char* out) {
+unsigned int b64_encode(uint8_t* in, unsigned int in_len, uint8_t* out) {
 
 	unsigned int i=0, j=0, k=0, s[3];
 	
@@ -86,7 +87,7 @@ unsigned int b64_encode(const unsigned char* in, unsigned int in_len, unsigned c
 	return k + 1;
 }
 
-unsigned int b64_decode(const unsigned char* in, unsigned int in_len, unsigned char* out) {
+unsigned int b64_decode(uint8_t* in, unsigned int in_len, uint8_t* out) {
 
 	unsigned int i=0, j=0, k=0, s[4];
 	
@@ -107,98 +108,6 @@ unsigned int b64_decode(const unsigned char* in, unsigned int in_len, unsigned c
 			j=0;
 		}
 	}
-	
-	return k;
-}
-
-unsigned int b64_encodef(char *InFile, char *OutFile) {
-
-	FILE *pInFile = fopen(InFile,"rb");
-	FILE *pOutFile = fopen(OutFile,"wb");
-	
-	unsigned int i=0;
-	unsigned int j=0;
-	unsigned int c=0;
-	unsigned int s[4];
-	
-	if ((pInFile==NULL) || (pOutFile==NULL) ) {
-		if (pInFile!=NULL){fclose(pInFile);}
-		if (pOutFile!=NULL){fclose(pOutFile);}
-		return 0;
-	}
-	
-	while(c!=EOF) {
-		c=fgetc(pInFile);
-		if (c==EOF)
-		break;
-		s[j++]=c;
-		if (j==3) {
-			fputc(b64_chr[ (s[0]&255)>>2 ],pOutFile);
-			fputc(b64_chr[ ((s[0]&0x03)<<4)+((s[1]&0xF0)>>4) ],pOutFile);
-			fputc(b64_chr[ ((s[1]&0x0F)<<2)+((s[2]&0xC0)>>6) ],pOutFile);
-			fputc(b64_chr[ s[2]&0x3F ],pOutFile);
-			j=0; i+=4;
-		}
-	}
-	
-	if (j) {
-		if (j==1)
-			s[1] = 0;
-		fputc(b64_chr[ (s[0]&255)>>2 ],pOutFile);
-		fputc(b64_chr[ ((s[0]&0x03)<<4)+((s[1]&0xF0)>>4) ],pOutFile);
-		if (j==2)
-			fputc(b64_chr[ ((s[1]&0x0F)<<2) ],pOutFile);
-		else
-			fputc('=',pOutFile);
-		fputc('=',pOutFile);
-		i+=4;
-	}
-	
-	fclose(pInFile);
-	fclose(pOutFile);
-	
-	return i;
-}
-
-unsigned int b64_decodef(char *InFile, char *OutFile) {
-
-	FILE *pInFile = fopen(InFile,"rb");
-	FILE *pOutFile = fopen(OutFile,"wb");
-	
-	unsigned int c=0;
-	unsigned int j=0;
-	unsigned int k=0;
-	unsigned int s[4];
-	
-	if ((pInFile==NULL) || (pOutFile==NULL) ) {
-		if (pInFile!=NULL){fclose(pInFile);}
-		if (pOutFile!=NULL){fclose(pOutFile);}
-		return 0;
-	}
-	
-	while(c!=EOF) {
-		c=fgetc(pInFile);
-		if (c==EOF)
-		break;
-		s[j++]=b64_int(c);
-		if (j==4) {
-			fputc(((s[0]&255)<<2)+((s[1]&0x30)>>4),pOutFile);
-			if (s[2]!=64) {
-				fputc(((s[1]&0x0F)<<4)+((s[2]&0x3C)>>2),pOutFile);
-				if ((s[3]!=64)) {
-					fputc(((s[2]&0x03)<<6)+(s[3]),pOutFile); k+=3;
-				} else {
-					k+=2;
-				}
-			} else {
-				k+=1;
-			}
-			j=0;
-		}
-	}
-
-	fclose(pInFile);
-	fclose(pOutFile);
 	
 	return k;
 }

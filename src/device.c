@@ -187,11 +187,11 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 }
 
 bool chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key) {
-	return b64_decode(key, strlen(key), device->public);
+	return b64_decode((uint8_t*)key, strlen(key), device->public);
 }
 
 bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
-	return b64_decode(key, strlen(key), device->private);
+	return b64_decode((uint8_t*)key, strlen(key), device->private);
 }
 
 void chipvpn_device_free(chipvpn_device_t *device) {
