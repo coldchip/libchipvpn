@@ -162,7 +162,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->public);
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->public);
 				if(!peer) {
 					chipvpn_log_append("keyhash not found\n");
 					continue;
@@ -232,7 +232,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 				
-				chipvpn_peer_recv_ping(peer, packet, &addr);
+				chipvpn_peer_recv_ping(peer, vpn->device, packet, &addr);
 			}
 			break;
 		}

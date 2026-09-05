@@ -55,8 +55,6 @@ typedef struct {
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} outbound;
 
-	uint8_t signing_ss_key[32];
-
 	chipvpn_address_t address;
 
 	struct {
@@ -84,7 +82,9 @@ int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_dev
 int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
-int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
+
+void                 chipvpn_peer_sign_payload(chipvpn_peer_t *peer, chipvpn_device_t *device, uint8_t *payload, int payload_size, uint8_t *aad, int aad_size, uint8_t *signature);
 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
@@ -92,7 +92,7 @@ bool                 chipvpn_peer_set_public_key(chipvpn_peer_t *peer, const cha
 bool                 chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);
-chipvpn_peer_t      *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, uint8_t *keyhash);
+chipvpn_peer_t      *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *keyhash);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_inbound_session(chipvpn_list_t *peers, uint32_t session);
 void                 chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state);
