@@ -28,7 +28,6 @@ extern "C"
 
 typedef enum {
 	PEER_DISCONNECTED,
-	PEER_CONNECTING,
 	PEER_CONNECTED
 } chipvpn_peer_state_e;
 
