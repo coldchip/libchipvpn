@@ -87,7 +87,7 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
-	chipvpn_peer_service(&vpn->device->peers, vpn->udp);
+	chipvpn_peer_service(&vpn->device->peers, vpn->device, vpn->udp);
 
 	uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 
@@ -162,13 +162,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->keyhash);
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_keyhash(&vpn->device->peers, packet->public);
 				if(!peer) {
 					chipvpn_log_append("keyhash not found\n");
 					continue;
 				}
 
-				chipvpn_peer_recv_connect(peer, vpn->udp, packet, &addr);
+				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {

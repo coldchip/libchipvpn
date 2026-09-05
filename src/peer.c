@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include "chipvpn.h"
 #include "packet.h"
+#include "device.h"
 #include "util.h"
 #include "sha256.h"
+#include "base64.h"
 #include "hmac_sha256.h"
 #include "hkdf_sha256.h"
 #include "curve25519.h"
@@ -39,7 +41,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
+int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
@@ -47,57 +49,66 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 	};
 
 	// Generate curve25519 keys
-	chipvpn_secure_random(peer->curve_private, sizeof(peer->curve_private));
+	chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
 	uint8_t curve_basepoint[32] = {9};
 	curve25519(
-		peer->curve_public, 
-		peer->curve_private, 
+		peer->ephemeral_public, 
+		peer->ephemeral_private, 
 		curve_basepoint
 	);
 
-	// Copy curve25519 public key to packet
-	memcpy(packet.curve_public, peer->curve_public, sizeof(peer->curve_public));
+	// copy curve25519 public key to packet
+	memcpy(packet.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
-	/* generate keyhash */
-	chipvpn_peer_get_keyhash(peer, packet.keyhash);
+	/* copy keyhash */
+	memcpy(packet.public, device->public, sizeof(device->public));
+
+	// Figure out roles (client or server)
+	int role = memcmp(device->public, peer->config.public, sizeof(peer->config.public)) > 0;
+
+    /* compute dh static + static */
+    uint8_t dh_ss[CURVE25519_KEY_SIZE];
+    curve25519(
+    	dh_ss, 
+    	device->private, 
+    	peer->config.public
+    );
+
+	// Derive keys for hashing
+	uint8_t signing_ss_key[32];
+	hkdf_sha256(
+		NULL, 
+		0, 
+		dh_ss,
+		sizeof(dh_ss),
+		CHIPVPN_PAYLOAD_HASH,
+		sizeof(CHIPVPN_PAYLOAD_HASH) - 1,
+		signing_ss_key,
+		sizeof(signing_ss_key)
+	);
+
+	memcpy(peer->signing_ss_key, signing_ss_key, sizeof(signing_ss_key));
 
 	/* sign entire packet */
 	memset(packet.sign, 0, sizeof(packet.sign));
 	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
+		peer->signing_ss_key, 
+		sizeof(peer->signing_ss_key),
 		&packet,
 		sizeof(packet),
 		packet.sign, 
 		sizeof(packet.sign)
 	);
 
+	chipvpn_peer_set_state(peer, PEER_CONNECTING);
+
 	/* write to socket */
 	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
 }
 
-int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
+int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
 	if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
 		chipvpn_log_append("invalid protocol version\n");
-		return 0;
-	}
-
-	uint8_t sign[32];
-	uint8_t computed_sign[32];
-	memcpy(sign, packet->sign, sizeof(sign));
-	memset(packet->sign, 0, sizeof(packet->sign));
-
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		packet,
-		sizeof(chipvpn_packet_auth_t),
-		computed_sign,
-		sizeof(computed_sign)
-	);
-
-	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-		chipvpn_log_append("invalid sign\n");
 		return 0;
 	}
 
@@ -114,39 +125,75 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 		return 0;
 	}
 
-	// Auth successful
-	if(!(peer->config.address.ip > 0)) {
+	if(peer->state != PEER_CONNECTING) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(peer, udp, addr);
+		chipvpn_peer_send_connect(peer, device, udp, addr);
+	}
+
+	uint8_t sign[32];
+	uint8_t computed_sign[32];
+	memcpy(sign, packet->sign, sizeof(sign));
+	memset(packet->sign, 0, sizeof(packet->sign));
+
+	hmac_sha256(
+		peer->signing_ss_key, 
+		sizeof(peer->signing_ss_key),
+		packet,
+		sizeof(chipvpn_packet_auth_t),
+		computed_sign,
+		sizeof(computed_sign)
+	);
+
+	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
+		chipvpn_log_append("invalid sign\n");
+		return 0;
 	}
 
 	// Reject if peer has same curve25519 public key
-	if(chipvpn_secure_memcmp(packet->curve_public, peer->curve_public, sizeof(packet->curve_public)) == 0) {
+	if(chipvpn_secure_memcmp(packet->ephemeral_public, peer->ephemeral_public, sizeof(packet->ephemeral_public)) == 0) {
 		chipvpn_log_append("peer has the same curve25519 keys\n");
 		return 0;
 	}
 
-	// Derive curve25519 shared keys
-	uint8_t curve_shared[CURVE25519_KEY_SIZE];
+	// Figure out roles (client or server)
+	int role = memcmp(device->public, peer->config.public, sizeof(peer->config.public)) > 0;
+
+	/* static & ephemeral keys */
+	uint8_t dh_es[CURVE25519_KEY_SIZE];
+	uint8_t dh_ss[CURVE25519_KEY_SIZE];
+	uint8_t dh_es_ss[2 * CURVE25519_KEY_SIZE];
+
+	// DH-ES
 	curve25519(
-		curve_shared, 
-		peer->curve_private, 
-		packet->curve_public
+		dh_es, 
+		role ? device->private : peer->ephemeral_private, 
+		role ? packet->ephemeral_public : peer->config.public
 	);
 
-	// Figure out roles (client or server)
-	int role = memcmp(peer->curve_public, packet->curve_public, sizeof(peer->curve_public)) > 0;
+	// DH-SS
+	curve25519(
+		dh_ss, 
+		device->private, 
+		peer->config.public
+	);
 
-	// Clear curve25519 keys
-	memset(peer->curve_public, 0, sizeof(peer->curve_public));
-	memset(peer->curve_private, 0, sizeof(peer->curve_private));
+	memcpy(dh_es_ss, dh_es, CURVE25519_KEY_SIZE);
+	memcpy(dh_es_ss + CURVE25519_KEY_SIZE, dh_ss, CURVE25519_KEY_SIZE);
+
+	// clear dh_es and dh_ss
+	memset(dh_es, 0, sizeof(dh_es));
+	memset(dh_ss, 0, sizeof(dh_ss));
+
+	// clear curve25519 keys
+	memset(peer->ephemeral_public, 0, sizeof(peer->ephemeral_public));
+	memset(peer->ephemeral_private, 0, sizeof(peer->ephemeral_private));
 
 	// Derive keys
 	hkdf_sha256(
 		NULL, 
 		0, 
-		curve_shared,
-		sizeof(curve_shared),
+		dh_es_ss,
+		sizeof(dh_es_ss),
 		CHIPVPN_DIRECTIONAL_KEY_A,
 		sizeof(CHIPVPN_DIRECTIONAL_KEY_A) - 1,
 		role ? peer->inbound.key : peer->outbound.key,
@@ -156,8 +203,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 	hkdf_sha256(
 		NULL, 
 		0, 
-		curve_shared,
-		sizeof(curve_shared),
+		dh_es_ss,
+		sizeof(dh_es_ss),
 		CHIPVPN_DIRECTIONAL_KEY_B,
 		sizeof(CHIPVPN_DIRECTIONAL_KEY_B) - 1,
 		role ? peer->outbound.key : peer->inbound.key,
@@ -167,8 +214,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 	hkdf_sha256(
 		NULL, 
 		0, 
-		curve_shared,
-		sizeof(curve_shared),
+		dh_es_ss,
+		sizeof(dh_es_ss),
 		CHIPVPN_SESSION_HASH_A,
 		sizeof(CHIPVPN_SESSION_HASH_A) - 1,
 		role ? peer->inbound.session_hash : peer->outbound.session_hash,
@@ -178,15 +225,15 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 	hkdf_sha256(
 		NULL, 
 		0, 
-		curve_shared,
-		sizeof(curve_shared),
+		dh_es_ss,
+		sizeof(dh_es_ss),
 		CHIPVPN_SESSION_HASH_B,
 		sizeof(CHIPVPN_SESSION_HASH_B) - 1,
 		role ? peer->outbound.session_hash : peer->inbound.session_hash,
 		sizeof(peer->outbound.session_hash)
 	);
 
-	memset(curve_shared, 0, sizeof(curve_shared));
+	memset(dh_es_ss, 0, sizeof(dh_es_ss));
 
 	// Set peer state
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
@@ -206,7 +253,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_
 	return 0;
 }
 
-int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_udp_t *udp) {
+int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp) {
 	peer->counter++;
 
 	chipvpn_packet_ping_t packet = {
@@ -219,7 +266,7 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_udp_t *udp) {
 	memset(packet.sign, 0, sizeof(packet.sign));
 
 	HMAC_CTX ctx;
-	hmac_sha256_init(&ctx, peer->config.key, sizeof(peer->config.key));
+	hmac_sha256_init(&ctx, peer->signing_ss_key, sizeof(peer->signing_ss_key));
 	hmac_sha256_update(&ctx, peer->outbound.session_hash, sizeof(peer->outbound.session_hash));
 	hmac_sha256_update(&ctx, &packet, sizeof(packet));
 	hmac_sha256_final(&ctx, packet.sign, sizeof(packet.sign));
@@ -239,7 +286,7 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	memset(packet->sign, 0, sizeof(packet->sign));
 
 	HMAC_CTX ctx;
-	hmac_sha256_init(&ctx, peer->config.key, sizeof(peer->config.key));
+	hmac_sha256_init(&ctx, peer->signing_ss_key, sizeof(peer->signing_ss_key));
 	hmac_sha256_update(&ctx, peer->inbound.session_hash, sizeof(peer->inbound.session_hash));
 	hmac_sha256_update(&ctx, packet, sizeof(chipvpn_packet_ping_t));
 	hmac_sha256_final(&ctx, computed_sign, sizeof(computed_sign));
@@ -273,17 +320,6 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_packet_ping_t *packet, 
 	return 0;
 }
 
-void chipvpn_peer_get_keyhash(chipvpn_peer_t *peer, uint8_t *keyhash) {
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		CHIPVPN_KEYHASH,
-		sizeof(CHIPVPN_KEYHASH) - 1,
-		keyhash, 
-		32
-	);
-}
-
 bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
 	if(!chipvpn_address_set_ip(&peer->config.allow, address)) {
 		return false;
@@ -300,17 +336,8 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 	return true;
 }
 
-bool chipvpn_peer_set_key(chipvpn_peer_t *peer, const char *key) {
-	sha256((uint8_t*)key, strlen(key), peer->config.key, sizeof(peer->config.key));
-	hmac_sha256(
-		peer->config.key, 
-		sizeof(peer->config.key),
-		CHIPVPN_KEYHASH,
-		sizeof(CHIPVPN_KEYHASH) - 1,
-		peer->config.keyhash, 
-		sizeof(peer->config.keyhash)
-	);
-	return true;
+bool chipvpn_peer_set_public_key(chipvpn_peer_t *peer, const char *key) {
+	return b64_decode(key, strlen(key), peer->config.public);
 }
 
 bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
@@ -332,7 +359,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_keyhash(chipvpn_list_t *peers, uint8_t *keyh
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_secure_memcmp(keyhash, peer->config.keyhash, sizeof(peer->config.keyhash)) == 0) {
+		if(chipvpn_secure_memcmp(keyhash, peer->config.public, sizeof(peer->config.public)) == 0) {
 			return peer;
 		}
 	}
@@ -398,12 +425,9 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 		sprintf(tx, "%lu", peer->tx);
 		sprintf(rx, "%lu", peer->rx);
 
-		uint8_t keyhash_buffer[32];
-		chipvpn_peer_get_keyhash(peer, keyhash_buffer);
-
 		memset(keyhash, 0, sizeof(keyhash));
 		for(int i = 0; i < 32; i++) {
-			sprintf(&keyhash[i * 2], "%02x", keyhash_buffer[i] & 0xff);
+			sprintf(&keyhash[i * 2], "%02x", peer->config.public[i] & 0xff);
 		}
 
 		strcpy(address, chipvpn_address_to_char(&peer->address));
@@ -431,7 +455,7 @@ void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
 	free(result7);
 }
 
-void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_udp_t *udp) {
+void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipvpn_udp_t *udp) {
 	/* peer lifecycle service */
 	uint64_t now = chipvpn_get_time();
 
@@ -441,20 +465,19 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_udp_t *udp) {
 			peer->last_check = now;
 
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
-			if(peer->state != PEER_DISCONNECTED && now > peer->timeout) {
-				chipvpn_log_append("%p says: peer disconnected\n", peer);
-				chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+			if(peer->state == PEER_CONNECTED) {
+				chipvpn_peer_send_ping(peer, device, udp);
+				/* ping peers */
+				if(now > peer->timeout) {
+					chipvpn_log_append("%p says: peer disconnected\n", peer);
+					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+				}
 			}
 
 			/* attempt to connect to peer */
-			if(peer->state == PEER_DISCONNECTED && peer->config.address.ip > 0) {
+			if(peer->state != PEER_CONNECTED && peer->config.address.ip > 0) {
 				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
-				chipvpn_peer_send_connect(peer, udp, &peer->config.address);
-			}
-
-			/* ping peers */
-			if(peer->state == PEER_CONNECTED) {
-				chipvpn_peer_send_ping(peer, udp);
+				chipvpn_peer_send_connect(peer, device, udp, &peer->config.address);
 			}
 		}
 	}
