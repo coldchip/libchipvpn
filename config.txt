@@ -2,9 +2,11 @@ section:device
 name:cv-client
 network:10.64.0.2/16
 mtu:1500
+public:ihjaCjeBm1xpEeVj9NEYfgLb5L51ByG6J4hFu4lYoQM=
+private:UE+1SZSYYjblA2KZ3RMlVXPoyIVVQ0p7Kx/gToXHyqo=
 ifup:ifup
 
 section:peer
 address:127.0.0.1:4433
 allow:0.0.0.0/0
-key:66367765cf942
+public:3Va3UUZ8YjoY53Js7rDzRfeW5eLyliGUc52lFu3JM2o=

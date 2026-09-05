@@ -25,6 +25,8 @@
 #include "chipvpn.h"
 #include "address.h"
 #include "util.h"
+#include "hmac_sha256.h"
+#include "base64.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
@@ -182,6 +184,14 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 	close(fd);
 
 	return success;
+}
+
+bool chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key) {
+	return b64_decode(key, strlen(key), device->public);
+}
+
+bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
+	return b64_decode(key, strlen(key), device->private);
 }
 
 void chipvpn_device_free(chipvpn_device_t *device) {
