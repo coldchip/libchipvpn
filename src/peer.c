@@ -63,9 +63,6 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	/* copy keyhash */
 	memcpy(packet.public, device->public, sizeof(device->public));
 
-	// Figure out roles (client or server)
-	int role = memcmp(device->public, peer->config.public, sizeof(peer->config.public)) > 0;
-
     /* compute dh static + static */
     uint8_t dh_ss[CURVE25519_KEY_SIZE];
     curve25519(
@@ -337,7 +334,7 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 }
 
 bool chipvpn_peer_set_public_key(chipvpn_peer_t *peer, const char *key) {
-	return b64_decode(key, strlen(key), peer->config.public);
+	return b64_decode((uint8_t*)key, strlen(key), peer->config.public);
 }
 
 bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
@@ -395,6 +392,10 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 				if(peer->config.onconnect) {
 					chipvpn_peer_run_command(peer, peer->config.onconnect);
 				}
+			}
+			break;
+			case PEER_CONNECTING: {
+				
 			}
 			break;
 			case PEER_DISCONNECTED: {

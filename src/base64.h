@@ -10,7 +10,7 @@
 	http://www.codeproject.com/Tips/813146/Fast-base-functions-for-encode-decode
 */
 
-#include <stdio.h>
+#include <stdint.h>
 
 //Base64 char table function - used internally for decoding
 unsigned int b64_int(unsigned int ch);
@@ -27,23 +27,13 @@ unsigned int b64d_size(unsigned int in_size);
 // in_len : number of bytes to be encoded.
 // out : pointer to buffer with enough memory, user is responsible for memory allocation, receives null-terminated string
 // returns size of output including null byte
-unsigned int b64_encode(const unsigned char* in, unsigned int in_len, unsigned char* out);
+unsigned int b64_encode(uint8_t* in, unsigned int in_len, uint8_t* out);
 
 // in : buffer of base64 string to be decoded.
 // in_len : number of bytes to be decoded.
 // out : pointer to buffer with enough memory, user is responsible for memory allocation, receives "raw" binary
 // returns size of output excluding null byte
-unsigned int b64_decode(const unsigned char* in, unsigned int in_len, unsigned char* out);
-
-// file-version b64_encode
-// Input : filenames
-// returns size of output
-unsigned int b64_encodef(char *InFile, char *OutFile);
-
-// file-version b64_decode
-// Input : filenames
-// returns size of output
-unsigned int b64_decodef(char *InFile, char *OutFile);
+unsigned int b64_decode(uint8_t* in, unsigned int in_len, uint8_t* out);
 
 
 #endif
