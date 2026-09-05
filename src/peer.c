@@ -74,8 +74,6 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		packet.sign
 	);
 
-	chipvpn_peer_set_state(peer, PEER_CONNECTING);
-
 	/* write to socket */
 	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
 }
@@ -119,7 +117,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		return 0;
 	}
 
-	if(peer->state != PEER_CONNECTING) {
+	if(!(peer->config.address.ip > 0)) {
 		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
 		chipvpn_peer_send_connect(peer, device, udp, addr);
 	}
@@ -405,10 +403,6 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 				if(peer->config.onconnect) {
 					chipvpn_peer_run_command(peer, peer->config.onconnect);
 				}
-			}
-			break;
-			case PEER_CONNECTING: {
-				
 			}
 			break;
 			case PEER_DISCONNECTED: {
