@@ -160,7 +160,7 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 void *sha256(const uint8_t* data, const size_t datalen, uint8_t* out, const size_t outlen) {
   size_t sz;
   SHA256_CTX ctx;
-  uint8_t hash[32];
+  uint8_t hash[SHA256_HASH_SIZE];
 
   sha256_init(&ctx);
   sha256_update(&ctx, data, datalen);

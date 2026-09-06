@@ -17,6 +17,7 @@ extern "C"
 #include "chipvpn.h"
 #include "firewall.h"
 #include "curve25519.h"
+#include "sha256.h"
 
 #define CHIPVPN_DIRECTIONAL_KEY_A "#CHIPVPN_DIRECTIONAL_KEY_A/1.0"
 #define CHIPVPN_DIRECTIONAL_KEY_B "#CHIPVPN_DIRECTIONAL_KEY_B/1.0"
@@ -41,7 +42,7 @@ typedef struct {
 	struct {
 		union {
 			uint32_t session;
-			uint8_t session_hash[32];
+			uint8_t session_hash[SHA256_HASH_SIZE];
 		};
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} inbound;
@@ -49,10 +50,13 @@ typedef struct {
 	struct {
 		union {
 			uint32_t session;
-			uint8_t session_hash[32];
+			uint8_t session_hash[SHA256_HASH_SIZE];
 		};
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} outbound;
+
+	uint8_t dh_es[CURVE25519_KEY_SIZE];
+	uint8_t dh_ss[CURVE25519_KEY_SIZE];
 
 	chipvpn_address_t address;
 
@@ -60,7 +64,7 @@ typedef struct {
 		chipvpn_address_t address;
 		chipvpn_address_t allow;
 		chipvpn_firewall_t firewall;
-		uint8_t public[32];
+		uint8_t public[CURVE25519_KEY_SIZE];
 		char *onconnect;
 		char *onping;
 		char *ondisconnect;
@@ -77,7 +81,7 @@ typedef struct {
 
 chipvpn_peer_t      *chipvpn_peer_create();
 
-int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_address_t *addr);
+int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_address_t *addr, bool ack);
 int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
