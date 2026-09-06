@@ -28,6 +28,7 @@ extern "C"
 #include "socket.h"
 #include "address.h"
 #include "list.h"
+#include "curve25519.h"
 #include <netinet/in.h>
 #include <net/if.h>
 
@@ -49,8 +50,8 @@ typedef struct {
 	char dev[IF_NAMESIZE + 1];
     chipvpn_list_t peers;
     chipvpn_socket_t *socket;
-    uint8_t public[32];
-    uint8_t private[32];
+    uint8_t public[CURVE25519_KEY_SIZE];
+    uint8_t private[CURVE25519_KEY_SIZE];
 } chipvpn_device_t;
 
 chipvpn_device_t       *chipvpn_device_create(int tun_fd);

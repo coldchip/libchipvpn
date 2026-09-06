@@ -15,7 +15,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 	char line[8192];
 	while(chipvpn_sgets(line, sizeof(line), (const char **)&command)) {
 		line[strcspn(line, "\n")] = 0;
-		char key[32];
+		char key[128];
 		char value[4096];
 		if(sscanf(line, "%24[^:]:%1024[^\n]", key, value) == 2) {
 			if(strcmp(key, "section") == 0 && strcmp(value, "device") == 0) {
