@@ -9,14 +9,13 @@ extern "C"
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/select.h>
-#include <net/if.h>
 
 #include "device.h"
 #include "udp.h"
 #include "ipc.h"
 
-#define CHIPVPN_VERSION 300027
-#define CHIPVPN_PROTOCOL_VERSION 199
+#define CHIPVPN_VERSION 300028
+#define CHIPVPN_PROTOCOL_VERSION 200
 
 #define CHIPVPN_PEER_TIMEOUT 15000
 #define CHIPVPN_PEER_PING 2000

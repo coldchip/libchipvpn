@@ -10,6 +10,7 @@ extern "C"
 #include <stdbool.h>
 
 #define CHACHA20_KEY_SIZE 32
+#define CHACHA20_NONCE_SIZE 12
 
 static const uint8_t pad0[16] = { 0 };
 

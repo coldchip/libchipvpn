@@ -9,6 +9,9 @@
 extern "C" {
 #endif
 
+#define CHACHA20_KEY_SIZE 32
+#define CHACHA20_NONCE_SIZE 12
+
 #define U8V(v) ((uint8_t)(v) & (0xFF))
 #define U16V(v) ((uint16_t)(v) & (0xFFFF))
 #define U32V(v) ((uint32_t)(v) & (0xFFFFFFFF))
@@ -39,9 +42,9 @@ typedef struct {
 	size_t position;
 } chacha20_t;
 
-void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nonce[], uint32_t counter);
-void chacha20_block_set_nonce(chacha20_t *ctx, uint8_t nonce[]);
+void chacha20_init_context(chacha20_t *ctx, uint8_t *key, uint8_t *nonce, uint32_t counter);
 void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size);
+void chacha20_xcrypt(uint8_t *key, uint8_t *nonce, uint8_t *bytes, size_t size);
 
 #ifdef __cplusplus 
 }

@@ -11,6 +11,8 @@
 #include "hmac_sha256.h"
 #include "hkdf_sha256.h"
 #include "curve25519.h"
+#include "chacha20poly1305.h"
+#include "dh.h"
 #include "firewall.h"
 #include "log.h"
 
@@ -58,7 +60,6 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		curve_basepoint
 	);
 
-
 	// compute dh-es
 	curve25519(
 		peer->dh_es, 
@@ -77,20 +78,30 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	memcpy(packet.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
 	/* copy keyhash */
-	memcpy(packet.public, device->public, sizeof(device->public));
+	memcpy(packet.static_public, device->public, sizeof(device->public));
+	memset(packet.sign, 0, sizeof(packet.sign));
 
-    /* compute signing key and sign packet */
-	chipvpn_peer_sign_payload(
-		peer, 
-		device, 
-		(uint8_t*)&packet, 
-		sizeof(packet), 
-		NULL, 
-		0, 
+	chipvpn_dh_sign(
+		peer->ephemeral_private,
+		peer->config.public, 
+		device->private, 
+		peer->config.public,
+		(uint8_t*)&packet,
+		sizeof(packet),
+		NULL,
+		0,
 		packet.sign
 	);
 
-	/* write to socket */
+	chipvpn_dh_xcrypt(
+		peer->ephemeral_private,
+		peer->config.public, 
+		NULL,
+		NULL,
+		packet.static_public,
+		sizeof(packet.static_public)
+	);
+
 	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
 }
 
@@ -102,16 +113,18 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 	uint8_t sign[SHA256_HASH_SIZE];
 	uint8_t computed_sign[SHA256_HASH_SIZE];
-	memcpy(sign, packet->sign, sizeof(sign));
+	memcpy(sign, packet->sign, sizeof(packet->sign));
 	memset(packet->sign, 0, sizeof(packet->sign));
 
-	chipvpn_peer_sign_payload(
-		peer, 
-		device, 
-		(uint8_t*)packet, 
-		sizeof(chipvpn_packet_auth_t), 
-		NULL, 
-		0, 
+	chipvpn_dh_sign(
+		device->private, 
+		packet->ephemeral_public, 
+		device->private, 
+		peer->config.public,
+		(uint8_t*)packet,
+		sizeof(chipvpn_packet_auth_t),
+		NULL,
+		0,
 		computed_sign
 	);
 
@@ -144,9 +157,6 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		return 0;
 	}
 
-	// Figure out roles (client or server)
-	int role = memcmp(device->public, peer->config.public, sizeof(peer->config.public)) > 0;
-
 	/* static & ephemeral keys */
 	uint8_t dh_se[CURVE25519_KEY_SIZE];
 	uint8_t dh_ee[CURVE25519_KEY_SIZE];
@@ -165,19 +175,14 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		packet->ephemeral_public
 	);
 
-	uint8_t dh_shared[4 * CURVE25519_KEY_SIZE];
+	// Figure out roles (client or server)
+	int role = memcmp(device->public, peer->config.public, sizeof(peer->config.public)) > 0;
 
-	if(role) {
-		memcpy(dh_shared + (0 * CURVE25519_KEY_SIZE), dh_ee, CURVE25519_KEY_SIZE);
-		memcpy(dh_shared + (1 * CURVE25519_KEY_SIZE), peer->dh_es, CURVE25519_KEY_SIZE);
-		memcpy(dh_shared + (2 * CURVE25519_KEY_SIZE), dh_se, CURVE25519_KEY_SIZE);
-		memcpy(dh_shared + (3 * CURVE25519_KEY_SIZE), peer->dh_ss, CURVE25519_KEY_SIZE);
-	} else {
-		memcpy(dh_shared + (0 * CURVE25519_KEY_SIZE), dh_ee, CURVE25519_KEY_SIZE);
-		memcpy(dh_shared + (1 * CURVE25519_KEY_SIZE), dh_se, CURVE25519_KEY_SIZE);
-		memcpy(dh_shared + (2 * CURVE25519_KEY_SIZE), peer->dh_es, CURVE25519_KEY_SIZE);
-		memcpy(dh_shared + (3 * CURVE25519_KEY_SIZE), peer->dh_ss, CURVE25519_KEY_SIZE);
-	}
+	uint8_t dh_shared[4 * CURVE25519_KEY_SIZE];
+	memcpy(dh_shared + (0 * CURVE25519_KEY_SIZE), dh_ee, CURVE25519_KEY_SIZE);
+	memcpy(dh_shared + (1 * CURVE25519_KEY_SIZE), peer->dh_ss, CURVE25519_KEY_SIZE);
+	memcpy(dh_shared + (2 * CURVE25519_KEY_SIZE), role ? peer->dh_es : dh_se, CURVE25519_KEY_SIZE);
+	memcpy(dh_shared + (3 * CURVE25519_KEY_SIZE), role ? dh_se : peer->dh_es, CURVE25519_KEY_SIZE);
 
 	// clear all dh shared keys
 	memset(peer->dh_es, 0, sizeof(peer->dh_es));
@@ -264,15 +269,17 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 	};
 
 	/* sign packet */
-    chipvpn_peer_sign_payload(
-    	peer, 
-    	device, 
-    	(uint8_t*)&packet, 
-    	sizeof(packet), 
-    	peer->outbound.session_hash, 
-    	sizeof(peer->outbound.session_hash), 
-    	packet.sign
-    );
+	chipvpn_dh_sign(
+		device->private, 
+		peer->config.public,
+		NULL, 
+		NULL,
+		(uint8_t*)&packet,
+		sizeof(packet),
+		peer->outbound.session_hash, 
+		sizeof(peer->outbound.session_hash),
+		packet.sign
+	);
 
 	if(peer->config.onping) {
 		chipvpn_peer_run_command(peer, peer->config.onping);
@@ -287,13 +294,15 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
     uint8_t computed_sign[SHA256_HASH_SIZE];
     memcpy(sign, packet->sign, sizeof(sign));
     memset(packet->sign, 0, sizeof(packet->sign));
-	chipvpn_peer_sign_payload(
-		peer, 
-		device, 
-		(uint8_t*)packet, 
-		sizeof(chipvpn_packet_ping_t), 
+	chipvpn_dh_sign(
+		device->private, 
+		peer->config.public,
+		NULL, 
+		NULL,
+		(uint8_t*)packet,
+		sizeof(chipvpn_packet_ping_t),
 		peer->inbound.session_hash, 
-		sizeof(peer->inbound.session_hash), 
+		sizeof(peer->inbound.session_hash),
 		computed_sign
 	);
 
@@ -324,36 +333,6 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 
 	return 0;
-}
-
-void chipvpn_peer_sign_payload(chipvpn_peer_t *peer, chipvpn_device_t *device, uint8_t *payload, int payload_size, uint8_t *aad, int aad_size, uint8_t *signature) {
-	uint8_t dh_ss[CURVE25519_KEY_SIZE];
-	uint8_t signing_key[SHA256_HASH_SIZE];
-
-    curve25519(
-    	dh_ss, 
-    	device->private, 
-    	peer->config.public
-    );
-
-	hkdf_sha256(
-		NULL, 
-		0, 
-		dh_ss,
-		sizeof(dh_ss),
-		CHIPVPN_PAYLOAD_HASH,
-		sizeof(CHIPVPN_PAYLOAD_HASH) - 1,
-		signing_key,
-		sizeof(signing_key)
-	);
-
-	HMAC_CTX ctx;
-	hmac_sha256_init(&ctx, signing_key, sizeof(signing_key));
-	if(aad) {
-		hmac_sha256_update(&ctx, aad, aad_size);
-	}
-	hmac_sha256_update(&ctx, payload, payload_size);
-	hmac_sha256_final(&ctx, signature, SHA256_HASH_SIZE);
 }
 
 bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
