@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "chacha20poly1305.h"
+#include "curve25519.h"
 #include "chipvpn.h"
 #include "socket.h"
 #include "udp.h"
@@ -16,6 +17,7 @@
 #include "bitmap.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
+#include "dh.h"
 #include "log.h"
 #include "util.h"
 
@@ -162,9 +164,18 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->public);
+				chipvpn_dh_xcrypt(
+					vpn->device->private, 
+					packet->ephemeral_public, 
+					NULL,
+					NULL, 
+					packet->static_public, 
+					sizeof(packet->static_public)
+				);
+
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->static_public);
 				if(!peer) {
-					chipvpn_log_append("keyhash not found\n");
+					chipvpn_log_append("public key not found\n");
 					continue;
 				}
 

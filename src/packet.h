@@ -89,11 +89,11 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
 	uint32_t version;
-	uint8_t public[CURVE25519_KEY_SIZE];
+	uint8_t static_public[CURVE25519_KEY_SIZE];
 	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
 	uint64_t timestamp;
-	uint8_t sign[SHA256_HASH_SIZE];
 	bool ack;
+	uint8_t sign[SHA256_HASH_SIZE];
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {

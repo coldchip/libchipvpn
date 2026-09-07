@@ -44,7 +44,7 @@ static void chacha20_block_next(chacha20_t *ctx) {
     ctx->state[12] = PLUS(ctx->state[12], 1);
 }
 
-void chacha20_init_context(chacha20_t *ctx, uint8_t key[], uint8_t nonce[], uint32_t counter) {
+void chacha20_init_context(chacha20_t *ctx, uint8_t *key, uint8_t *nonce, uint32_t counter) {
     chacha20_init_block(ctx, key, nonce);
     chacha20_block_set_counter(ctx, counter);
 
@@ -71,4 +71,10 @@ void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size) {
         size -= chunk;
         ctx->position += chunk;
     }
+}
+
+void chacha20_xcrypt(uint8_t *key, uint8_t *nonce, uint8_t *bytes, size_t size) {
+    chacha20_t chacha20_ctx;
+    chacha20_init_context(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce, 0);
+    chacha20_xor(&chacha20_ctx, bytes, size);
 }

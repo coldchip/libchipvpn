@@ -25,8 +25,6 @@ extern "C"
 #define CHIPVPN_SESSION_HASH_A "#CHIPVPN_SESSION_HASH_A/1.0"
 #define CHIPVPN_SESSION_HASH_B "#CHIPVPN_SESSION_HASH_B/1.0"
 
-#define CHIPVPN_PAYLOAD_HASH "#CHIPVPN_PAYLOAD_HASH/1.0"
-
 typedef enum {
 	PEER_DISCONNECTED,
 	PEER_CONNECTED
@@ -86,8 +84,6 @@ int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_dev
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
-
-void                 chipvpn_peer_sign_payload(chipvpn_peer_t *peer, chipvpn_device_t *device, uint8_t *payload, int payload_size, uint8_t *aad, int aad_size, uint8_t *signature);
 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
