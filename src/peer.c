@@ -12,6 +12,7 @@
 #include "hkdf_sha256.h"
 #include "curve25519.h"
 #include "chacha20poly1305.h"
+#include "chacha20.h"
 #include "dh.h"
 #include "firewall.h"
 #include "log.h"
@@ -81,24 +82,24 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	memcpy(packet.static_public, device->public, sizeof(device->public));
 	memset(packet.sign, 0, sizeof(packet.sign));
 
+	// sign packet
 	chipvpn_dh_sign(
-		peer->ephemeral_private,
-		peer->config.public, 
-		device->private, 
-		peer->config.public,
+		peer->dh_es,
+		peer->dh_ss, 
+		NULL,
+		NULL,
 		(uint8_t*)&packet,
 		sizeof(packet),
-		NULL,
-		0,
 		packet.sign
 	);
 
+	// encrypt static_public
 	chipvpn_dh_xcrypt(
-		peer->ephemeral_private,
-		peer->config.public, 
+		peer->dh_es, 
 		NULL,
 		NULL,
-		packet.static_public,
+		NULL,
+		packet.static_public, 
 		sizeof(packet.static_public)
 	);
 
@@ -111,20 +112,32 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		return 0;
 	}
 
+	uint8_t dh_se[CURVE25519_KEY_SIZE];
+	curve25519(
+		dh_se, 
+		device->private, 
+		packet->ephemeral_public
+	);
+
+	uint8_t dh_ss[CURVE25519_KEY_SIZE];
+	curve25519(
+		dh_ss, 
+		device->private, 
+		peer->config.public
+	);
+
 	uint8_t sign[SHA256_HASH_SIZE];
 	uint8_t computed_sign[SHA256_HASH_SIZE];
 	memcpy(sign, packet->sign, sizeof(packet->sign));
 	memset(packet->sign, 0, sizeof(packet->sign));
 
 	chipvpn_dh_sign(
-		device->private, 
-		packet->ephemeral_public, 
-		device->private, 
-		peer->config.public,
+		dh_se,
+		dh_ss,
+		NULL,
+		NULL,
 		(uint8_t*)packet,
 		sizeof(chipvpn_packet_auth_t),
-		NULL,
-		0,
 		computed_sign
 	);
 
@@ -157,17 +170,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		return 0;
 	}
 
-	/* static & ephemeral keys */
-	uint8_t dh_se[CURVE25519_KEY_SIZE];
 	uint8_t dh_ee[CURVE25519_KEY_SIZE];
-
-	// dh-se
-	curve25519(
-		dh_se, 
-		device->private, 
-		packet->ephemeral_public
-	);
-
 	// dh-ee
 	curve25519(
 		dh_ee, 
@@ -178,11 +181,16 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	// Figure out roles (client or server)
 	int role = memcmp(device->public, peer->config.public, sizeof(peer->config.public)) > 0;
 
-	uint8_t dh_shared[4 * CURVE25519_KEY_SIZE];
-	memcpy(dh_shared + (0 * CURVE25519_KEY_SIZE), dh_ee, CURVE25519_KEY_SIZE);
-	memcpy(dh_shared + (1 * CURVE25519_KEY_SIZE), peer->dh_ss, CURVE25519_KEY_SIZE);
-	memcpy(dh_shared + (2 * CURVE25519_KEY_SIZE), role ? peer->dh_es : dh_se, CURVE25519_KEY_SIZE);
-	memcpy(dh_shared + (3 * CURVE25519_KEY_SIZE), role ? dh_se : peer->dh_es, CURVE25519_KEY_SIZE);
+	uint8_t dh_shared[SHA256_HASH_SIZE];
+	chipvpn_dh_chain(
+		dh_ee, 
+		peer->dh_ss, 
+		role ? peer->dh_es : dh_se, 
+		role ? dh_se : peer->dh_es, 
+		CHIPVPN_MASTER_TAG, // e.g., #define CHIPVPN_MASTER_TAG "CHIPVPN_MASTER"
+		sizeof(CHIPVPN_MASTER_TAG) - 1, 
+		dh_shared
+	);
 
 	// clear all dh shared keys
 	memset(peer->dh_es, 0, sizeof(peer->dh_es));
@@ -269,15 +277,21 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 	};
 
 	/* sign packet */
-	chipvpn_dh_sign(
+
+	uint8_t dh_ss[CURVE25519_KEY_SIZE];
+	curve25519(
+		dh_ss, 
 		device->private, 
-		peer->config.public,
-		NULL, 
+		peer->config.public
+	);
+
+	chipvpn_dh_sign(
+		peer->outbound.session_hash,
+		dh_ss,
+		NULL,
 		NULL,
 		(uint8_t*)&packet,
 		sizeof(packet),
-		peer->outbound.session_hash, 
-		sizeof(peer->outbound.session_hash),
 		packet.sign
 	);
 
@@ -294,15 +308,21 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
     uint8_t computed_sign[SHA256_HASH_SIZE];
     memcpy(sign, packet->sign, sizeof(sign));
     memset(packet->sign, 0, sizeof(packet->sign));
-	chipvpn_dh_sign(
+
+    uint8_t dh_ss[CURVE25519_KEY_SIZE];
+	curve25519(
+		dh_ss, 
 		device->private, 
-		peer->config.public,
-		NULL, 
+		peer->config.public
+	);
+
+	chipvpn_dh_sign(
+		peer->inbound.session_hash,
+		dh_ss,
+		NULL,
 		NULL,
 		(uint8_t*)packet,
 		sizeof(chipvpn_packet_ping_t),
-		peer->inbound.session_hash, 
-		sizeof(peer->inbound.session_hash),
 		computed_sign
 	);
 

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include "chacha20.h"
 #include "chacha20poly1305.h"
 #include "curve25519.h"
 #include "chipvpn.h"
@@ -164,11 +165,18 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				chipvpn_dh_xcrypt(
+				uint8_t dh_es[CURVE25519_KEY_SIZE];
+				curve25519(
+					dh_es, 
 					vpn->device->private, 
-					packet->ephemeral_public, 
+					packet->ephemeral_public
+				);
+
+				chipvpn_dh_xcrypt(
+					dh_es, 
 					NULL,
-					NULL, 
+					NULL,
+					NULL,
 					packet->static_public, 
 					sizeof(packet->static_public)
 				);
