@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
 #include "dh.h"
 #include "util.h"
 #include "chacha20.h"
@@ -16,7 +15,7 @@ void chipvpn_dh_chain(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, char *
 	uint8_t *salt = NULL;
 	int salt_len = 0;
 
-	memset(output, 0, SHA256_HASH_SIZE);
+	chipvpn_secure_zero(output, SHA256_HASH_SIZE);
 
 	// 1. Cascading HKDF-Extract
 	for(int i = 0; i < 4; i++) {
@@ -38,8 +37,8 @@ void chipvpn_dh_chain(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, char *
 		);
 	}
 
-	memset(chaining_key, 0, sizeof(chaining_key));
-	memset(temp, 0, sizeof(temp));
+	chipvpn_secure_zero(chaining_key, sizeof(chaining_key));
+	chipvpn_secure_zero(temp, sizeof(temp));
 }
 
 void chipvpn_dh_xcrypt(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, uint8_t *payload, int payload_size) {
@@ -58,7 +57,7 @@ void chipvpn_dh_xcrypt(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, uint8
 
     chacha20_xcrypt(crypto_key, crypto_nonce, payload, payload_size);
 
-    memset(crypto_key, 0, sizeof(crypto_key));
+    chipvpn_secure_zero(crypto_key, sizeof(crypto_key));
 }
 
 void chipvpn_dh_sign(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, uint8_t *payload, int payload_size, uint8_t *output) {
@@ -83,5 +82,5 @@ void chipvpn_dh_sign(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, uint8_t
         SHA256_HASH_SIZE
     );
 
-    memset(signing_key, 0, sizeof(signing_key));
+    chipvpn_secure_zero(signing_key, sizeof(signing_key));
 }

@@ -165,7 +165,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				uint8_t dh_se[CURVE25519_KEY_SIZE];
+				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
 				curve25519(
 					dh_se, 
 					vpn->device->private, 
