@@ -68,13 +68,16 @@ typedef struct {
 	uint64_t last_check;
 	uint64_t timeout;
 	uint64_t counter;
+	bool half_auth;
 	chipvpn_bitmap_t bitmap;
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();
 
+void                 chipvpn_peer_compute_static_dh(chipvpn_peer_t *peer, chipvpn_device_t *device);
+
 int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_address_t *addr, bool ack);
-int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, uint8_t *dh_se, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);

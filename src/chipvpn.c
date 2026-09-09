@@ -165,15 +165,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				uint8_t dh_es[CURVE25519_KEY_SIZE];
+				uint8_t dh_se[CURVE25519_KEY_SIZE];
 				curve25519(
-					dh_es, 
+					dh_se, 
 					vpn->device->private, 
 					packet->ephemeral_public
 				);
 
 				chipvpn_dh_xcrypt(
-					dh_es, 
+					dh_se, 
 					NULL,
 					NULL,
 					NULL,
@@ -187,7 +187,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, packet, &addr);
+				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, dh_se, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
