@@ -212,3 +212,10 @@ int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {
 
     return result;
 }
+
+void chipvpn_secure_zero(void *v, size_t n) {
+    volatile uint8_t *p = (volatile uint8_t *)v;
+    while (n--) {
+        *p++ = 0;
+    }
+}

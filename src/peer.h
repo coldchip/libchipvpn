@@ -31,7 +31,7 @@ typedef struct {
 	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
 	uint8_t ephemeral_private[CURVE25519_KEY_SIZE];
 
-	struct {
+	struct inbound {
 		union {
 			uint32_t session;
 			uint8_t session_hash[SHA256_HASH_SIZE];
@@ -39,7 +39,7 @@ typedef struct {
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} inbound;
 
-	struct {
+	struct outbound {
 		union {
 			uint32_t session;
 			uint8_t session_hash[SHA256_HASH_SIZE];
@@ -81,6 +81,8 @@ int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_dev
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
+
+void                 chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
