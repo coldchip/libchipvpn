@@ -23,24 +23,13 @@ chipvpn_peer_t *chipvpn_peer_create() {
 		return NULL;
 	}
 
-	peer->state = PEER_DISCONNECTED;
-	peer->inbound.session = 0;
-	peer->outbound.session = 0;
-	peer->tx = 0llu;
-	peer->rx = 0llu;
-	peer->last_check = 0llu;
-	peer->config.address.ip = 0;
-	peer->config.address.port = 0;
-	peer->config.onconnect = NULL;
-	peer->config.onping = NULL;
-	peer->config.ondisconnect = NULL;
-	peer->timeout = 0llu;
-	peer->counter = 0llu;
-	peer->timestamp = 0llu;
-	peer->half_auth = false;
+	chipvpn_secure_zero(peer, sizeof(chipvpn_peer_t));
+
+	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+
+	chipvpn_peer_reset_session(peer);
 
 	chipvpn_firewall_reset(&peer->config.firewall);
-	chipvpn_bitmap_reset(&peer->bitmap);
 
 	return peer;
 }
@@ -54,14 +43,14 @@ void chipvpn_peer_compute_static_dh(chipvpn_peer_t *peer, chipvpn_device_t *devi
 }
 
 int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr, bool ack) {
+	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
 		.timestamp = htonll(chipvpn_get_time()),
 		.ack = ack
 	};
-
-	chipvpn_peer_reset_session(peer);
 
 	// Generate curve25519 keys
 	chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
@@ -239,12 +228,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 	peer->address = *addr;
 	peer->timestamp = ntohll(packet->timestamp);
-	peer->tx = 0llu;
-	peer->rx = 0llu;
-	peer->counter = 0llu;
 	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 	peer->half_auth = false;
-	chipvpn_bitmap_reset(&peer->bitmap);
 
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
@@ -329,6 +314,15 @@ int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 }
 
 void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
+	peer->tx = 0llu;
+	peer->rx = 0llu;
+	peer->timeout = 0llu;
+	peer->last_check = 0llu;
+	peer->counter = 0llu;
+	peer->half_auth = false;
+
+	chipvpn_bitmap_reset(&peer->bitmap);
+
 	chipvpn_secure_zero(peer->ephemeral_public, sizeof(peer->ephemeral_public));
 	chipvpn_secure_zero(peer->ephemeral_private, sizeof(peer->ephemeral_private));
 
