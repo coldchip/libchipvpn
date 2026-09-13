@@ -472,6 +472,12 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 		if(now - peer->last_check > CHIPVPN_PEER_PING) {
 			peer->last_check = now;
 
+			/* attempt to connect to peer */
+			if(peer->state != PEER_CONNECTED && peer->config.address.ip > 0) {
+				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
+				chipvpn_peer_send_connect(peer, device, udp, &peer->config.address, true);
+			}
+
 			/* disconnect unpinged peer and check against connect/disconnect timeout timers */
 			if(peer->state == PEER_CONNECTED) {
 				chipvpn_peer_send_ping(peer, device, udp);
@@ -480,12 +486,6 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 					chipvpn_log_append("%p says: peer disconnected\n", peer);
 					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 				}
-			}
-
-			/* attempt to connect to peer */
-			if(peer->state != PEER_CONNECTED && peer->config.address.ip > 0) {
-				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
-				chipvpn_peer_send_connect(peer, device, udp, &peer->config.address, true);
 			}
 		}
 	}
