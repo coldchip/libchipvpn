@@ -187,7 +187,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, dh_se, packet, &addr);
+				memcpy(peer->dh_se, dh_se, sizeof(dh_se));
+
+				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {

@@ -17,7 +17,6 @@ void chipvpn_dh_chain(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, char *
 
 	chipvpn_secure_zero(output, SHA256_HASH_SIZE);
 
-	// 1. Cascading HKDF-Extract
 	for(int i = 0; i < 4; i++) {
 		if (keys[i]) {
 			hmac_sha256(salt, salt_len, keys[i], CURVE25519_KEY_SIZE, temp, SHA256_HASH_SIZE);

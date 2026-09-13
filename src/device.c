@@ -62,7 +62,7 @@ chipvpn_device_t *chipvpn_device_create(int fd) {
 		return NULL;
 	}
 
-	device->fd   = fd;
+	device->fd     = fd;
 	device->socket = sock;
 
 	chipvpn_list_clear(&device->peers);
@@ -71,23 +71,25 @@ chipvpn_device_t *chipvpn_device_create(int fd) {
 }
 
 bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {
-	bool success = false;
-
 	struct ifreq ifr;
 
 	strcpy(ifr.ifr_name, device->dev);
 	strcpy(ifr.ifr_newname, name);
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) {
+        return false;
+    }
 
-	if(ioctl(fd, SIOCSIFNAME, &ifr) != -1) {
+    int ret = ioctl(fd, SIOCSIFNAME, &ifr) != -1;
+
+	if(ret) {
 		strcpy(device->dev, name);
-		success = true;
 	}
 
 	close(fd);
 
-	return success;
+	return ret;
 }
 
 bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network) {
@@ -101,6 +103,9 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *net
 	struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) {
+        return false;
+    }
 
 	addr->sin_addr.s_addr = network->ip;
 
@@ -132,6 +137,9 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 	strcpy(ifr.ifr_name, device->dev);
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) {
+        return false;
+    }
 
 	ifr.ifr_mtu = mtu;
 
@@ -153,6 +161,9 @@ bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 	strcpy(ifr.ifr_name, device->dev);
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) {
+        return false;
+    }
 
 	ifr.ifr_flags |= IFF_UP;
 
@@ -174,6 +185,9 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 	strcpy(ifr.ifr_name, device->dev);
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) {
+        return false;
+    }
 
 	ifr.ifr_flags &= ~IFF_UP;
 

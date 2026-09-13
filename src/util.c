@@ -219,3 +219,56 @@ void chipvpn_secure_zero(void *v, size_t n) {
         *p++ = 0;
     }
 }
+
+float chipvpn_log2(float val) {
+    union { float val; int32_t x; } u = { val };
+    register float log_2 = (float)(((u.x >> 23) & 255) - 128);
+    u.x   &= ~(255 << 23);
+    u.x   += 127 << 23;
+    log_2 += ((-0.3358287811f) * u.val + 2.0f) * u.val  -0.65871759316667f; 
+    return (log_2);
+}
+
+static int count_set_bits(uint8_t byte) {
+    int count = 0;
+    while (byte) {
+        count += byte & 1;
+        byte >>= 1;
+    }
+    return count;
+}
+
+bool chipvpn_check_key_randomness(const uint8_t *key, size_t length) {
+    if(!key || length == 0) return false;
+
+    int total_bits = length * 8;
+    int set_bits = 0;
+    int byte_frequencies[256] = {0};
+
+    for(size_t i = 0; i < length; i++) {
+        set_bits += count_set_bits(key[i]);
+        byte_frequencies[key[i]]++;
+    }
+
+    double bit_ratio = ((double)set_bits / total_bits) * 100.0;
+    if(bit_ratio < 37.5 || bit_ratio > 62.5) {
+        return false;
+    }
+
+    double entropy = 0.0;
+    for(int i = 0; i < 256; i++) {
+        if(byte_frequencies[i] > 0) {
+            double p = (double)byte_frequencies[i] / length;
+            entropy -= p * chipvpn_log2(p);
+        }
+    }
+
+    double max_entropy = chipvpn_log2((double)length);
+    if(max_entropy > 8.0) max_entropy = 8.0; 
+
+    if(entropy < (max_entropy * 0.75)) {
+        return false; 
+    }
+
+    return true;
+}
