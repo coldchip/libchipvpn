@@ -172,14 +172,14 @@ char *chipvpn_format_bytes(uint64_t bytes) {
 
 bool chipvpn_secure_random(uint8_t *buf, int size) {
     int fd = open("/dev/urandom", O_RDONLY);
-    if (fd < 0) {
+    if(fd < 0) {
         return false;
     }
 
     int offset = 0, count;
     int tmp;
 
-    while (size > 0) {
+    while(size > 0) {
         count = size <= 8192 ? size : 8192;
         tmp = read(fd, (char *)buf + offset, count);
         if (tmp == -1 && (errno == EAGAIN || errno == EINTR)) {
