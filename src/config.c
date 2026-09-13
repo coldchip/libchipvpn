@@ -155,8 +155,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "public") == 0) {
 				char key[1024];
 				if(sscanf(value, "%1023s", key) == 1) {
-					chipvpn_peer_set_public_key(peer, key);
-					chipvpn_peer_compute_static_dh(peer, vpn->device);
+					chipvpn_peer_set_public_key(peer, vpn->device, key);
 				}
 			}
 

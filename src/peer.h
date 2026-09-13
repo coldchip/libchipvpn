@@ -47,6 +47,8 @@ typedef struct {
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} outbound;
 
+	uint8_t dh_ee[CURVE25519_KEY_SIZE];
+	uint8_t dh_se[CURVE25519_KEY_SIZE];
 	uint8_t dh_es[CURVE25519_KEY_SIZE];
 	uint8_t dh_ss[CURVE25519_KEY_SIZE];
 
@@ -74,19 +76,18 @@ typedef struct {
 
 chipvpn_peer_t      *chipvpn_peer_create();
 
-void                 chipvpn_peer_compute_static_dh(chipvpn_peer_t *peer, chipvpn_device_t *device);
-
 int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_address_t *addr, bool ack);
-int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, uint8_t *dh_se, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
 
+void                 chipvpn_peer_reset_ephemeral(chipvpn_peer_t *peer);
 void                 chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
-bool                 chipvpn_peer_set_public_key(chipvpn_peer_t *peer, const char *key);
+bool                 chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key);
 bool                 chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);
