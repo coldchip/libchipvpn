@@ -14,7 +14,7 @@ extern "C"
 #include "udp.h"
 #include "ipc.h"
 
-#define CHIPVPN_VERSION 300029
+#define CHIPVPN_VERSION 300030
 #define CHIPVPN_PROTOCOL_VERSION 200
 
 #define CHIPVPN_PEER_TIMEOUT 15000
