@@ -18,6 +18,7 @@
 #include "bitmap.h"
 #include "sha256.h"
 #include "hmac_sha256.h"
+#include "base64.h"
 #include "dh.h"
 #include "log.h"
 #include "util.h"
@@ -183,6 +184,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->static_public);
 				if(!peer) {
+					if(chipvpn_socket_can_write(vpn->ipc->socket)) {
+						char public_b64[64];
+						char bufstr[512];
+
+						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
+
+						sprintf(bufstr, "REJECT %s\n", public_b64);
+						chipvpn_socket_write(vpn->ipc->socket, bufstr, strlen(bufstr), NULL);
+					}
 					chipvpn_log_append("public key not found\n");
 					continue;
 				}

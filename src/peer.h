@@ -91,7 +91,7 @@ bool                 chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_d
 bool                 chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);
-chipvpn_peer_t      *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *keyhash);
+chipvpn_peer_t      *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *public);
 chipvpn_peer_t      *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
 chipvpn_peer_t      *chipvpn_peer_get_by_inbound_session(chipvpn_list_t *peers, uint32_t session);
 void                 chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state);

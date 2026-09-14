@@ -14,7 +14,9 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, uint6
 
 	// Create 96bit nonce from 64bit counter by copying to 33-96bit region 
 	memset(nonce, 0, 4);
-	memcpy(nonce + 4, &counter, sizeof(counter));
+	for(int i = 0; i < 8; i++) {
+		nonce[4 + i] = (uint8_t)(counter >> (8 * i));
+	}
 
 	// Initialize chacha20 from key and nonce
 	chacha20_init_context(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce, 0);
@@ -56,7 +58,9 @@ bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, uint6
 
 	// Create 96bit nonce from 64bit counter by copying to 33-96bit region 
 	memset(nonce, 0, 4);
-	memcpy(nonce + 4, &counter, sizeof(counter));
+	for(int i = 0; i < 8; i++) {
+		nonce[4 + i] = (uint8_t)(counter >> (8 * i));
+	}
 
 	// Initialize chacha20 from key and nonce
 	chacha20_init_context(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce, 0);

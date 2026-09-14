@@ -305,6 +305,8 @@ void chipvpn_peer_derive_session(chipvpn_peer_t *peer) {
 		sizeof(peer->outbound.session_hash)
 	);
 
+	chipvpn_secure_zero(dh_shared, sizeof(dh_shared));
+
 	chipvpn_secure_zero(peer->dh_ee, sizeof(peer->dh_ee));
 	chipvpn_secure_zero(peer->dh_es, sizeof(peer->dh_es));
 	chipvpn_secure_zero(peer->dh_se, sizeof(peer->dh_se));
@@ -391,7 +393,7 @@ chipvpn_peer_t *chipvpn_peer_get_by_inbound_session(chipvpn_list_t *peers, uint3
 void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 	if(peer->state != state) {
 		peer->state = state;
-		
+
 		switch(state) {
 			case PEER_CONNECTED: {
 				chipvpn_peer_derive_session(peer);

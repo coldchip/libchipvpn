@@ -209,8 +209,6 @@ bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 }
 
 void chipvpn_device_free(chipvpn_device_t *device) {
-	close(device->fd);
-
 	while(!chipvpn_list_empty(&device->peers)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&device->peers));
 		chipvpn_peer_free(peer);
