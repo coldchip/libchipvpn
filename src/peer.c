@@ -33,8 +33,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 }
 
 int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr, bool ack) {
-	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-
 	chipvpn_packet_auth_t packet = {
 		.header.type = CHIPVPN_PACKET_AUTH,
 		.version = htonl(CHIPVPN_PROTOCOL_VERSION),
