@@ -145,8 +145,6 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	}
 
 	/* peer has been authenticated */
-	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-
 	curve25519(peer->dh_ee, peer->ephemeral_private, packet->ephemeral_public);
 
 	// Figure out roles (client or server)
@@ -164,7 +162,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	);
 
 	// clear all ephemeral keys
-	chipvpn_peer_reset_ephemeral(peer);
+	chipvpn_peer_reset_session(peer);
 
 	// Derive keys
 	hkdf_sha256(
@@ -403,8 +401,8 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 			}
 			break;
 			case PEER_DISCONNECTED: {
-				chipvpn_peer_reset_session(peer);
 				if(peer->config.ondisconnect) {
+					chipvpn_peer_reset_session(peer);
 					chipvpn_peer_run_command(peer, peer->config.ondisconnect);
 				}
 			}
