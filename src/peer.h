@@ -82,7 +82,6 @@ int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_dev
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
 
-void                 chipvpn_peer_reset_ephemeral(chipvpn_peer_t *peer);
 void                 chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
