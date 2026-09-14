@@ -1,6 +1,11 @@
 #ifndef FIREWALL_H
 #define FIREWALL_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "packet.h"
 
 typedef struct {
@@ -9,5 +14,9 @@ typedef struct {
 
 void    chipvpn_firewall_reset(chipvpn_firewall_t *firewall);
 int     chipvpn_firewall_process_ip(chipvpn_firewall_t *firewall, ip_hdr_t *ip_hdr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

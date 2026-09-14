@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CHACHA20_H
+#define CHACHA20_H
 
 #include <assert.h>
 #include <stddef.h>
@@ -49,3 +50,6 @@ void chacha20_xcrypt(uint8_t *key, uint8_t *nonce, uint8_t *bytes, size_t size);
 #ifdef __cplusplus 
 }
 #endif 
+
+
+#endif

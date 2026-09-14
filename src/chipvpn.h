@@ -20,6 +20,9 @@ extern "C"
 #define CHIPVPN_PEER_TIMEOUT 15000
 #define CHIPVPN_PEER_PING 2000
 
+/* Accepted clock skew for handshake timestamps, in milliseconds (5 minutes) */
+#define CHIPVPN_HANDSHAKE_TIME_WINDOW (5 * 60 * 1000)
+
 typedef struct {
 	chipvpn_device_t *device;
 	chipvpn_udp_t    *udp;

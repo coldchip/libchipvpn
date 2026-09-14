@@ -11,14 +11,20 @@
 #include "chipvpn.h"
 #include <arpa/inet.h>
 
-volatile sig_atomic_t quit = 0;
+static volatile sig_atomic_t quit = 0;
 
-void terminate(int type) {
-	chipvpn_log_append("interrupt received\n");
+static void terminate(int type) {
+	(void)type;
 	quit = 1;
 }
 
+/*
+ * Child process: read the config file and stream it (NUL-terminated) to
+ * the parent over the socketpair, then idle until the parent tears us down.
+ */
 int chipvpn_auth_main(int argc, char const *argv[], int fd) {
+	(void)argc;
+
 	signal(SIGPIPE, SIG_IGN);
 
 	char *file = chipvpn_read_file(argv[1]);
@@ -27,19 +33,28 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 		exit(1);
 	}
 
-	write(fd, file, strlen(file) + 1);
+	if(write(fd, file, strlen(file) + 1) < 0) {
+		chipvpn_log_append("unable to send config to vpn process\n");
+	}
 
 	free(file);
 
 	while(1) {
-		sleep(1);	
+		sleep(1);
 	}
 
 	return 0;
 }
 
+/*
+ * Parent process: run the VPN engine's poll/service loop until a signal
+ * requests shutdown.
+ */
 int chipvpn_main(int argc, char const *argv[], int fd) {
-	srand(time(NULL)); 
+	(void)argc;
+	(void)argv;
+
+	srand(time(NULL));
 
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);
@@ -62,7 +77,7 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 
 	chipvpn_cleanup(vpn);
 
-	chipvpn_log_append("shutting down\n"); 
+	chipvpn_log_append("shutting down\n");
 
 	return 0;
 }
@@ -76,7 +91,6 @@ int main(int argc, char const *argv[]) {
 	}
 
 	int sv[2];
-
 	if(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {
 		perror("socketpair");
 		exit(1);
@@ -85,13 +99,12 @@ int main(int argc, char const *argv[]) {
 	int auth_fd = sv[0];
 	int vpn_fd  = sv[1];
 
-	// ******************************
-
-	pid_t p = fork();
-	if(p < 0) {
-		printf("fork fail");
+	pid_t pid = fork();
+	if(pid < 0) {
+		perror("fork");
 		exit(1);
-	} else if(p == 0) {
+	} else if(pid == 0) {
+		/* child: config reader */
 		int ret = chipvpn_auth_main(argc, argv, auth_fd);
 
 		close(auth_fd);
@@ -99,15 +112,17 @@ int main(int argc, char const *argv[]) {
 
 		exit(ret);
 	} else {
+		/* parent: vpn engine */
 		int ret = chipvpn_main(argc, argv, vpn_fd);
 
-		kill(p, SIGTERM);
-		waitpid(p, NULL, 0);
+		kill(pid, SIGTERM);
+		waitpid(pid, NULL, 0);
 
 		close(auth_fd);
 		close(vpn_fd);
 
 		exit(ret);
 	}
+
 	return 0;
 }

@@ -1,5 +1,5 @@
-#ifndef CRYPTO_H
-#define CRYPTO_H
+#ifndef CHACHA20POLY1305_H
+#define CHACHA20POLY1305_H
 
 #ifdef __cplusplus
 extern "C"

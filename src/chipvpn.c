@@ -24,24 +24,33 @@
 
 chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
+	if(!vpn) {
+		return NULL;
+	}
 
 	setbuf(stdout, 0);
 
 	/* create vpn device */
 	chipvpn_device_t *device = chipvpn_device_create(tun_fd);
 	if(!device) {
+		free(vpn);
 		return NULL;
 	}
 
 	/* create vpn socket */
 	chipvpn_udp_t *udp = chipvpn_udp_create(udp_fd);
 	if(!udp) {
+		chipvpn_device_free(device);
+		free(vpn);
 		return NULL;
 	}
 
 	/* create control socket */
 	chipvpn_ipc_t *ipc = chipvpn_ipc_create(ipc_fd);
 	if(!ipc) {
+		chipvpn_udp_free(udp);
+		chipvpn_device_free(device);
+		free(vpn);
 		return NULL;
 	}
 
@@ -96,7 +105,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* ipc */
 	while(chipvpn_socket_can_read(vpn->ipc->socket) && chipvpn_socket_can_write(vpn->ipc->socket)) {
-		int x = chipvpn_socket_read(vpn->ipc->socket, buffer, sizeof(buffer), NULL);
+		/* reserve one byte for the NUL terminator to avoid an out-of-bounds write */
+		int x = chipvpn_socket_read(vpn->ipc->socket, buffer, sizeof(buffer) - 1, NULL);
+		if(x < 0) {
+			x = 0;
+		}
 		buffer[x] = '\0';
 
 		chipvpn_config_command(vpn, (char*)buffer);
@@ -152,14 +165,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_address_t addr;
 
 		int r = chipvpn_socket_read(vpn->udp->socket, buffer, sizeof(buffer), &addr);
-		if(r < sizeof(chipvpn_packet_header_t)) {
+		if(r < (int)sizeof(chipvpn_packet_header_t)) {
 			continue;
 		}
 
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
 		switch(header->type) {
 			case CHIPVPN_PACKET_AUTH: {
-				if(r < sizeof(chipvpn_packet_auth_t)) {
+				if(r < (int)sizeof(chipvpn_packet_auth_t)) {
 					continue;
 				}
 
@@ -193,7 +206,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
-				if(r < sizeof(chipvpn_packet_data_t)) {
+				if(r < (int)sizeof(chipvpn_packet_data_t)) {
 					continue;
 				}
 
@@ -242,7 +255,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 			break;
 			case CHIPVPN_PACKET_PING: {
-				if(r < sizeof(chipvpn_packet_ping_t)) {
+				if(r < (int)sizeof(chipvpn_packet_ping_t)) {
 					continue;
 				}
 

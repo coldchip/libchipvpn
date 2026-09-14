@@ -17,7 +17,7 @@
 #include "firewall.h"
 #include "log.h"
 
-chipvpn_peer_t *chipvpn_peer_create() {
+chipvpn_peer_t *chipvpn_peer_create(void) {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
 	if(!peer) {
 		return NULL;
@@ -115,9 +115,11 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		return 0;
 	}
 
+	uint64_t now = chipvpn_get_time();
+	uint64_t packet_time = ntohll(packet->timestamp);
 	if(
-		chipvpn_get_time() - (60 * 1000 * 5) > ntohll(packet->timestamp) ||
-		chipvpn_get_time() + (60 * 1000 * 5) < ntohll(packet->timestamp)
+		now - CHIPVPN_HANDSHAKE_TIME_WINDOW > packet_time ||
+		now + CHIPVPN_HANDSHAKE_TIME_WINDOW < packet_time
 	) {
 		chipvpn_log_append("invalid time range from peer\n");
 		return 0;
@@ -200,11 +202,11 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 }
 
 int chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr) {
-	/* sign packet */
-    uint8_t sign[SHA256_HASH_SIZE];
-    uint8_t computed_sign[SHA256_HASH_SIZE];
-    memcpy(sign, packet->sign, sizeof(sign));
-    memset(packet->sign, 0, sizeof(packet->sign));
+	/* verify ping signature */
+	uint8_t sign[SHA256_HASH_SIZE];
+	uint8_t computed_sign[SHA256_HASH_SIZE];
+	memcpy(sign, packet->sign, sizeof(sign));
+	memset(packet->sign, 0, sizeof(packet->sign));
 
 	chipvpn_dh_sign(
 		peer->inbound.session_hash,
@@ -355,11 +357,11 @@ bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command) {
 	return true;
 }
 
-chipvpn_peer_t *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *public) {
+chipvpn_peer_t *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *public_key) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_secure_memcmp(public, peer->config.public, sizeof(peer->config.public)) == 0) {
+		if(chipvpn_secure_memcmp(public_key, peer->config.public, sizeof(peer->config.public)) == 0) {
 			return peer;
 		}
 	}
@@ -411,51 +413,60 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 	}
 }
 
-void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
-	char gateway[16];
-	char dev[16];
-	if(!chipvpn_get_gateway(gateway, dev)) {
-
+/*
+ * Apply a single "%token% -> value" substitution to *str in place,
+ * replacing the buffer with a freshly allocated one and freeing the old.
+ * On allocation failure the original buffer is left untouched.
+ */
+static void chipvpn_peer_substitute(char **str, const char *token, const char *value) {
+	char *next = chipvpn_str_replace(*str, token, value);
+	if(next) {
+		free(*str);
+		*str = next;
 	}
+}
 
-	char tx[16];
-	char rx[16];
-	char keyhash[64 + 1];
-	char address[16];
-	char port[16];
+void chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command) {
+	char gateway[16] = {0};
+	char dev[16] = {0};
+	chipvpn_get_gateway(gateway, dev);
+
+	char tx[32] = {0};
+	char rx[32] = {0};
+	char keyhash[CURVE25519_KEY_SIZE * 2 + 1] = {0};
+	char address[CHIPVPN_ADDR_STR_LEN] = {0};
+	char port[16] = {0};
 
 	if(peer) {
-		sprintf(tx, "%lu", peer->tx);
-		sprintf(rx, "%lu", peer->rx);
+		snprintf(tx, sizeof(tx), "%lu", (unsigned long)peer->tx);
+		snprintf(rx, sizeof(rx), "%lu", (unsigned long)peer->rx);
 
-		memset(keyhash, 0, sizeof(keyhash));
-		for(int i = 0; i < 32; i++) {
-			sprintf(&keyhash[i * 2], "%02x", peer->config.public[i] & 0xff);
+		for(int i = 0; i < CURVE25519_KEY_SIZE; i++) {
+			snprintf(&keyhash[i * 2], 3, "%02x", peer->config.public[i] & 0xff);
 		}
 
-		strcpy(address, chipvpn_address_to_char(&peer->address));
-		sprintf(port, "%u", peer->address.port);
+		chipvpn_address_to_str(&peer->address, address, sizeof(address));
+		snprintf(port, sizeof(port), "%u", peer->address.port);
 	}
 
-	char *result1 = chipvpn_str_replace(command, "%gateway%", gateway);
-	char *result2 = chipvpn_str_replace(result1, "%gatewaydev%", dev);
-	char *result3 = chipvpn_str_replace(result2, "%tx%", tx);
-	char *result4 = chipvpn_str_replace(result3, "%rx%", rx);
-	char *result5 = chipvpn_str_replace(result4, "%keyhash%", keyhash);
-	char *result6 = chipvpn_str_replace(result5, "%paddr%", address);
-	char *result7 = chipvpn_str_replace(result6, "%pport%", port);
-
-	if(system(result7) == 0) {
-		chipvpn_log_append("%s\n", result7);
+	char *result = chipvpn_strdup(command);
+	if(!result) {
+		return;
 	}
-	
-	free(result1);
-	free(result2);
-	free(result3);
-	free(result4);
-	free(result5);
-	free(result6);
-	free(result7);
+
+	chipvpn_peer_substitute(&result, "%gateway%", gateway);
+	chipvpn_peer_substitute(&result, "%gatewaydev%", dev);
+	chipvpn_peer_substitute(&result, "%tx%", tx);
+	chipvpn_peer_substitute(&result, "%rx%", rx);
+	chipvpn_peer_substitute(&result, "%keyhash%", keyhash);
+	chipvpn_peer_substitute(&result, "%paddr%", address);
+	chipvpn_peer_substitute(&result, "%pport%", port);
+
+	if(system(result) == 0) {
+		chipvpn_log_append("%s\n", result);
+	}
+
+	free(result);
 }
 
 void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipvpn_udp_t *udp) {

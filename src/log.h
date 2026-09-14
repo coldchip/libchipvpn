@@ -8,7 +8,7 @@ extern "C"
 
 #include <stdarg.h>
 
-void chipvpn_log_append(char* format, ...);
+void chipvpn_log_append(const char *format, ...);
 
 #ifdef __cplusplus
 }

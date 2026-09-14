@@ -32,6 +32,7 @@ chipvpn_ipc_t *chipvpn_ipc_create(int fd) {
 
 	chipvpn_socket_t *sock = chipvpn_socket_create(fd, CHIPVPN_SOCKET_STREAM);
 	if(!sock) {
+		free(ipc);
 		return NULL;
 	}
 

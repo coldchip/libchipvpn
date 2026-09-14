@@ -39,19 +39,14 @@ extern "C"
 #define TUNSETPERSIST _IOW('T', 203, int)
 #endif
 
-typedef enum {
-    COMMAND_DEVICE_SECTION,
-    COMMAND_PEER_SECTION
-} chipvpn_command_section_e;
-
 typedef struct {
-    chipvpn_list_node_t node;
+	chipvpn_list_node_t node;
 	int fd;
 	char dev[IF_NAMESIZE + 1];
-    chipvpn_list_t peers;
-    chipvpn_socket_t *socket;
-    uint8_t public[CURVE25519_KEY_SIZE];
-    uint8_t private[CURVE25519_KEY_SIZE];
+	chipvpn_list_t peers;
+	chipvpn_socket_t *socket;
+	uint8_t public[CURVE25519_KEY_SIZE];
+	uint8_t private[CURVE25519_KEY_SIZE];
 } chipvpn_device_t;
 
 chipvpn_device_t       *chipvpn_device_create(int tun_fd);

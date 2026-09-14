@@ -7,7 +7,12 @@ extern "C" {
 
 #include "chipvpn.h"
 
-void chipvpn_config_command(chipvpn_t *vpn, char *command);
+typedef enum {
+	COMMAND_DEVICE_SECTION,
+	COMMAND_PEER_SECTION
+} chipvpn_command_section_e;
+
+void chipvpn_config_command(chipvpn_t *vpn, const char *command);
 
 #ifdef __cplusplus
 }
