@@ -24,9 +24,15 @@ typedef enum {
 	PEER_CONNECTED
 } chipvpn_peer_state_e;
 
+typedef enum {
+	PEER_PERMANENT,
+	PEER_EPHEMERAL
+} chipvpn_peer_type_e;
+
 typedef struct {
 	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
+	chipvpn_peer_type_e type;
 
 	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
 	uint8_t ephemeral_private[CURVE25519_KEY_SIZE];
