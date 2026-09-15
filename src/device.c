@@ -27,6 +27,7 @@
 #include "util.h"
 #include "hmac_sha256.h"
 #include "base64.h"
+#include "dh.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
@@ -205,7 +206,11 @@ bool chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key) {
 }
 
 bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
-	return b64_decode((uint8_t*)key, strlen(key), device->private) > 0;
+	bool ret = b64_decode((uint8_t*)key, strlen(key), device->private) > 0;
+
+	chipvpn_dh_get_public(device->public, device->private);
+
+	return ret;
 }
 
 void chipvpn_device_free(chipvpn_device_t *device) {

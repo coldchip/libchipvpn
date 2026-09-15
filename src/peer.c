@@ -45,10 +45,9 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 	// generate curve25519 keys
 	chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
-	uint8_t curve_basepoint[CURVE25519_KEY_SIZE] = {9};
 
-	// generate ephemeral public key
-	curve25519(peer->ephemeral_public, peer->ephemeral_private, curve_basepoint);
+	// calculate public key
+	chipvpn_dh_get_public(peer->ephemeral_public, peer->ephemeral_private);
 
 	// compute dh-es
 	curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
@@ -479,21 +478,24 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 			if(peer->state == PEER_CONNECTED) {
 				/* ping peers */
 				chipvpn_peer_send_ping(peer, device, udp);
-				
+
 				if(now > peer->timeout) {
 					chipvpn_log_append("%p says: peer disconnected\n", peer);
 					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-
-					if(peer->type == PEER_EPHEMERAL) {
-						chipvpn_log_append("%p says: ephemeral peer is removed\n", peer);
-						chipvpn_list_remove(&peer->node);
-						chipvpn_peer_free(peer);
-					}
 				}
-			} else if(peer->state != PEER_CONNECTED && peer->config.address.ip > 0) {
+			} else if(peer->state == PEER_DISCONNECTED) {
 				/* attempt to connect to peer */
-				chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
-				chipvpn_peer_send_connect(peer, device, udp, &peer->config.address, true);
+				if(peer->config.address.ip > 0) {
+					chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
+					chipvpn_peer_send_connect(peer, device, udp, &peer->config.address, true);
+				}
+
+				if(peer->type == PEER_EPHEMERAL && now > peer->timeout) {
+					chipvpn_log_append("%p says: ephemeral peer is removed\n", peer);
+					chipvpn_list_remove(&peer->node);
+					chipvpn_peer_free(peer);
+					continue;
+				}
 			}
 		}
 	}
