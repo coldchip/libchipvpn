@@ -23,6 +23,8 @@ chipvpn_peer_t *chipvpn_peer_create() {
 		return NULL;
 	}
 
+	peer->type = PEER_PERMANENT;
+
 	chipvpn_secure_zero(peer, sizeof(chipvpn_peer_t));
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
@@ -464,8 +466,13 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 	/* peer lifecycle service */
 	uint64_t now = chipvpn_get_time();
 
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+	chipvpn_list_node_t *p = chipvpn_list_begin(peers);
+
+	while(p != chipvpn_list_end(peers)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+		p = chipvpn_list_next(p);
+
 		if(now - peer->last_check > CHIPVPN_PEER_PING) {
 			peer->last_check = now;
 
@@ -476,6 +483,12 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 				if(now > peer->timeout) {
 					chipvpn_log_append("%p says: peer disconnected\n", peer);
 					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+
+					if(peer->type == PEER_EPHEMERAL) {
+						chipvpn_log_append("%p says: ephemeral peer is removed\n", peer);
+						chipvpn_list_remove(&peer->node);
+						chipvpn_peer_free(peer);
+					}
 				}
 			} else if(peer->state != PEER_CONNECTED && peer->config.address.ip > 0) {
 				/* attempt to connect to peer */

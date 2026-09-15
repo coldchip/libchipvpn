@@ -136,6 +136,10 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 
 			chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&vpn->device->peers);
 
+			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
+				peer->type = PEER_EPHEMERAL;
+			}
+
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
 				char address[512];
 				int port;
