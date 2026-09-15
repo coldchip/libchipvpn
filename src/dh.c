@@ -7,6 +7,11 @@
 #include "hkdf_sha256.h"
 #include "hmac_sha256.h"
 
+void chipvpn_dh_get_public(uint8_t *public, uint8_t *private) {
+	uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
+	curve25519(public, private, basepoint);
+}
+
 void chipvpn_dh_chain(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, char *tag, int tag_size, uint8_t *output) {
 	uint8_t chaining_key[SHA256_HASH_SIZE];
 	uint8_t temp[SHA256_HASH_SIZE];

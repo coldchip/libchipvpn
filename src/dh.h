@@ -16,6 +16,7 @@
 #define CHIPVPN_SESSION_HASH_A "#CHIPVPN_SESSION_HASH_A/1.0"
 #define CHIPVPN_SESSION_HASH_B "#CHIPVPN_SESSION_HASH_B/1.0"
 
+void chipvpn_dh_get_public(uint8_t *public, uint8_t *private);
 void chipvpn_dh_chain(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, char *tag, int tag_size, uint8_t *output);
 void chipvpn_dh_xcrypt(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, uint8_t *payload, int payload_size);
 void chipvpn_dh_sign(uint8_t *k1, uint8_t *k2, uint8_t *k3, uint8_t *k4, uint8_t *payload, int payload_size, uint8_t *output);

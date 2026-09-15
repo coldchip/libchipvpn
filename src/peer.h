@@ -19,6 +19,9 @@ extern "C"
 #include "curve25519.h"
 #include "sha256.h"
 
+#define CHIPVPN_PEER_TIMEOUT 15000
+#define CHIPVPN_PEER_PING 2000
+
 typedef enum {
 	PEER_DISCONNECTED,
 	PEER_CONNECTED

@@ -17,9 +17,6 @@ extern "C"
 #define CHIPVPN_VERSION 300032
 #define CHIPVPN_PROTOCOL_VERSION 200
 
-#define CHIPVPN_PEER_TIMEOUT 15000
-#define CHIPVPN_PEER_PING 2000
-
 typedef struct {
 	chipvpn_device_t *device;
 	chipvpn_udp_t    *udp;
