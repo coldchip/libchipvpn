@@ -59,7 +59,6 @@ void                             chipvpn_socket_postselect_rdset(chipvpn_socket_
 void                             chipvpn_socket_postselect_wdset(chipvpn_socket_t *sock, fd_set *wdset);
 
 void                             chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue);
-int                              chipvpn_socket_queue_size(chipvpn_socket_queue_t *queue);
 
 chipvpn_socket_queue_entry_t    *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue);
 chipvpn_socket_queue_entry_t    *chipvpn_socket_dequeue_acquire(chipvpn_socket_queue_t *queue);
