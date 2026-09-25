@@ -53,20 +53,19 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
     
     if(S_ISSOCK(path_stat.st_mode)) {
     	while(1) {
-			int sock = socket(AF_INET, SOCK_STREAM, 0);
+	    	int sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	        if(sock < 0) {
-	            chipvpn_log_append("failed to create tcp socket\n");
+	            chipvpn_log_append("failed to create unix socket\n");
 	            return 0;
 	        }
 
-	        struct sockaddr_in addr;
-		    memset(&addr, 0, sizeof(addr));
-		    addr.sin_family = AF_INET;
-		    addr.sin_addr.s_addr = inet_addr("0.0.0.0");
-		    addr.sin_port = htons(8089);
+	        struct sockaddr_un addr;
+	        memset(&addr, 0, sizeof(addr));
+	        addr.sun_family = AF_UNIX;
+	        strncpy(addr.sun_path, argv[1], sizeof(addr.sun_path) - 1);
 
 	        while(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-	            chipvpn_log_append("retry to connect to tcp socket: %s\n", argv[1]);
+	            chipvpn_log_append("retry to connect to unix socket: %s\n", argv[1]);
 	            sleep(1);
 	        }
 
