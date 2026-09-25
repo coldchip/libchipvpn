@@ -25,14 +25,11 @@
 #include "chipvpn.h"
 #include "address.h"
 #include "util.h"
-#include "hmac_sha256.h"
 #include "base64.h"
-#include "dh.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
-
 
 chipvpn_device_t *chipvpn_device_create(int fd) {
 	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));
@@ -208,7 +205,8 @@ bool chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key) {
 bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 	bool ret = b64_decode((uint8_t*)key, strlen(key), device->private) > 0;
 
-	chipvpn_dh_get_public(device->public, device->private);
+	uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
+	curve25519(device->public, device->private, basepoint);
 
 	return ret;
 }

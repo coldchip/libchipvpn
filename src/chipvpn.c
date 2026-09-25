@@ -16,12 +16,9 @@
 #include "address.h"
 #include "peer.h"
 #include "bitmap.h"
-#include "sha256.h"
 #include "blake2s.h"
 #include "hmac_blake2s.h"
-#include "hmac_sha256.h"
 #include "base64.h"
-#include "dh.h"
 #include "log.h"
 #include "util.h"
 
@@ -164,35 +161,25 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
 		switch(header->type) {
-			case CHIPVPN_WG_PACKET_AUTH: {
+			case CHIPVPN_PACKET_AUTH: {
 				if(r < sizeof(chipvpn_wg_packet_auth_t)) {
 					continue;
 				}
 
 				chipvpn_wg_packet_auth_t *packet = (chipvpn_wg_packet_auth_t*)buffer;
 
-				uint8_t chain_key[BLAKE2S_HASH_SIZE] = { 
-					0x60, 0xe2, 0x6d, 0xae, 0xf3, 0x27, 0xef, 0xc0, 
-					0x2e, 0xc3, 0x35, 0xe2, 0xa0, 0x25, 0xd2, 0xd0, 
-					0x16, 0xeb, 0x42, 0x06, 0xf8, 0x72, 0x77, 0xf5, 
-					0x2d, 0x38, 0xd1, 0x98, 0x8b, 0x78, 0xcd, 0x36
-				};
+				/* Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s */
+				uint8_t chain_key[BLAKE2S_HASH_SIZE];
 
-			    uint8_t hash_key[BLAKE2S_HASH_SIZE] = {
-			    	0x22, 0x11, 0xb3, 0x61, 0x08, 0x1a, 0xc5, 0x66, 
-			    	0x69, 0x12, 0x43, 0xdb, 0x45, 0x8a, 0xd5, 0x32, 
-			    	0x2d, 0x9c, 0x6c, 0x66, 0x22, 0x93, 0xe8, 0xb7, 
-			    	0x0e, 0xe1, 0x9c, 0x65, 0xba, 0x07, 0x9e, 0xf3
-			    };
+				/* WireGuard v1 zx2c4 Jason@zx2c4.com" */
+			    uint8_t hash_key[BLAKE2S_HASH_SIZE];
+
+			    chipvpn_init_noise(chain_key, hash_key, vpn->device->public);
 			    
-				// Hi := Hash(Hi || Spubr)
-				wireguard_mix_hash(hash_key, vpn->device->public, sizeof(vpn->device->public));
-
 				// Ci := Kdf1(Ci, Epubi)
-				wireguard_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
-
+				chipvpn_blake2s_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 				// Hi := Hash(Hi || msg.ephemeral)
-				wireguard_mix_hash(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
+				chipvpn_blake2s_concat(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
 				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
 				// Calculate DH(Eprivi,Spubr)
@@ -209,8 +196,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				uint8_t key[CHACHA20_KEY_SIZE] = {0};
 
 				// (Ci,k) := Kdf2(Ci,DH(Eprivi,Spubr))
-				wireguard_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se)); // Updates chaining key C, outputs cipher key K
-
+				chipvpn_blake2s_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se)); // Updates chaining key C, outputs cipher key K
 				// msg.static := AEAD(k, 0, Spubi, Hi)
 				bool success = chipvpn_crypto_chacha20_poly1305_decrypt(
 				    key,                              // key: The 32-byte key from HKDF
@@ -218,11 +204,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 				    sizeof(packet->static_public),  // data_size: 32 bytes
 				    0,                              // counter: Nonce is explicitly 0
 				    hash_key,                              // [FIX 2] aad: Pass the buffer 'H', not 'sizeof(H)'!
-				    BLAKE2S_HASH_SIZE,              // aad_size: 32 bytes
+				    sizeof(hash_key),              // aad_size: 32 bytes
 				    packet->static_public_mac       // mac: The 16-byte Poly1305 tag
 				);
 
-			    chipvpn_print_key(packet->static_public);
+			    if(!success) {
+			    	chipvpn_log_append("unable to decrypt\n");
+			    	continue;
+			    }
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->static_public);
 				if(!peer) {
@@ -240,7 +229,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				// Hi := Hash(Hi || msg.static)
-				wireguard_mix_hash(hash_key, enc_static, sizeof(enc_static));
+				chipvpn_blake2s_concat(hash_key, enc_static, sizeof(enc_static));
 
 				memcpy(peer->dh_se, dh_se, sizeof(dh_se));
 				memcpy(peer->chain_key, chain_key, sizeof(chain_key));
@@ -249,47 +238,20 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_peer_recv_wg_connect(peer, vpn->device, vpn->udp, packet, &addr);
 			}
 			break;
-			case CHIPVPN_PACKET_AUTH: {
-				if(r < sizeof(chipvpn_packet_auth_t)) {
+			case CHIPVPN_PACKET_AUTH_REPLY: {
+				if(r < sizeof(chipvpn_wg_packet_auth_resp_t)) {
 					continue;
 				}
 
-				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
+				chipvpn_wg_packet_auth_resp_t *packet  = (chipvpn_wg_packet_auth_resp_t*)buffer;
+				uint32_t                       session = ntohl(packet->receiver_index);
 
-				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
-				curve25519(
-					dh_se, 
-					vpn->device->private, 
-					packet->ephemeral_public
-				);
-
-				chipvpn_dh_xcrypt(
-					dh_se, 
-					NULL,
-					NULL,
-					NULL,
-					packet->static_public, 
-					sizeof(packet->static_public)
-				);
-
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->static_public);
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
 				if(!peer) {
-					if(chipvpn_socket_can_write(vpn->ipc->socket)) {
-						char public_b64[64];
-						char bufstr[512];
-
-						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
-
-						sprintf(bufstr, "REJECT %s\n", public_b64);
-						chipvpn_socket_write(vpn->ipc->socket, bufstr, strlen(bufstr), NULL);
-					}
-					chipvpn_log_append("public key not found\n");
 					continue;
 				}
 
-				memcpy(peer->dh_se, dh_se, sizeof(dh_se));
-
-				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, packet, &addr);
+				chipvpn_peer_recv_wg_reply(peer, vpn->device, vpn->udp, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -323,6 +285,16 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(!chipvpn_bitmap_validate(&peer->bitmap, counter)) {
 					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
 					continue;
+				}
+
+				if(data_size == 0) {
+					char tx[128];
+					char rx[128];
+					strcpy(tx, chipvpn_format_bytes(peer->tx));
+					strcpy(rx, chipvpn_format_bytes(peer->rx));
+
+					chipvpn_log_append("%p says: received ping packet\n", peer);
+					chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 				}
 
 				/* keep peer alive */

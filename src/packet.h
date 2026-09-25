@@ -8,7 +8,6 @@ extern "C"
 
 #include <stdbool.h>
 #include "curve25519.h"
-#include "sha256.h"
 
 typedef struct __attribute__((__packed__)) {
 # if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -76,13 +75,10 @@ typedef struct {
 	uint16_t dst;
 } udp_tcp_port_t;
 
-#define CHIPVPN_PROTOCOL_MASK 0x80
-
 typedef enum {
-	CHIPVPN_WG_PACKET_AUTH = 1,
-	CHIPVPN_PACKET_AUTH = CHIPVPN_PROTOCOL_MASK | 1,
+	CHIPVPN_PACKET_AUTH = 1,
+	CHIPVPN_PACKET_AUTH_REPLY = 2,
 	CHIPVPN_PACKET_DATA = 4,
-	CHIPVPN_PACKET_PING = CHIPVPN_PROTOCOL_MASK | 2
 } chipvpn_packet_type_e;
 
 typedef struct __attribute__((__packed__)) {
@@ -115,27 +111,10 @@ typedef struct __attribute__((__packed__)) {
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
-	uint32_t version;
-	uint8_t static_public[CURVE25519_KEY_SIZE];
-	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
-	uint64_t timestamp;
-	bool ack;
-	uint8_t sign[SHA256_HASH_SIZE];
-} chipvpn_packet_auth_t;
-
-typedef struct __attribute__((__packed__)) {
-	chipvpn_packet_header_t header;
 	uint8_t padding[3]; 
 	uint32_t session;
 	uint64_t counter;
 } chipvpn_packet_data_t;
-
-typedef struct __attribute__((__packed__)) {
-	chipvpn_packet_header_t header;
-	uint32_t session;
-	uint64_t counter;
-	uint8_t sign[SHA256_HASH_SIZE];
-} chipvpn_packet_ping_t;
 
 #ifdef __cplusplus
 }

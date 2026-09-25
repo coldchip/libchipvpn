@@ -48,8 +48,9 @@ void hmac_blake2s(uint8_t *digest, const uint8_t *key, size_t key_len, const uin
     blake2s_final(&ctx, digest); // finish up 2nd pass
 }
 
+/* helper functions */
 // Helper to perform H = Hash(H || data) using the context API
-void wireguard_mix_hash(uint8_t *hash, const uint8_t *src, size_t src_len) {
+void chipvpn_blake2s_concat(uint8_t *hash, const uint8_t *src, size_t src_len) {
     blake2s_ctx ctx;
     blake2s_init(&ctx, BLAKE2S_HASH_SIZE, NULL, 0);
     blake2s_update(&ctx, hash, BLAKE2S_HASH_SIZE);
@@ -57,7 +58,7 @@ void wireguard_mix_hash(uint8_t *hash, const uint8_t *src, size_t src_len) {
     blake2s_final(&ctx, hash);
 }
 
-void wireguard_kdf1(uint8_t *tau1, const uint8_t *chaining_key, const uint8_t *data, size_t data_len) {
+void chipvpn_blake2s_kdf1(uint8_t *tau1, const uint8_t *chaining_key, const uint8_t *data, size_t data_len) {
     uint8_t tau0[BLAKE2S_HASH_SIZE];
     uint8_t output[BLAKE2S_HASH_SIZE + 1];
 
@@ -70,7 +71,7 @@ void wireguard_kdf1(uint8_t *tau1, const uint8_t *chaining_key, const uint8_t *d
 }
 
 // WireGuard HKDF (Extract and Expand phase yielding 2 keys) using your verified HMAC
-void wireguard_kdf2(uint8_t *tau1, uint8_t *tau2, const uint8_t *chaining_key, const uint8_t *data, size_t data_len) {
+void chipvpn_blake2s_kdf2(uint8_t *tau1, uint8_t *tau2, const uint8_t *chaining_key, const uint8_t *data, size_t data_len) {
     uint8_t tau0[BLAKE2S_HASH_SIZE];
     uint8_t output[BLAKE2S_HASH_SIZE + 1];
 
@@ -87,7 +88,7 @@ void wireguard_kdf2(uint8_t *tau1, uint8_t *tau2, const uint8_t *chaining_key, c
     memcpy(tau2, output, BLAKE2S_HASH_SIZE);
 }
 
-void wireguard_kdf3(uint8_t *tau1, uint8_t *tau2, uint8_t *tau3, const uint8_t *chaining_key, const uint8_t *data, size_t data_len) {
+void chipvpn_blake2s_kdf3(uint8_t *tau1, uint8_t *tau2, uint8_t *tau3, const uint8_t *chaining_key, const uint8_t *data, size_t data_len) {
     uint8_t tau0[BLAKE2S_HASH_SIZE];
     uint8_t output[BLAKE2S_HASH_SIZE + 1];
 
