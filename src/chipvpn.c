@@ -261,13 +261,18 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_data_t *packet      = (chipvpn_packet_data_t*)buffer;
 				uint32_t               session     = ntohl(packet->session);
-				uint64_t               counter     = (packet->counter);
-				uint8_t               *data        = buffer + sizeof(chipvpn_packet_data_t);
+				uint64_t               counter     = packet->counter;
+				uint8_t               *data        = packet->payload;
 				int                    data_size   = r - sizeof(chipvpn_packet_data_t) - 16;
 				uint8_t               *mac         = buffer + (r - 16);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
 				if(!peer || peer->state != PEER_CONNECTED) {
+					continue;
+				}
+
+				if(data_size < 0) {
+					chipvpn_log_append("%p says: size of packet is negative\n", peer);
 					continue;
 				}
 
@@ -287,6 +292,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
+				/* keep peer alive */
+				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+
 				if(data_size == 0) {
 					char tx[128];
 					char rx[128];
@@ -295,10 +303,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 					chipvpn_log_append("%p says: received ping packet\n", peer);
 					chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
+					continue;
 				}
-
-				/* keep peer alive */
-				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 

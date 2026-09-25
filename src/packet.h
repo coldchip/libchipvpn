@@ -114,6 +114,7 @@ typedef struct __attribute__((__packed__)) {
 	uint8_t padding[3]; 
 	uint32_t session;
 	uint64_t counter;
+	uint8_t  payload[];
 } chipvpn_packet_data_t;
 
 #ifdef __cplusplus
