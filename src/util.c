@@ -1,6 +1,9 @@
 #include "util.h"
 #include "base64.h"
 #include "curve25519.h"
+#include "chacha20poly1305.h"
+#include "hmac_blake2s.h"
+#include "blake2s.h"
 #include "log.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,6 +18,48 @@
 #include <unistd.h>
 #include <stddef.h>
 #include <time.h>
+
+void chipvpn_init_noise(uint8_t *chain_key, uint8_t *hash_key, const uint8_t *peer_pub) {
+    const uint8_t ck[32] = { 0x60, 0xe2, 0x6d, 0xae, 0xf3, 0x27, 0xef, 0xc0, 0x2e, 0xc3, 0x35, 0xe2, 0xa0, 0x25, 0xd2, 0xd0, 0x16, 0xeb, 0x42, 0x06, 0xf8, 0x72, 0x77, 0xf5, 0x2d, 0x38, 0xd1, 0x98, 0x8b, 0x78, 0xcd, 0x36 };
+    const uint8_t hk[32] = { 0x22, 0x11, 0xb3, 0x61, 0x08, 0x1a, 0xc5, 0x66, 0x69, 0x12, 0x43, 0xdb, 0x45, 0x8a, 0xd5, 0x32, 0x2d, 0x9c, 0x6c, 0x66, 0x22, 0x93, 0xe8, 0xb7, 0x0e, 0xe1, 0x9c, 0x65, 0xba, 0x07, 0x9e, 0xf3 };
+    memcpy(chain_key, ck, 32);
+    memcpy(hash_key, hk, 32);
+    chipvpn_blake2s_concat(hash_key, peer_pub, 32);
+}
+
+void chipvpn_compute_macs(void *packet, size_t auth_len, uint8_t *mac1, uint8_t *mac2, const uint8_t *peer_pub) {
+    uint8_t mac1_key[32];
+    blake2s_ctx ctx;
+    blake2s_init(&ctx, 32, NULL, 0);
+    blake2s_update(&ctx, (const uint8_t*)"mac1----", 8);
+    blake2s_update(&ctx, peer_pub, 32);
+    blake2s_final(&ctx, mac1_key);
+
+    blake2s_init(&ctx, 16, mac1_key, 32);
+    blake2s_update(&ctx, (const uint8_t*)packet, auth_len);
+    blake2s_final(&ctx, mac1);
+    chipvpn_secure_zero(mac2, 16);
+}
+
+void chipvpn_encrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac_out) {
+    chipvpn_crypto_chacha20_poly1305_encrypt(cipher_key, data, len, 0, hash_key, 32, mac_out);
+    
+    uint8_t mixed[len + 16];
+    if (len > 0) memcpy(mixed, data, len);
+    memcpy(mixed + len, mac_out, 16);
+    chipvpn_blake2s_concat(hash_key, mixed, len + 16);
+}
+
+// 4. Decrypts a payload AND mixes the ciphertext into the hash automatically (if successful)
+bool chipvpn_decrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac_in) {
+    uint8_t mixed[len + 16];
+    if (len > 0) memcpy(mixed, data, len);
+    memcpy(mixed + len, mac_in, 16);
+
+    bool success = chipvpn_crypto_chacha20_poly1305_decrypt(cipher_key, data, len, 0, hash_key, 32, mac_in);
+    if (success) chipvpn_blake2s_concat(hash_key, mixed, len + 16);
+    return success;
+}
 
 void chipvpn_print_key(uint8_t *key) {
     for(int i = 0; i < 32; i++) {
@@ -286,4 +331,23 @@ bool chipvpn_check_key_randomness(const uint8_t *key, size_t length) {
     }
 
     return true;
+}
+
+void chipvpn_tai64n(uint8_t *output) {
+    // See https://cr.yp.to/libtai/tai64.html
+    // 64 bit seconds from 1970 = 8 bytes
+    // 32 bit nano seconds from current second
+
+    // Get timestamp. Note that the timestamp must be synced by NTP, 
+    //  or at least preserved in NVS, not to go back after reset.
+    // Otherwise, the WireGuard remote peer rejects handshake.
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t millis = (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL));
+
+    // Split into seconds offset + nanos
+    uint64_t seconds = 0x400000000000000aULL + (millis / 1000);
+    uint32_t nanos = (millis % 1000) * 1000;
+    U64TO8_BIG(output + 0, seconds);
+    U32TO8_BIG(output + 8, nanos);
 }

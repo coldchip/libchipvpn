@@ -6,17 +6,14 @@
 #include "packet.h"
 #include "device.h"
 #include "util.h"
-#include "sha256.h"
 #include "base64.h"
-#include "hmac_sha256.h"
-#include "hkdf_sha256.h"
 #include "curve25519.h"
 #include "chacha20poly1305.h"
 #include "chacha20.h"
 #include "hmac_blake2s.h"
-#include "dh.h"
 #include "firewall.h"
 #include "log.h"
+#include "util.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -35,117 +32,85 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
-	chipvpn_wg_packet_auth_resp_t reply;
-	memset(&reply, 0, sizeof(reply));
-	reply.header.type = 2; // Handshake Response
-	reply.receiver_index = htonl(peer->outbound.session); // Send back the client's ID
-	chipvpn_secure_random((uint8_t*)&peer->inbound.session, sizeof(peer->inbound.session));
-	reply.sender_index = htonl(peer->inbound.session); 
+int chipvpn_peer_send_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
+    chipvpn_wg_packet_auth_t packet;
+    chipvpn_secure_zero(&packet, sizeof(packet));
 
+    packet.header.type = CHIPVPN_PACKET_AUTH; // Handshake Initiation
+    
+    // Generate a secure 32-bit random integer for our session ID
+    chipvpn_secure_random((uint8_t*)&peer->inbound.session, sizeof(peer->inbound.session));
+    packet.sender_index = htonl(peer->inbound.session); 
 
-	uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
-	uint8_t psk[CHACHA20_KEY_SIZE] = {0};
-	uint8_t empty[1] = {0};
-	uint8_t key1[CHACHA20_KEY_SIZE] = {0};
-	// (Cr, t, k) := Kdf3(Cr, Q)
-	wireguard_kdf3(peer->chain_key, tau, key1, peer->chain_key, psk, sizeof(psk));
-	// Hr := Hash(Hr | t)
-	wireguard_mix_hash(peer->hash_key, tau, sizeof(tau));
-	/* msg.empty := AEAD(k, 0, E, Hr) */
-	chipvpn_crypto_chacha20_poly1305_encrypt(
-	    key1, 
-	    empty,
-	    0,                  
-	    0,                 
-	    peer->hash_key,                 
-	    32,                
-	    reply.empty_mac     
-	);
-	// Hr := Hash(Hr | msg.empty)
-	wireguard_mix_hash(peer->hash_key, reply.empty_mac, sizeof(reply.empty_mac));
+    chipvpn_init_noise(peer->chain_key, peer->hash_key, peer->config.public);
 
-	memcpy(reply.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
+    chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
+    peer->ephemeral_private[0] &= 248;
+    peer->ephemeral_private[31] = (peer->ephemeral_private[31] & 127) | 64;
+    uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
+	curve25519(peer->ephemeral_public, peer->ephemeral_private, basepoint);
 
-	//////////////////////////////////
-	uint8_t mac1_key[BLAKE2S_HASH_SIZE];
-    blake2s_ctx ctx;
+    // Write to packet
+    memcpy(packet.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
-    // 1. Derive the MAC1 key: Hash("mac1----" || Client's Public Key)
-    blake2s_init(&ctx, BLAKE2S_HASH_SIZE, NULL, 0);
-    blake2s_update(&ctx, (const uint8_t*)"mac1----", 8);
-    blake2s_update(&ctx, peer->config.public, CURVE25519_KEY_SIZE);
-    blake2s_final(&ctx, mac1_key);
+    chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
+    chipvpn_blake2s_concat(peer->hash_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
-    blake2s_init(&ctx, 16, mac1_key, BLAKE2S_HASH_SIZE); // Output is 16 bytes!
-    blake2s_update(&ctx, (const uint8_t*)&reply, 60);
-    blake2s_final(&ctx, reply.mac1);
+    uint8_t key[CHACHA20_KEY_SIZE];
+    curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
+    chipvpn_blake2s_kdf2(peer->chain_key, key, peer->chain_key, peer->dh_es, sizeof(peer->dh_es));
 
-    memset(reply.mac2, 0, 16);
+    memcpy(packet.static_public, device->public, sizeof(device->public));
 
-	return chipvpn_socket_write(udp->socket, &reply, sizeof(reply), addr);
+    chipvpn_encrypt_and_mix(peer->hash_key, key, packet.static_public, 32, packet.static_public_mac);
+
+    curve25519(peer->dh_ss, device->private, peer->config.public);
+    chipvpn_blake2s_kdf2(peer->chain_key, key, peer->chain_key, peer->dh_ss, sizeof(peer->dh_ss));
+
+    chipvpn_tai64n(packet.timestamp);
+
+    chipvpn_encrypt_and_mix(peer->hash_key, key, packet.timestamp, sizeof(packet.timestamp), packet.timestamp_mac);
+
+    chipvpn_compute_macs(&packet, offsetof(chipvpn_wg_packet_auth_t, mac1), packet.mac1, packet.mac2, peer->config.public);
+
+    return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_wg_packet_auth_t *packet, chipvpn_address_t *addr) {
 	uint8_t key[BLAKE2S_HASH_SIZE] = {0};
 
 	// (Ci,k) := Kdf2(Ci,DH(Sprivi,Spubr)) (SS)
-	wireguard_kdf2(peer->chain_key, key, peer->chain_key, peer->dh_ss, sizeof(peer->dh_ss));
+	chipvpn_blake2s_kdf2(peer->chain_key, key, peer->chain_key, peer->dh_ss, sizeof(peer->dh_ss));
 
-    uint8_t ts_ciphertext_with_mac[28];
-    memcpy(ts_ciphertext_with_mac, packet->timestamp, 12);
-    memcpy(ts_ciphertext_with_mac + 12, packet->timestamp_mac, 16);
-
-    // Decrypt the timestamp in-place
-    bool ts_success = chipvpn_crypto_chacha20_poly1305_decrypt(
-        key,                              // The NEW 32-byte key from HKDF
-        packet->timestamp,    // The 12-byte timestamp ciphertext
-        sizeof(packet->timestamp),                             // Data size is exactly 12 bytes
-        0,                              // Nonce is explicitly 0 again
-        peer->hash_key,                              // The updated Hash from the previous step
-        BLAKE2S_HASH_SIZE,              
-        packet->timestamp_mac           // The 16-byte Poly1305 MAC
-    );
-
-    if(!ts_success) {
-        chipvpn_log_append("WG Handshake Failed: Invalid MAC on Timestamp.\n");
+    if (!chipvpn_decrypt_and_mix(peer->hash_key, key, packet->timestamp, sizeof(packet->timestamp), packet->timestamp_mac)) {
         return 0;
     }
 
-    // Mix the CIPHERTEXT into the hash (Required for the Handshake Response later)
-    wireguard_mix_hash(peer->hash_key, ts_ciphertext_with_mac, sizeof(ts_ciphertext_with_mac));
-
-    /* clear and derive keys */
-	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	chipvpn_peer_set_state(peer, PEER_CONNECTED);
-
     peer->outbound.session = ntohl(packet->sender_index);
 
-    // generate curve25519 keys
 	chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
-
-	// YOU MUST CLAMP IT HERE!
 	peer->ephemeral_private[0] &= 248;
 	peer->ephemeral_private[31] = (peer->ephemeral_private[31] & 127) | 64;
 
 	// calculate public key
-	chipvpn_dh_get_public(peer->ephemeral_public, peer->ephemeral_private);
-	// Cr := Kdf1(Cr,Epubr)
-	wireguard_kdf1(peer->chain_key, peer->chain_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
-	// Hr := Hash(Hr || msg.ephemeral)
-	wireguard_mix_hash(peer->hash_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
-	// Calculate DH(Eprivi,Epubi)
+	uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
+	curve25519(peer->ephemeral_public, peer->ephemeral_private, basepoint);
+	
+	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
+	chipvpn_blake2s_concat(peer->hash_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
+	
 	curve25519(peer->dh_ee, peer->ephemeral_private, packet->ephemeral_public);
-	// Cr := Kdf1(Cr,DH(Eprivi,Epubi))
-	wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_ee, sizeof(peer->dh_ee));
-	// Calculate DH(Eprivi,Spubr)
+	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, peer->dh_ee, sizeof(peer->dh_ee));
+	
 	curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
-	// Cr := Kdf1(Cr, DH(Eprivr, Spubi))
-	wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_es, sizeof(peer->dh_es));
-	/* send wireguard peer reply */
+	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, peer->dh_es, sizeof(peer->dh_es));
+	
 	chipvpn_peer_send_wg_reply(peer, device, udp, addr);
-    /* derive the key */
-    wireguard_kdf2(peer->inbound.key, peer->outbound.key, peer->chain_key, NULL, 0);
+
+    chipvpn_blake2s_kdf2(peer->inbound.key, peer->outbound.key, peer->chain_key, NULL, 0);
+
+    chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	/* reset the bitmap */
 	chipvpn_bitmap_reset(&peer->bitmap);
@@ -166,130 +131,71 @@ int chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device,
     return 0;
 }
 
-int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr, bool ack) {
-	chipvpn_packet_auth_t packet;
-	memset(&packet, 0, sizeof(packet));
+int chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
+	chipvpn_wg_packet_auth_resp_t reply;
+	chipvpn_secure_zero(&reply, sizeof(reply));
+	reply.header.type = CHIPVPN_PACKET_AUTH_REPLY; // Handshake Response
+	reply.receiver_index = htonl(peer->outbound.session); // Send back the client's ID
+	chipvpn_secure_random((uint8_t*)&peer->inbound.session, sizeof(peer->inbound.session));
+	reply.sender_index = htonl(peer->inbound.session); 
 
-	packet.header.type = CHIPVPN_PACKET_AUTH;
-	packet.version = htonl(CHIPVPN_PROTOCOL_VERSION);
-	packet.timestamp = htonll(chipvpn_get_time());
-	packet.ack = ack;
+	uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
+	uint8_t psk[CHACHA20_KEY_SIZE] = {0};
+	uint8_t empty[1] = {0};
+	uint8_t key1[CHACHA20_KEY_SIZE] = {0};
 
-	// generate curve25519 keys
-	chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
+	chipvpn_blake2s_kdf3(peer->chain_key, tau, key1, peer->chain_key, psk, sizeof(psk));
+	chipvpn_blake2s_concat(peer->hash_key, tau, sizeof(tau));
+	
+	chipvpn_encrypt_and_mix(peer->hash_key, key1, empty, 0, reply.empty_mac);
 
-	// calculate public key
-	chipvpn_dh_get_public(peer->ephemeral_public, peer->ephemeral_private);
+    memcpy(reply.ephemeral_public, peer->ephemeral_public, 32);
 
-	// compute dh-es
-	curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
+    chipvpn_compute_macs(&reply, offsetof(chipvpn_wg_packet_auth_resp_t, mac1), reply.mac1, reply.mac2, peer->config.public);
 
-	// copy curve25519 public key to packet
-	memcpy(packet.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
-
-	/* copy keyhash */
-	memcpy(packet.static_public, device->public, sizeof(device->public));
-	memset(packet.sign, 0, sizeof(packet.sign));
-
-	// sign packet
-	chipvpn_dh_sign(
-		peer->dh_es,
-		peer->dh_ss, 
-		NULL,
-		NULL,
-		(uint8_t*)&packet,
-		sizeof(packet),
-		packet.sign
-	);
-
-	// encrypt static_public
-	chipvpn_dh_xcrypt(
-		peer->dh_es, 
-		NULL,
-		NULL,
-		NULL,
-		packet.static_public, 
-		sizeof(packet.static_public)
-	);
-
-	peer->half_auth = true;
-
-	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
+	return chipvpn_socket_write(udp->socket, &reply, sizeof(reply), addr);
 }
 
-int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
-	if(ntohl(packet->version) != CHIPVPN_PROTOCOL_VERSION) {
-		chipvpn_log_append("invalid protocol version\n");
-		return 0;
-	}
+int chipvpn_peer_recv_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_wg_packet_auth_resp_t *packet, chipvpn_address_t *addr) {
+    if(ntohl(packet->receiver_index) != peer->inbound.session) {
+        chipvpn_log_append("Dropped Handshake Response: Session ID mismatch. %u %u\n", ntohl(packet->receiver_index), peer->inbound.session);
+        return 0;
+    }
 
-	uint8_t sign[SHA256_HASH_SIZE];
-	uint8_t computed_sign[SHA256_HASH_SIZE];
-	memcpy(sign, packet->sign, sizeof(packet->sign));
-	memset(packet->sign, 0, sizeof(packet->sign));
+    peer->outbound.session = ntohl(packet->sender_index);
 
-	chipvpn_dh_sign(
-		peer->dh_se,
-		peer->dh_ss,
-		NULL,
-		NULL,
-		(uint8_t*)packet,
-		sizeof(chipvpn_packet_auth_t),
-		computed_sign
-	);
+    chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
+    chipvpn_blake2s_concat(peer->hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
-	if(chipvpn_secure_memcmp(sign, computed_sign, sizeof(computed_sign)) != 0) {
-		chipvpn_log_append("invalid sign\n");
-		return 0;
-	}
+    uint8_t dh_ee[CURVE25519_KEY_SIZE];
+    curve25519(dh_ee, peer->ephemeral_private, packet->ephemeral_public);
+    chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, dh_ee, sizeof(dh_ee));
 
-	if(ntohll(packet->timestamp) <= peer->timestamp) {
-		chipvpn_log_append("packet is replayed or duplicated\n");
-		return 0;
-	}
+    uint8_t dh_se[CURVE25519_KEY_SIZE];
+    curve25519(dh_se, device->private, packet->ephemeral_public);
+    chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, dh_se, sizeof(dh_se));
 
-	if(
-		chipvpn_get_time() - (60 * 1000 * 5) > ntohll(packet->timestamp) ||
-		chipvpn_get_time() + (60 * 1000 * 5) < ntohll(packet->timestamp)
-	) {
-		chipvpn_log_append("invalid time range from peer\n");
-		return 0;
-	}
+    uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
+    uint8_t key[CHACHA20_KEY_SIZE] = {0};
+    uint8_t psk[CHACHA20_KEY_SIZE] = {0};
 
-	if(packet->ack) {
-		chipvpn_log_append("%p says: peer requested auth acknowledgement\n", peer);
-		chipvpn_peer_send_connect(peer, device, udp, addr, false);
-	}
+    chipvpn_blake2s_kdf3(peer->chain_key, tau, key, peer->chain_key, psk, sizeof(psk));
+    chipvpn_blake2s_concat(peer->hash_key, tau, sizeof(tau));
 
-	if(!peer->half_auth) {
-		chipvpn_log_append("peer skipped the first half of the authentication process\n");
-		return 0;
-	}
+    uint8_t dummy[1] = {0};
+    if (!chipvpn_decrypt_and_mix(peer->hash_key, key, dummy, 0, packet->empty_mac)) {
+        chipvpn_log_append("invalid mac\n");
+        return 0;
+    }
+    
+    chipvpn_blake2s_kdf2(peer->outbound.key, peer->inbound.key, peer->chain_key, dummy, 0);
 
-	// check randomness distrubution of packet's ephemeral public
-	if(!chipvpn_check_key_randomness(packet->ephemeral_public, sizeof(packet->ephemeral_public))) {
-		chipvpn_log_append("peer has repeating or highly predictable ephemeral public key\n");
-		return 0;
-	}
+    chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+    chipvpn_peer_set_state(peer, PEER_CONNECTED);
+    chipvpn_bitmap_reset(&peer->bitmap);
 
-	// reject if peer has same curve25519 public key
-	if(chipvpn_secure_memcmp(packet->ephemeral_public, peer->ephemeral_public, sizeof(packet->ephemeral_public)) == 0) {
-		chipvpn_log_append("peer has the same curve25519 keys\n");
-		return 0;
-	}
-
-	/* peer has been authenticated */
-	curve25519(peer->dh_ee, peer->ephemeral_private, packet->ephemeral_public);
-
-	/* clear and derive keys */
-	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	chipvpn_peer_set_state(peer, PEER_CONNECTED);
-
-	/* reset the bitmap */
-	chipvpn_bitmap_reset(&peer->bitmap);
-
-	peer->address = *addr;
-	peer->timestamp = ntohll(packet->timestamp);
+    peer->address = *addr;
+	peer->timestamp = 0;
 	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 	peer->half_auth = false;
 	peer->tx = 0llu;
@@ -301,7 +207,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->inbound.session, peer->outbound.session);
 	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
-	return 0;
+    return 0;
 }
 
 int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp) {
@@ -333,77 +239,9 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 	return chipvpn_socket_write_vector(udp->socket, vector, 2, &peer->address);
 }
 
-void chipvpn_peer_derive_session(chipvpn_peer_t *peer) {
-	// Figure out roles (client or server)
-	int role = memcmp(peer->dh_es, peer->dh_se, sizeof(peer->dh_se)) > 0;
-
-	SECURE32 uint8_t dh_shared[SHA256_HASH_SIZE];
-	chipvpn_dh_chain(
-		peer->dh_ee, 
-		peer->dh_ss, 
-		role ? peer->dh_es : peer->dh_se, 
-		role ? peer->dh_se : peer->dh_es, 
-		CHIPVPN_MASTER_TAG,
-		sizeof(CHIPVPN_MASTER_TAG) - 1, 
-		dh_shared
-	);
-
-	// Derive keys
-	hkdf_sha256(
-		NULL, 
-		0, 
-		dh_shared,
-		sizeof(dh_shared),
-		CHIPVPN_DIRECTIONAL_KEY_A,
-		sizeof(CHIPVPN_DIRECTIONAL_KEY_A) - 1,
-		role ? peer->inbound.key : peer->outbound.key,
-		sizeof(peer->inbound.key)
-	);
-
-	hkdf_sha256(
-		NULL, 
-		0, 
-		dh_shared,
-		sizeof(dh_shared),
-		CHIPVPN_DIRECTIONAL_KEY_B,
-		sizeof(CHIPVPN_DIRECTIONAL_KEY_B) - 1,
-		role ? peer->outbound.key : peer->inbound.key,
-		sizeof(peer->outbound.key)
-	);
-
-	hkdf_sha256(
-		NULL, 
-		0, 
-		dh_shared,
-		sizeof(dh_shared),
-		CHIPVPN_SESSION_HASH_A,
-		sizeof(CHIPVPN_SESSION_HASH_A) - 1,
-		role ? peer->inbound.session_hash : peer->outbound.session_hash,
-		sizeof(peer->inbound.session_hash)
-	);
-
-	hkdf_sha256(
-		NULL, 
-		0, 
-		dh_shared,
-		sizeof(dh_shared),
-		CHIPVPN_SESSION_HASH_B,
-		sizeof(CHIPVPN_SESSION_HASH_B) - 1,
-		role ? peer->outbound.session_hash : peer->inbound.session_hash,
-		sizeof(peer->outbound.session_hash)
-	);
-
-	chipvpn_secure_zero(dh_shared, sizeof(dh_shared));
-
-	chipvpn_secure_zero(peer->dh_ee, sizeof(peer->dh_ee));
-	chipvpn_secure_zero(peer->dh_es, sizeof(peer->dh_es));
-	chipvpn_secure_zero(peer->dh_se, sizeof(peer->dh_se));
-}
-
 void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
-	chipvpn_secure_zero(&peer->inbound, sizeof(peer->inbound));
-	chipvpn_secure_zero(&peer->outbound, sizeof(peer->outbound));
-
+	chipvpn_secure_zero(peer->chain_key, sizeof(peer->chain_key));
+	chipvpn_secure_zero(peer->hash_key, sizeof(peer->hash_key));
 	chipvpn_secure_zero(peer->ephemeral_public, sizeof(peer->ephemeral_public));
 	chipvpn_secure_zero(peer->ephemeral_private, sizeof(peer->ephemeral_private));
 }
@@ -484,7 +322,6 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 
 		switch(state) {
 			case PEER_CONNECTED: {
-				chipvpn_peer_derive_session(peer);
 				if(peer->config.onconnect) {
 					chipvpn_peer_run_command(peer, peer->config.onconnect);
 				}
@@ -574,7 +411,8 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 				/* attempt to connect to peer */
 				if(peer->config.address.ip > 0) {
 					chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
-					chipvpn_peer_send_connect(peer, device, udp, &peer->config.address, true);
+					//chipvpn_peer_send_connect(peer, device, udp, &peer->config.address, true);
+					chipvpn_peer_send_wg_connect(peer, device, udp, &peer->config.address);
 				}
 
 				if(peer->type == PEER_EPHEMERAL && now > peer->timeout) {

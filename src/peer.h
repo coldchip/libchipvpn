@@ -18,7 +18,6 @@ extern "C"
 #include "firewall.h"
 #include "curve25519.h"
 #include "blake2s.h"
-#include "sha256.h"
 
 #define CHIPVPN_PEER_TIMEOUT 15000
 #define CHIPVPN_PEER_PING 2000
@@ -42,18 +41,12 @@ typedef struct {
 	uint8_t ephemeral_private[CURVE25519_KEY_SIZE];
 
 	struct inbound {
-		union {
-			uint32_t session;
-			uint8_t session_hash[SHA256_HASH_SIZE];
-		};
+		uint32_t session;
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} inbound;
 
 	struct outbound {
-		union {
-			uint32_t session;
-			uint8_t session_hash[SHA256_HASH_SIZE];
-		};
+		uint32_t session;
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} outbound;
 
@@ -89,15 +82,13 @@ typedef struct {
 
 chipvpn_peer_t      *chipvpn_peer_create();
 
-int                  chipvpn_peer_send_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, uint8_t *ephemeral_public, chipvpn_address_t *addr);
+int                  chipvpn_peer_send_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr);
 int                  chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_wg_packet_auth_t *packet, chipvpn_address_t *addr);
-
-int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_address_t *addr, bool ack);
-int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
+int                  chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_wg_packet_auth_resp_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 
-void                 chipvpn_peer_derive_session(chipvpn_peer_t *peer);
 void                 chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);

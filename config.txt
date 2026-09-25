@@ -9,4 +9,4 @@ ifup:ifup
 section:peer
 address:127.0.0.1:4433
 allow:0.0.0.0/0
-public:3Va3UUZ8YjoY53Js7rDzRfeW5eLyliGUc52lFu3JM2o=
+public:GMgfpuBPrYdxWSH3CqnpG9MUe1CcbNMxfivZyTPCNE8=
