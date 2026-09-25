@@ -42,10 +42,10 @@ Getting Started
 (Assuming a standard UNIX-like environment)
 
 Bash
-# Build the VPN server
+## Build the VPN server
 make
 
-# Run the server with your configuration file (requires root for TUN/TAP interface creation)
+## Run the server with your configuration file (requires root for TUN/TAP interface creation)
 sudo ./chipvpn config2.txt
-Server Configuration
+## Server Configuration
 Ensure your server is configured with a valid Curve25519 Private Key and has registered the Public Keys of allowed peers.
