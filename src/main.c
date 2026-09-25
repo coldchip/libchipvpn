@@ -52,70 +52,70 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
     } 
     
     if(S_ISSOCK(path_stat.st_mode)) {
-    	int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-        if(sock < 0) {
-            chipvpn_log_append("failed to create unix socket\n");
-            return 0;
+    	while(1) {
+			int sock = socket(AF_INET, SOCK_STREAM, 0);
+	        if(sock < 0) {
+	            chipvpn_log_append("failed to create tcp socket\n");
+	            return 0;
+	        }
+
+	        struct sockaddr_in addr;
+		    memset(&addr, 0, sizeof(addr));
+		    addr.sin_family = AF_INET;
+		    addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+		    addr.sin_port = htons(8089);
+
+	        while(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+	            chipvpn_log_append("retry to connect to tcp socket: %s\n", argv[1]);
+	            sleep(1);
+	        }
+
+	        struct pollfd fds[2];
+	        fds[0].fd = sock;
+	        fds[0].events = POLLIN;
+	        
+	        fds[1].fd = fd;
+	        fds[1].events = POLLIN;
+
+	        char buf[8192];
+
+	        while (1) {
+	            int ret = poll(fds, 2, -1);
+	            if(ret < 0) {
+	                if(errno == EINTR) continue; 
+	                break; 
+	            }
+
+	            if(fds[0].revents & (POLLIN | POLLERR | POLLHUP)) {
+	                ssize_t n = read(sock, buf, sizeof(buf));
+	                if(n <= 0) break; 
+	                
+	                ssize_t written = 0;
+	                while(written < n) {
+	                    ssize_t w = write(fd, buf + written, n - written);
+	                    if (w <= 0) goto proxy_done;
+	                    written += w;
+	                }
+	            }
+
+	            if(fds[1].revents & (POLLIN | POLLERR | POLLHUP)) {
+	                ssize_t n = read(fd, buf, sizeof(buf));
+	                if(n <= 0) break;
+	                
+	                ssize_t written = 0;
+	                while(written < n) {
+	                    ssize_t w = write(sock, buf + written, n - written);
+	                    if (w <= 0) goto proxy_done;
+	                    written += w;
+	                }
+	            }
+	        }
+
+			proxy_done:
+
+	        close(sock);
+	        chipvpn_log_append("socket proxy disconnected\n");
         }
-
-        struct sockaddr_un addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sun_family = AF_UNIX;
-        strncpy(addr.sun_path, argv[1], sizeof(addr.sun_path) - 1);
-
-        while(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-            chipvpn_log_append("retry to connect to unix socket: %s\n", argv[1]);
-            sleep(1);
-        }
-
-        struct pollfd fds[2];
-        fds[0].fd = sock;
-        fds[0].events = POLLIN;
-        
-        fds[1].fd = fd;
-        fds[1].events = POLLIN;
-
-        char buf[8192];
-
-        while (1) {
-            int ret = poll(fds, 2, -1);
-            if(ret < 0) {
-                if(errno == EINTR) continue; 
-                break; 
-            }
-
-            if(fds[0].revents & (POLLIN | POLLERR | POLLHUP)) {
-                ssize_t n = read(sock, buf, sizeof(buf));
-                if(n <= 0) break; 
-                
-                ssize_t written = 0;
-                while(written < n) {
-                    ssize_t w = write(fd, buf + written, n - written);
-                    if (w <= 0) goto proxy_done;
-                    written += w;
-                }
-            }
-
-            if(fds[1].revents & (POLLIN | POLLERR | POLLHUP)) {
-                ssize_t n = read(fd, buf, sizeof(buf));
-                if(n <= 0) break;
-                
-                ssize_t written = 0;
-                while(written < n) {
-                    ssize_t w = write(sock, buf + written, n - written);
-                    if (w <= 0) goto proxy_done;
-                    written += w;
-                }
-            }
-        }
-
-		proxy_done:
-
-        close(sock);
-        chipvpn_log_append("socket proxy disconnected\n");
-
-
-        return 0;
     }
 
 	return 0;
