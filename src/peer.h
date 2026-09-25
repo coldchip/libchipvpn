@@ -57,8 +57,8 @@ typedef struct {
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} outbound;
 
-	uint8_t C[BLAKE2S_HASH_SIZE]; // for wireguard
-	uint8_t H[BLAKE2S_HASH_SIZE]; // for wireguard
+	uint8_t chain_key[BLAKE2S_HASH_SIZE]; // for wireguard
+	uint8_t hash_key[BLAKE2S_HASH_SIZE]; // for wireguard
 
 	uint8_t dh_ee[CURVE25519_KEY_SIZE];
 	uint8_t dh_se[CURVE25519_KEY_SIZE];

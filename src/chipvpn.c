@@ -171,33 +171,28 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_wg_packet_auth_t *packet = (chipvpn_wg_packet_auth_t*)buffer;
 
-				uint8_t C[BLAKE2S_HASH_SIZE];
-			    uint8_t H[BLAKE2S_HASH_SIZE];
+				uint8_t chain_key[BLAKE2S_HASH_SIZE] = { 
+					0x60, 0xe2, 0x6d, 0xae, 0xf3, 0x27, 0xef, 0xc0, 
+					0x2e, 0xc3, 0x35, 0xe2, 0xa0, 0x25, 0xd2, 0xd0, 
+					0x16, 0xeb, 0x42, 0x06, 0xf8, 0x72, 0x77, 0xf5, 
+					0x2d, 0x38, 0xd1, 0x98, 0x8b, 0x78, 0xcd, 0x36
+				};
+
+			    uint8_t hash_key[BLAKE2S_HASH_SIZE] = {
+			    	0x22, 0x11, 0xb3, 0x61, 0x08, 0x1a, 0xc5, 0x66, 
+			    	0x69, 0x12, 0x43, 0xdb, 0x45, 0x8a, 0xd5, 0x32, 
+			    	0x2d, 0x9c, 0x6c, 0x66, 0x22, 0x93, 0xe8, 0xb7, 
+			    	0x0e, 0xe1, 0x9c, 0x65, 0xba, 0x07, 0x9e, 0xf3
+			    };
 			    
-			    const uint8_t wg_name[37] = "Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s";
-			    const uint8_t wg_identifier[34] = "WireGuard v1 zx2c4 Jason@zx2c4.com";
-			    
-			    blake2s_ctx ctx;
-
-				// C = Hash(wg_name)
-				blake2s_init(&ctx, BLAKE2S_HASH_SIZE, NULL, 0);
-				blake2s_update(&ctx, (const uint8_t*)wg_name, sizeof(wg_name));
-				blake2s_final(&ctx, C);
-
-				// H = Hash(C || wg_identifier)
-				blake2s_init(&ctx, BLAKE2S_HASH_SIZE, NULL, 0);
-				blake2s_update(&ctx, C, BLAKE2S_HASH_SIZE);
-				blake2s_update(&ctx, (const uint8_t*)wg_identifier, sizeof(wg_identifier));
-				blake2s_final(&ctx, H);
-
 				// Hi := Hash(Hi || Spubr)
-				wireguard_mix_hash(H, vpn->device->public, sizeof(vpn->device->public));
+				wireguard_mix_hash(hash_key, vpn->device->public, sizeof(vpn->device->public));
 
 				// Ci := Kdf1(Ci, Epubi)
-				wireguard_kdf1(C, C, packet->ephemeral_public, sizeof(packet->ephemeral_public));
+				wireguard_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
 				// Hi := Hash(Hi || msg.ephemeral)
-				wireguard_mix_hash(H, packet->ephemeral_public, sizeof(packet->ephemeral_public));
+				wireguard_mix_hash(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
 				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
 				// Calculate DH(Eprivi,Spubr)
@@ -207,22 +202,22 @@ int chipvpn_service(chipvpn_t *vpn) {
 				    packet->ephemeral_public
 				);
 
-				uint8_t K[CHACHA20_KEY_SIZE] = {0};
-
-				// (Ci,k) := Kdf2(Ci,DH(Eprivi,Spubr))
-				wireguard_kdf2(C, K, C, dh_se, sizeof(dh_se)); // Updates chaining key C, outputs cipher key K
-
 				uint8_t enc_static[CURVE25519_KEY_SIZE + 16] = {0};
 				memcpy(enc_static, packet->static_public, sizeof(packet->static_public));
 				memcpy(enc_static + sizeof(packet->static_public), packet->static_public_mac, sizeof(packet->static_public_mac));
 
+				uint8_t key[CHACHA20_KEY_SIZE] = {0};
+
+				// (Ci,k) := Kdf2(Ci,DH(Eprivi,Spubr))
+				wireguard_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se)); // Updates chaining key C, outputs cipher key K
+
 				// msg.static := AEAD(k, 0, Spubi, Hi)
 				bool success = chipvpn_crypto_chacha20_poly1305_decrypt(
-				    K,                              // key: The 32-byte key from HKDF
+				    key,                              // key: The 32-byte key from HKDF
 				    packet->static_public,          // data: The 32-byte ciphertext (overwritten with plaintext)
 				    sizeof(packet->static_public),  // data_size: 32 bytes
 				    0,                              // counter: Nonce is explicitly 0
-				    H,                              // [FIX 2] aad: Pass the buffer 'H', not 'sizeof(H)'!
+				    hash_key,                              // [FIX 2] aad: Pass the buffer 'H', not 'sizeof(H)'!
 				    BLAKE2S_HASH_SIZE,              // aad_size: 32 bytes
 				    packet->static_public_mac       // mac: The 16-byte Poly1305 tag
 				);
@@ -245,11 +240,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				// Hi := Hash(Hi || msg.static)
-				wireguard_mix_hash(H, enc_static, sizeof(enc_static));
+				wireguard_mix_hash(hash_key, enc_static, sizeof(enc_static));
 
 				memcpy(peer->dh_se, dh_se, sizeof(dh_se));
-				memcpy(peer->C, C, sizeof(C));
-				memcpy(peer->H, H, sizeof(H));
+				memcpy(peer->chain_key, chain_key, sizeof(chain_key));
+				memcpy(peer->hash_key, hash_key, sizeof(hash_key));
 
 				chipvpn_peer_recv_wg_connect(peer, vpn->device, vpn->udp, packet, &addr);
 			}
@@ -310,7 +305,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				uint8_t               *mac         = buffer + (r - 16);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
-				if(!peer || peer->state != PEER_CONNECTED) {\
+				if(!peer || peer->state != PEER_CONNECTED) {
 					continue;
 				}
 
