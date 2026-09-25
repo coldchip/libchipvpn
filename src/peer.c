@@ -35,43 +35,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-void wireguard_build_response_crypto(chipvpn_peer_t *peer, chipvpn_wg_packet_auth_resp_t *reply, const uint8_t *initiator_ephemeral) {
-    // 1. Generate & Clamp Ephemeral Keys
-    chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
-    peer->ephemeral_private[0] &= 248;
-    peer->ephemeral_private[31] = (peer->ephemeral_private[31] & 127) | 64;
-    chipvpn_dh_get_public(peer->ephemeral_public, peer->ephemeral_private);
-    
-    // Immediately copy it into the reply packet
-    memcpy(reply->ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
-
-    // 2. Mix into Hash & Chain (e)
-    wireguard_kdf1(peer->chain_key, peer->chain_key, peer->ephemeral_public, 32);
-    wireguard_mix_hash(peer->hash_key, peer->ephemeral_public, 32);
-
-    // 3. Calculate DH(Epriv_r, Epub_i) (ee)
-    curve25519(peer->dh_ee, peer->ephemeral_private, initiator_ephemeral);
-    wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_ee, 32);
-
-    // 4. Calculate DH(Epriv_r, Spub_i) (se)
-    curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
-    wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_es, 32);
-
-    // 5. PSK Mixing (psk)
-    uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
-    uint8_t psk[CHACHA20_KEY_SIZE] = {0};
-    uint8_t key1[CHACHA20_KEY_SIZE] = {0};
-    wireguard_kdf3(peer->chain_key, tau, key1, peer->chain_key, psk, sizeof(psk));
-    wireguard_mix_hash(peer->hash_key, tau, sizeof(tau));
-
-    // 6. Encrypt Empty Payload (msg.empty)
-    uint8_t dummy_empty_data[1] = {0};
-    chipvpn_crypto_chacha20_poly1305_encrypt(
-        key1, dummy_empty_data, 0, 0, peer->hash_key, 32, reply->empty_mac
-    );
-    wireguard_mix_hash(peer->hash_key, reply->empty_mac, sizeof(reply->empty_mac));
-}
-
 int chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_wg_packet_auth_resp_t reply;
 	memset(&reply, 0, sizeof(reply));
