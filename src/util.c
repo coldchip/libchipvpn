@@ -1,4 +1,7 @@
 #include "util.h"
+#include "base64.h"
+#include "curve25519.h"
+#include "log.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -12,6 +15,18 @@
 #include <unistd.h>
 #include <stddef.h>
 #include <time.h>
+
+void chipvpn_print_key(uint8_t *key) {
+    for(int i = 0; i < 32; i++) {
+        printf("%02x", key[i] & 0xff);
+    }
+    printf("\n");
+
+    char b64_key[45] = {0};
+    memset(b64_key, 0, sizeof(b64_key));
+    b64_encode(key, CURVE25519_KEY_SIZE, (uint8_t *)b64_key);
+    chipvpn_log_append("key: %s\n", b64_key);
+}
 
 char *chipvpn_strdup(const char *s) {
 	size_t len = strlen(s) + 1;

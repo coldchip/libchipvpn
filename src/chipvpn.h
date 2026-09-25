@@ -14,8 +14,8 @@ extern "C"
 #include "udp.h"
 #include "ipc.h"
 
-#define CHIPVPN_VERSION 300033
-#define CHIPVPN_PROTOCOL_VERSION 200
+#define CHIPVPN_VERSION 300034
+#define CHIPVPN_PROTOCOL_VERSION 201
 
 typedef struct {
 	chipvpn_device_t *device;
