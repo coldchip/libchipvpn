@@ -35,72 +35,74 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-int chipvpn_peer_send_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, uint8_t *ephemeral_public, chipvpn_address_t *addr) {
-	chipvpn_wg_packet_auth_resp_t packet;
-	memset(&packet, 0, sizeof(packet));
+void wireguard_build_response_crypto(chipvpn_peer_t *peer, chipvpn_wg_packet_auth_resp_t *reply, const uint8_t *initiator_ephemeral) {
+    // 1. Generate & Clamp Ephemeral Keys
+    chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
+    peer->ephemeral_private[0] &= 248;
+    peer->ephemeral_private[31] = (peer->ephemeral_private[31] & 127) | 64;
+    chipvpn_dh_get_public(peer->ephemeral_public, peer->ephemeral_private);
+    
+    // Immediately copy it into the reply packet
+    memcpy(reply->ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
-	packet.header.type = 2; // Handshake Response
-	packet.receiver_index = htonl(peer->outbound.session); // Send back the client's ID
+    // 2. Mix into Hash & Chain (e)
+    wireguard_kdf1(peer->chain_key, peer->chain_key, peer->ephemeral_public, 32);
+    wireguard_mix_hash(peer->hash_key, peer->ephemeral_public, 32);
+
+    // 3. Calculate DH(Epriv_r, Epub_i) (ee)
+    curve25519(peer->dh_ee, peer->ephemeral_private, initiator_ephemeral);
+    wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_ee, 32);
+
+    // 4. Calculate DH(Epriv_r, Spub_i) (se)
+    curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
+    wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_es, 32);
+
+    // 5. PSK Mixing (psk)
+    uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
+    uint8_t psk[CHACHA20_KEY_SIZE] = {0};
+    uint8_t key1[CHACHA20_KEY_SIZE] = {0};
+    wireguard_kdf3(peer->chain_key, tau, key1, peer->chain_key, psk, sizeof(psk));
+    wireguard_mix_hash(peer->hash_key, tau, sizeof(tau));
+
+    // 6. Encrypt Empty Payload (msg.empty)
+    uint8_t dummy_empty_data[1] = {0};
+    chipvpn_crypto_chacha20_poly1305_encrypt(
+        key1, dummy_empty_data, 0, 0, peer->hash_key, 32, reply->empty_mac
+    );
+    wireguard_mix_hash(peer->hash_key, reply->empty_mac, sizeof(reply->empty_mac));
+}
+
+int chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
+	chipvpn_wg_packet_auth_resp_t reply;
+	memset(&reply, 0, sizeof(reply));
+	reply.header.type = 2; // Handshake Response
+	reply.receiver_index = htonl(peer->outbound.session); // Send back the client's ID
 	chipvpn_secure_random((uint8_t*)&peer->inbound.session, sizeof(peer->inbound.session));
-	packet.sender_index = htonl(peer->inbound.session); 
+	reply.sender_index = htonl(peer->inbound.session); 
 
-	// generate curve25519 keys
-	chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
-
-	// YOU MUST CLAMP IT HERE!
-	peer->ephemeral_private[0] &= 248;
-	peer->ephemeral_private[31] = (peer->ephemeral_private[31] & 127) | 64;
-
-	// calculate public key
-	chipvpn_dh_get_public(peer->ephemeral_public, peer->ephemeral_private);
-
-	// Cr := Kdf1(Cr,Epubr)
-	wireguard_kdf1(peer->C, peer->C, peer->ephemeral_public, sizeof(peer->ephemeral_public));
-
-	// Hr := Hash(Hr || msg.ephemeral)
-	wireguard_mix_hash(peer->H, peer->ephemeral_public, sizeof(peer->ephemeral_public));
-
-	// Calculate DH(Eprivi,Epubi)
-	curve25519(peer->dh_ee, peer->ephemeral_private, ephemeral_public);
-
-	// Cr := Kdf1(Cr,DH(Eprivi,Epubi))
-	wireguard_kdf1(peer->C, peer->C, peer->dh_ee, sizeof(peer->dh_ee));
-
-	// Calculate DH(Eprivi,Spubr)
-	curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
-
-	// Cr := Kdf1(Cr, DH(Eprivr, Spubi))
-	wireguard_kdf1(peer->C, peer->C, peer->dh_es, sizeof(peer->dh_es));
-
-	///
 
 	uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
 	uint8_t psk[CHACHA20_KEY_SIZE] = {0};
-	uint8_t dummy_empty_data[1] = {0};
-	uint8_t K[CHACHA20_KEY_SIZE] = {0};
-
+	uint8_t empty[1] = {0};
+	uint8_t key1[CHACHA20_KEY_SIZE] = {0};
 	// (Cr, t, k) := Kdf3(Cr, Q)
-	wireguard_kdf3(peer->C, tau, K, peer->C, psk, sizeof(psk));
-
+	wireguard_kdf3(peer->chain_key, tau, key1, peer->chain_key, psk, sizeof(psk));
 	// Hr := Hash(Hr | t)
-	wireguard_mix_hash(peer->H, tau, sizeof(tau));
-
-	// msg.empty := AEAD(k, 0, E, Hr)
+	wireguard_mix_hash(peer->hash_key, tau, sizeof(tau));
+	/* msg.empty := AEAD(k, 0, E, Hr) */
 	chipvpn_crypto_chacha20_poly1305_encrypt(
-	    K, 
-	    dummy_empty_data,   // Source data (empty)
-	    0,                  // data_size = 0
-	    0,                  // Nonce is 0
-	    peer->H,                  // AAD is running Hash
-	    32,                 // AAD size
-	    packet.empty_mac      // Output 16-byte MAC
+	    key1, 
+	    empty,
+	    0,                  
+	    0,                 
+	    peer->hash_key,                 
+	    32,                
+	    reply.empty_mac     
 	);
-
 	// Hr := Hash(Hr | msg.empty)
-	wireguard_mix_hash(peer->H, packet.empty_mac, sizeof(packet.empty_mac));
+	wireguard_mix_hash(peer->hash_key, reply.empty_mac, sizeof(reply.empty_mac));
 
-
-	memcpy(packet.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
+	memcpy(reply.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
 	//////////////////////////////////
 	uint8_t mac1_key[BLAKE2S_HASH_SIZE];
@@ -112,45 +114,32 @@ int chipvpn_peer_send_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device,
     blake2s_update(&ctx, peer->config.public, CURVE25519_KEY_SIZE);
     blake2s_final(&ctx, mac1_key);
 
-    // 2. Compute MAC1: Keyed-Blake2s(key = mac1_key, data = packet_bytes)
-    // The response packet is 92 bytes total. 
-    // We only hash the bytes BEFORE the mac fields (92 - 16 - 16 = 60 bytes)
     blake2s_init(&ctx, 16, mac1_key, BLAKE2S_HASH_SIZE); // Output is 16 bytes!
-    blake2s_update(&ctx, (const uint8_t*)&packet, 60);
-    blake2s_final(&ctx, packet.mac1);
+    blake2s_update(&ctx, (const uint8_t*)&reply, 60);
+    blake2s_final(&ctx, reply.mac1);
 
-    // ==========================================
-    // Compute MAC2 (DDoS mitigation cookies)
-    // ==========================================
-    // Unless you implement Type 3 Cookie Reply packets, this remains all zeroes.
-    memset(packet.mac2, 0, 16);
+    memset(reply.mac2, 0, 16);
 
-	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
+	return chipvpn_socket_write(udp->socket, &reply, sizeof(reply), addr);
 }
 
 int chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_wg_packet_auth_t *packet, chipvpn_address_t *addr) {
-	uint8_t K[BLAKE2S_HASH_SIZE] = {0};
+	uint8_t key[BLAKE2S_HASH_SIZE] = {0};
 
 	// (Ci,k) := Kdf2(Ci,DH(Sprivi,Spubr)) (SS)
-	wireguard_kdf2(peer->C, K, peer->C, peer->dh_ss, sizeof(peer->dh_ss));
+	wireguard_kdf2(peer->chain_key, key, peer->chain_key, peer->dh_ss, sizeof(peer->dh_ss));
 
-	// ==========================================
-    // 5. Decrypt the Timestamp
-    // ==========================================
-    
-    // Save the ciphertext + MAC before decryption overwrites it!
-    // The timestamp is 12 bytes + 16 byte MAC = 28 bytes total.
     uint8_t ts_ciphertext_with_mac[28];
     memcpy(ts_ciphertext_with_mac, packet->timestamp, 12);
     memcpy(ts_ciphertext_with_mac + 12, packet->timestamp_mac, 16);
 
     // Decrypt the timestamp in-place
     bool ts_success = chipvpn_crypto_chacha20_poly1305_decrypt(
-        K,                              // The NEW 32-byte key from HKDF
+        key,                              // The NEW 32-byte key from HKDF
         packet->timestamp,    // The 12-byte timestamp ciphertext
         sizeof(packet->timestamp),                             // Data size is exactly 12 bytes
         0,                              // Nonce is explicitly 0 again
-        peer->H,                              // The updated Hash from the previous step
+        peer->hash_key,                              // The updated Hash from the previous step
         BLAKE2S_HASH_SIZE,              
         packet->timestamp_mac           // The 16-byte Poly1305 MAC
     );
@@ -161,22 +150,39 @@ int chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device,
     }
 
     // Mix the CIPHERTEXT into the hash (Required for the Handshake Response later)
-    wireguard_mix_hash(peer->H, ts_ciphertext_with_mac, sizeof(ts_ciphertext_with_mac));
+    wireguard_mix_hash(peer->hash_key, ts_ciphertext_with_mac, sizeof(ts_ciphertext_with_mac));
 
     /* clear and derive keys */
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
-    peer->outbound.session = ntohl(packet->sender_index); // ntohl?
+    peer->outbound.session = ntohl(packet->sender_index);
 
-    chipvpn_peer_send_wg_connect(peer, device, udp, packet->ephemeral_public, addr);
+    // generate curve25519 keys
+	chipvpn_secure_random(peer->ephemeral_private, sizeof(peer->ephemeral_private));
 
-    // Note the order: Receiver Key (to decrypt), then Transmitter Key (to encrypt)
-    wireguard_kdf2(peer->inbound.key, peer->outbound.key, peer->C, NULL, 0);
+	// YOU MUST CLAMP IT HERE!
+	peer->ephemeral_private[0] &= 248;
+	peer->ephemeral_private[31] = (peer->ephemeral_private[31] & 127) | 64;
 
-    // finally 
-
- 
+	// calculate public key
+	chipvpn_dh_get_public(peer->ephemeral_public, peer->ephemeral_private);
+	// Cr := Kdf1(Cr,Epubr)
+	wireguard_kdf1(peer->chain_key, peer->chain_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
+	// Hr := Hash(Hr || msg.ephemeral)
+	wireguard_mix_hash(peer->hash_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
+	// Calculate DH(Eprivi,Epubi)
+	curve25519(peer->dh_ee, peer->ephemeral_private, packet->ephemeral_public);
+	// Cr := Kdf1(Cr,DH(Eprivi,Epubi))
+	wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_ee, sizeof(peer->dh_ee));
+	// Calculate DH(Eprivi,Spubr)
+	curve25519(peer->dh_es, peer->ephemeral_private, peer->config.public);
+	// Cr := Kdf1(Cr, DH(Eprivr, Spubi))
+	wireguard_kdf1(peer->chain_key, peer->chain_key, peer->dh_es, sizeof(peer->dh_es));
+	/* send wireguard peer reply */
+	chipvpn_peer_send_wg_reply(peer, device, udp, addr);
+    /* derive the key */
+    wireguard_kdf2(peer->inbound.key, peer->outbound.key, peer->chain_key, NULL, 0);
 
 	/* reset the bitmap */
 	chipvpn_bitmap_reset(&peer->bitmap);
