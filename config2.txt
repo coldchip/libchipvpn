@@ -3,10 +3,14 @@ name:cv-server
 network:10.64.0.1/16
 bind:0.0.0.0:4433
 mtu:1500
-public:3Va3UUZ8YjoY53Js7rDzRfeW5eLyliGUc52lFu3JM2o=
-private:UQGaOdvTlU7L/jeig1g9vugIocuVyfl7XDKnuBRMLN4=
+public:GMgfpuBPrYdxWSH3CqnpG9MUe1CcbNMxfivZyTPCNE8=
+private:UNiQ+s2rphl9UczJ6Z9Wnm+xwEzT82VY2XPy1cuEKm4=
 ifup:ifup
 
 section:peer
 allow:10.64.0.2/32
 public:ihjaCjeBm1xpEeVj9NEYfgLb5L51ByG6J4hFu4lYoQM=
+
+section:peer
+allow:10.64.0.3/32
+public:kmbIRLvbFCoYodVPoicXxkcmNelYi8mFqmmeR53vY1U=

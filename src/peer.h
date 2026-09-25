@@ -17,6 +17,7 @@ extern "C"
 #include "chipvpn.h"
 #include "firewall.h"
 #include "curve25519.h"
+#include "blake2s.h"
 #include "sha256.h"
 
 #define CHIPVPN_PEER_TIMEOUT 15000
@@ -56,6 +57,9 @@ typedef struct {
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} outbound;
 
+	uint8_t C[BLAKE2S_HASH_SIZE]; // for wireguard
+	uint8_t H[BLAKE2S_HASH_SIZE]; // for wireguard
+
 	uint8_t dh_ee[CURVE25519_KEY_SIZE];
 	uint8_t dh_se[CURVE25519_KEY_SIZE];
 	uint8_t dh_es[CURVE25519_KEY_SIZE];
@@ -85,11 +89,13 @@ typedef struct {
 
 chipvpn_peer_t      *chipvpn_peer_create();
 
+int                  chipvpn_peer_send_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, uint8_t *ephemeral_public, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_wg_packet_auth_t *packet, chipvpn_address_t *addr);
+
 int                  chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_address_t *addr, bool ack);
 int                  chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
-int                  chipvpn_peer_recv_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_ping_t *packet, chipvpn_address_t *addr);
 
 void                 chipvpn_peer_derive_session(chipvpn_peer_t *peer);
 void                 chipvpn_peer_reset_session(chipvpn_peer_t *peer);

@@ -76,15 +76,42 @@ typedef struct {
 	uint16_t dst;
 } udp_tcp_port_t;
 
+#define CHIPVPN_PROTOCOL_MASK 0x80
+
 typedef enum {
-	CHIPVPN_PACKET_AUTH = 0,
-	CHIPVPN_PACKET_DATA,
-	CHIPVPN_PACKET_PING
+	CHIPVPN_WG_PACKET_AUTH = 1,
+	CHIPVPN_PACKET_AUTH = CHIPVPN_PROTOCOL_MASK | 1,
+	CHIPVPN_PACKET_DATA = 4,
+	CHIPVPN_PACKET_PING = CHIPVPN_PROTOCOL_MASK | 2
 } chipvpn_packet_type_e;
 
 typedef struct __attribute__((__packed__)) {
 	uint8_t type;
 } chipvpn_packet_header_t;
+
+typedef struct __attribute__((__packed__)) {
+	chipvpn_packet_header_t header;
+	uint8_t padding[3];
+	uint32_t sender_index;
+	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
+	uint8_t static_public[CURVE25519_KEY_SIZE];
+	uint8_t static_public_mac[16];
+	uint8_t timestamp[12];
+	uint8_t timestamp_mac[16];
+	uint8_t mac1[16];
+	uint8_t mac2[16];
+} chipvpn_wg_packet_auth_t;
+
+typedef struct __attribute__((__packed__)) {
+    chipvpn_packet_header_t header; 
+    uint8_t padding[3];             
+    uint32_t sender_index;          
+    uint32_t receiver_index;        
+    uint8_t ephemeral_public[32];  
+    uint8_t empty_mac[16];        
+    uint8_t mac1[16];              
+    uint8_t mac2[16];             
+} chipvpn_wg_packet_auth_resp_t; 
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
@@ -98,9 +125,9 @@ typedef struct __attribute__((__packed__)) {
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
+	uint8_t padding[3]; 
 	uint32_t session;
 	uint64_t counter;
-	uint8_t mac[16];
 } chipvpn_packet_data_t;
 
 typedef struct __attribute__((__packed__)) {

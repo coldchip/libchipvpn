@@ -23,6 +23,7 @@ extern "C"
 # define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 #endif
 
+void         chipvpn_print_key(uint8_t *key);
 char        *chipvpn_strdup(const char *s);
 char        *chipvpn_read_file(const char *file);
 char        *chipvpn_str_replace(const char* s, const char* oldW, const char* newW);
