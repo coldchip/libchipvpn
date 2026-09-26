@@ -60,6 +60,7 @@ typedef struct {
 		chipvpn_address_t allow;
 		chipvpn_firewall_t firewall;
 		uint8_t public[CURVE25519_KEY_SIZE];
+		uint8_t psk[BLAKE2S_HASH_SIZE];
 		char *onconnect;
 		char *onping;
 		char *ondisconnect;
@@ -89,6 +90,7 @@ void                 chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 bool                 chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                 chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                 chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key);
+bool                 chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
 bool                 chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command);
 bool                 chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);

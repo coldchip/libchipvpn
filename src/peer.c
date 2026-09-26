@@ -148,11 +148,10 @@ int chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, c
 	reply.sender_index = htole32(peer->inbound.session); 
 
 	SECURE32 uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
-	SECURE32 uint8_t psk[CHACHA20_KEY_SIZE] = {0};
 	SECURE32 uint8_t key[CHACHA20_KEY_SIZE] = {0};
 	uint8_t empty[1] = {0};
 
-	chipvpn_blake2s_kdf3(peer->chain_key, tau, key, peer->chain_key, psk, sizeof(psk));
+	chipvpn_blake2s_kdf3(peer->chain_key, tau, key, peer->chain_key, peer->config.psk, sizeof(peer->config.psk));
 	chipvpn_blake2s_concat(peer->hash_key, tau, sizeof(tau));
 
 	chipvpn_encrypt_and_mix(peer->hash_key, key, empty, 0, reply.empty_mac);
@@ -185,9 +184,8 @@ int chipvpn_peer_recv_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, c
 
 	uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
 	uint8_t key[CHACHA20_KEY_SIZE] = {0};
-	uint8_t psk[CHACHA20_KEY_SIZE] = {0};
 
-	chipvpn_blake2s_kdf3(peer->chain_key, tau, key, peer->chain_key, psk, sizeof(psk));
+	chipvpn_blake2s_kdf3(peer->chain_key, tau, key, peer->chain_key, peer->config.psk, sizeof(peer->config.psk));
 	chipvpn_blake2s_concat(peer->hash_key, tau, sizeof(tau));
 
 	uint8_t dummy[1] = {0};
@@ -276,6 +274,10 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 
 bool chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key) {
 	return b64_decode((uint8_t*)key, strlen(key), peer->config.public) > 0;
+}
+
+bool chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key) {
+	return b64_decode((uint8_t*)key, strlen(key), peer->config.psk) > 0;
 }
 
 bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
