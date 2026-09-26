@@ -8,6 +8,8 @@ extern "C"
 
 #include <stddef.h>
 
+#define POLY1305_MAC_SIZE 16
+
 typedef struct poly1305_context {
 	size_t aligner;
 	unsigned char opaque[136];

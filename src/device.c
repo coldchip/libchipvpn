@@ -205,6 +205,9 @@ bool chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key) {
 bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 	bool ret = b64_decode((uint8_t*)key, strlen(key), device->private) > 0;
 
+	device->private[0] &= 248;
+	device->private[31] = (device->private[31] & 127) | 64;
+
 	uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
 	curve25519(device->public, device->private, basepoint);
 

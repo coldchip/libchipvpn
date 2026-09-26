@@ -8,6 +8,7 @@ extern "C"
 
 #include <stdbool.h>
 #include "curve25519.h"
+#include "poly1305.h"
 
 typedef struct __attribute__((__packed__)) {
 # if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -91,12 +92,12 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t sender_index;
 	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
 	uint8_t static_public[CURVE25519_KEY_SIZE];
-	uint8_t static_public_mac[16];
+	uint8_t static_public_mac[POLY1305_MAC_SIZE];
 	uint8_t timestamp[12];
-	uint8_t timestamp_mac[16];
-	uint8_t mac1[16];
-	uint8_t mac2[16];
-} chipvpn_wg_packet_auth_t;
+	uint8_t timestamp_mac[POLY1305_MAC_SIZE];
+	uint8_t mac1[POLY1305_MAC_SIZE];
+	uint8_t mac2[POLY1305_MAC_SIZE];
+} chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {
     chipvpn_packet_header_t header; 
@@ -104,10 +105,10 @@ typedef struct __attribute__((__packed__)) {
     uint32_t sender_index;          
     uint32_t receiver_index;        
     uint8_t ephemeral_public[32];  
-    uint8_t empty_mac[16];        
-    uint8_t mac1[16];              
-    uint8_t mac2[16];             
-} chipvpn_wg_packet_auth_resp_t; 
+    uint8_t empty_mac[POLY1305_MAC_SIZE];        
+    uint8_t mac1[POLY1305_MAC_SIZE];              
+    uint8_t mac2[POLY1305_MAC_SIZE];             
+} chipvpn_packet_auth_reply_t; 
 
 typedef struct __attribute__((__packed__)) {
 	chipvpn_packet_header_t header;
