@@ -164,6 +164,13 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				}
 			}
 
+			if(section == COMMAND_PEER_SECTION && strcmp(key, "psk") == 0) {
+				char key[1024];
+				if(sscanf(value, "%1023s", key) == 1) {
+					chipvpn_peer_set_psk(peer, key);
+				}
+			}
+
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "mss") == 0) {
 				int mss;
 				if(sscanf(value, "%i", &mss) == 1) {
