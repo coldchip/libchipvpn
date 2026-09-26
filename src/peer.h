@@ -50,8 +50,8 @@ typedef struct {
 		uint8_t key[CHACHA20_KEY_SIZE];
 	} outbound;
 
-	uint8_t chain_key[BLAKE2S_HASH_SIZE]; // for wireguard
-	uint8_t hash_key[BLAKE2S_HASH_SIZE]; // for wireguard
+	uint8_t chain_key[BLAKE2S_HASH_SIZE];
+	uint8_t hash_key[BLAKE2S_HASH_SIZE];
 
 	uint8_t dh_ee[CURVE25519_KEY_SIZE];
 	uint8_t dh_se[CURVE25519_KEY_SIZE];
@@ -87,6 +87,7 @@ int                  chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_de
 int                  chipvpn_peer_recv_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_wg_packet_auth_resp_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
+void                 chipvpn_peer_keepalive(chipvpn_peer_t *peer);
 
 void                 chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 

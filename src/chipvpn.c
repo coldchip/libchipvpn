@@ -272,7 +272,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* keep peer alive */
-				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+				chipvpn_peer_keepalive(peer);
 
 				if(data_size == 0) {
 					char tx[128];

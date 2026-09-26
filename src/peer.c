@@ -114,13 +114,11 @@ int chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device,
 
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
-
-	/* reset the bitmap */
 	chipvpn_bitmap_reset(&peer->bitmap);
+	chipvpn_peer_keepalive(peer);
 
 	peer->address = *addr;
 	peer->timestamp = 0;
-	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 	peer->tx = 0llu;
 	peer->rx = 0llu;
 	peer->last_check = 0llu;
@@ -195,10 +193,10 @@ int chipvpn_peer_recv_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, c
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 	chipvpn_bitmap_reset(&peer->bitmap);
+	chipvpn_peer_keepalive(peer);
 
 	peer->address = *addr;
 	peer->timestamp = 0;
-	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
 	peer->tx = 0llu;
 	peer->rx = 0llu;
 	peer->last_check = 0llu;
@@ -240,11 +238,19 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 	return chipvpn_socket_write_vector(udp->socket, vector, 2, &peer->address);
 }
 
+void chipvpn_peer_keepalive(chipvpn_peer_t *peer) {
+	peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+}
+
 void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
 	chipvpn_secure_zero(peer->chain_key, sizeof(peer->chain_key));
 	chipvpn_secure_zero(peer->hash_key, sizeof(peer->hash_key));
 	chipvpn_secure_zero(peer->ephemeral_public, sizeof(peer->ephemeral_public));
 	chipvpn_secure_zero(peer->ephemeral_private, sizeof(peer->ephemeral_private));
+
+	chipvpn_secure_zero(peer->dh_ee, sizeof(peer->dh_ee));
+	chipvpn_secure_zero(peer->dh_es, sizeof(peer->dh_es));
+	chipvpn_secure_zero(peer->dh_se, sizeof(peer->dh_se));
 
 	chipvpn_log_append("%p says: session cleared\n", peer);
 }
@@ -325,6 +331,7 @@ void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {
 
 		switch(state) {
 			case PEER_CONNECTED: {
+				chipvpn_peer_reset_session(peer);
 				if(peer->config.onconnect) {
 					chipvpn_peer_run_command(peer, peer->config.onconnect);
 				}
