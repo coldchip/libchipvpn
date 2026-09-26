@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <endian.h>
 #include <stdio.h>
 #include "chacha20.h"
 #include "chacha20poly1305.h"
@@ -128,8 +129,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_packet_data_t header = {
 			.header.type = CHIPVPN_PACKET_DATA,
-			.session     = htonl(peer->outbound.session),
-			.counter     = (peer->counter)
+			.session     = htole32(peer->outbound.session),
+			.counter     = htole64(peer->counter)
 		};
 
 		uint8_t mac[16];
@@ -168,21 +169,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_wg_packet_auth_t *packet = (chipvpn_wg_packet_auth_t*)buffer;
 
-				/* Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s */
 				uint8_t chain_key[BLAKE2S_HASH_SIZE];
-
-				/* WireGuard v1 zx2c4 Jason@zx2c4.com" */
 			    uint8_t hash_key[BLAKE2S_HASH_SIZE];
 
 			    chipvpn_init_noise(chain_key, hash_key, vpn->device->public);
-			    
-				// Ci := Kdf1(Ci, Epubi)
 				chipvpn_blake2s_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
-				// Hi := Hash(Hi || msg.ephemeral)
 				chipvpn_blake2s_concat(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
 				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
-				// Calculate DH(Eprivi,Spubr)
 				curve25519(
 				    dh_se, 
 				    vpn->device->private, 
@@ -195,20 +189,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				uint8_t key[CHACHA20_KEY_SIZE] = {0};
 
-				// (Ci,k) := Kdf2(Ci,DH(Eprivi,Spubr))
 				chipvpn_blake2s_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se)); // Updates chaining key C, outputs cipher key K
-				// msg.static := AEAD(k, 0, Spubi, Hi)
-				bool success = chipvpn_crypto_chacha20_poly1305_decrypt(
-				    key,                              // key: The 32-byte key from HKDF
-				    packet->static_public,          // data: The 32-byte ciphertext (overwritten with plaintext)
-				    sizeof(packet->static_public),  // data_size: 32 bytes
-				    0,                              // counter: Nonce is explicitly 0
-				    hash_key,                              // [FIX 2] aad: Pass the buffer 'H', not 'sizeof(H)'!
-				    sizeof(hash_key),              // aad_size: 32 bytes
-				    packet->static_public_mac       // mac: The 16-byte Poly1305 tag
-				);
-
-			    if(!success) {
+				
+			    if(!chipvpn_decrypt_and_mix(hash_key, key, packet->static_public, sizeof(packet->static_public), packet->static_public_mac)) {
 			    	chipvpn_log_append("unable to decrypt\n");
 			    	continue;
 			    }
@@ -228,9 +211,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				// Hi := Hash(Hi || msg.static)
-				chipvpn_blake2s_concat(hash_key, enc_static, sizeof(enc_static));
-
 				memcpy(peer->dh_se, dh_se, sizeof(dh_se));
 				memcpy(peer->chain_key, chain_key, sizeof(chain_key));
 				memcpy(peer->hash_key, hash_key, sizeof(hash_key));
@@ -244,9 +224,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_wg_packet_auth_resp_t *packet  = (chipvpn_wg_packet_auth_resp_t*)buffer;
-				uint32_t                       session = ntohl(packet->receiver_index);
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
+				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, le32toh(packet->receiver_index));
 				if(!peer) {
 					continue;
 				}
@@ -260,8 +239,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_packet_data_t *packet      = (chipvpn_packet_data_t*)buffer;
-				uint32_t               session     = ntohl(packet->session);
-				uint64_t               counter     = packet->counter;
+				uint32_t               session     = le32toh(packet->session);
+				uint64_t               counter     = le64toh(packet->counter);
 				uint8_t               *data        = packet->payload;
 				int                    data_size   = r - sizeof(chipvpn_packet_data_t) - 16;
 				uint8_t               *mac         = buffer + (r - 16);

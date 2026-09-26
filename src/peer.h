@@ -19,7 +19,7 @@ extern "C"
 #include "curve25519.h"
 #include "blake2s.h"
 
-#define CHIPVPN_PEER_TIMEOUT 15000
+#define CHIPVPN_PEER_TIMEOUT 20000
 #define CHIPVPN_PEER_PING 2000
 
 typedef enum {
@@ -76,7 +76,6 @@ typedef struct {
 	uint64_t last_check;
 	uint64_t timeout;
 	uint64_t counter;
-	bool half_auth;
 	chipvpn_bitmap_t bitmap;
 } chipvpn_peer_t;
 
