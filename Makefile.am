@@ -4,7 +4,7 @@ ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 bin_PROGRAMS = chipvpn
 chipvpn_SOURCES = src/main.c src/chipvpn.c src/socket.c src/hmac_blake2s.c src/blake2s.c src/firewall.c src/base64.c src/ipc.c src/udp.c src/chacha20poly1305.c src/curve25519.c src/config.c src/peer.c src/address.c src/device.c src/list.c src/util.c src/chacha20.c src/poly1305.c src/bitmap.c src/log.c
 
-CFLAGS = -flto -O3 -std=gnu99 -Wall -ldl
+CFLAGS = -flto -O3 -std=gnu99 -Wall
 LDADD = 
 
 MAINTAINERCLEANFILES =                                  \

@@ -19,7 +19,7 @@ extern "C"
 #include "curve25519.h"
 #include "blake2s.h"
 
-#define CHIPVPN_PEER_TIMEOUT 20000
+#define CHIPVPN_PEER_TIMEOUT 30000
 #define CHIPVPN_PEER_PING 2000
 
 typedef enum {
@@ -53,11 +53,6 @@ typedef struct {
 	uint8_t chain_key[BLAKE2S_HASH_SIZE];
 	uint8_t hash_key[BLAKE2S_HASH_SIZE];
 
-	uint8_t dh_ee[CURVE25519_KEY_SIZE];
-	uint8_t dh_se[CURVE25519_KEY_SIZE];
-	uint8_t dh_es[CURVE25519_KEY_SIZE];
-	uint8_t dh_ss[CURVE25519_KEY_SIZE];
-
 	chipvpn_address_t address;
 
 	struct {
@@ -70,7 +65,7 @@ typedef struct {
 		char *ondisconnect;
 	} config;
 
-	uint64_t timestamp;
+	uint8_t timestamp[12];
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t last_check;
@@ -82,9 +77,9 @@ typedef struct {
 chipvpn_peer_t      *chipvpn_peer_create();
 
 int                  chipvpn_peer_send_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr);
-int                  chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_wg_packet_auth_t *packet, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_wg_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
 int                  chipvpn_peer_send_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr);
-int                  chipvpn_peer_recv_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_wg_packet_auth_resp_t *packet, chipvpn_address_t *addr);
+int                  chipvpn_peer_recv_wg_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr);
 
 int                  chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 void                 chipvpn_peer_keepalive(chipvpn_peer_t *peer);

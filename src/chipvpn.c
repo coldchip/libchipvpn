@@ -19,6 +19,7 @@
 #include "bitmap.h"
 #include "blake2s.h"
 #include "hmac_blake2s.h"
+#include "poly1305.h"
 #include "base64.h"
 #include "log.h"
 #include "util.h"
@@ -133,7 +134,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			.counter     = htole64(peer->counter)
 		};
 
-		uint8_t mac[16];
+		uint8_t mac[POLY1305_MAC_SIZE];
 
 		if(!chipvpn_peer_encrypt_payload(peer, buffer, r, peer->counter, mac)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
@@ -163,38 +164,34 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
 		switch(header->type) {
 			case CHIPVPN_PACKET_AUTH: {
-				if(r < sizeof(chipvpn_wg_packet_auth_t)) {
+				if(r < sizeof(chipvpn_packet_auth_t)) {
 					continue;
 				}
 
-				chipvpn_wg_packet_auth_t *packet = (chipvpn_wg_packet_auth_t*)buffer;
+				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
 				uint8_t chain_key[BLAKE2S_HASH_SIZE];
-			    uint8_t hash_key[BLAKE2S_HASH_SIZE];
+				uint8_t hash_key[BLAKE2S_HASH_SIZE];
 
-			    chipvpn_init_noise(chain_key, hash_key, vpn->device->public);
+				chipvpn_init_noise(chain_key, hash_key, vpn->device->public);
 				chipvpn_blake2s_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 				chipvpn_blake2s_concat(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
 				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
-				curve25519(
-				    dh_se, 
-				    vpn->device->private, 
-				    packet->ephemeral_public
-				);
+				curve25519(dh_se, vpn->device->private, packet->ephemeral_public);
 
-				uint8_t enc_static[CURVE25519_KEY_SIZE + 16] = {0};
+				uint8_t enc_static[CURVE25519_KEY_SIZE + POLY1305_MAC_SIZE] = {0};
 				memcpy(enc_static, packet->static_public, sizeof(packet->static_public));
 				memcpy(enc_static + sizeof(packet->static_public), packet->static_public_mac, sizeof(packet->static_public_mac));
 
 				uint8_t key[CHACHA20_KEY_SIZE] = {0};
 
-				chipvpn_blake2s_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se)); // Updates chaining key C, outputs cipher key K
+				chipvpn_blake2s_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se));
 				
-			    if(!chipvpn_decrypt_and_mix(hash_key, key, packet->static_public, sizeof(packet->static_public), packet->static_public_mac)) {
-			    	chipvpn_log_append("unable to decrypt\n");
-			    	continue;
-			    }
+				if(!chipvpn_decrypt_and_mix(hash_key, key, packet->static_public, sizeof(packet->static_public), packet->static_public_mac)) {
+					chipvpn_log_append("unable to decrypt\n");
+					continue;
+				}
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->static_public);
 				if(!peer) {
@@ -211,7 +208,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				memcpy(peer->dh_se, dh_se, sizeof(dh_se));
 				memcpy(peer->chain_key, chain_key, sizeof(chain_key));
 				memcpy(peer->hash_key, hash_key, sizeof(hash_key));
 
@@ -219,11 +215,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 			break;
 			case CHIPVPN_PACKET_AUTH_REPLY: {
-				if(r < sizeof(chipvpn_wg_packet_auth_resp_t)) {
+				if(r < sizeof(chipvpn_packet_auth_reply_t)) {
 					continue;
 				}
 
-				chipvpn_wg_packet_auth_resp_t *packet  = (chipvpn_wg_packet_auth_resp_t*)buffer;
+				chipvpn_packet_auth_reply_t *packet  = (chipvpn_packet_auth_reply_t*)buffer;
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, le32toh(packet->receiver_index));
 				if(!peer) {
@@ -234,7 +230,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
-				if(r < sizeof(chipvpn_packet_data_t)) {
+				if(r < sizeof(chipvpn_packet_data_t) + POLY1305_MAC_SIZE) {
 					continue;
 				}
 
@@ -242,16 +238,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 				uint32_t               session     = le32toh(packet->session);
 				uint64_t               counter     = le64toh(packet->counter);
 				uint8_t               *data        = packet->payload;
-				int                    data_size   = r - sizeof(chipvpn_packet_data_t) - 16;
-				uint8_t               *mac         = buffer + (r - 16);
+				uint16_t               data_size   = r - sizeof(chipvpn_packet_data_t) - POLY1305_MAC_SIZE;
+				uint8_t               *mac         = buffer + (r - POLY1305_MAC_SIZE);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
 				if(!peer || peer->state != PEER_CONNECTED) {
-					continue;
-				}
-
-				if(data_size < 0) {
-					chipvpn_log_append("%p says: size of packet is negative\n", peer);
 					continue;
 				}
 
@@ -271,17 +262,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				/* keep peer alive */
 				chipvpn_peer_keepalive(peer);
 
 				if(data_size == 0) {
-					char tx[128];
-					char rx[128];
-					strcpy(tx, chipvpn_format_bytes(peer->tx));
-					strcpy(rx, chipvpn_format_bytes(peer->rx));
-
-					chipvpn_log_append("%p says: received ping packet\n", peer);
-					chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 					continue;
 				}
 
