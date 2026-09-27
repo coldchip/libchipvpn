@@ -21,6 +21,7 @@
 #include "hmac_blake2s.h"
 #include "poly1305.h"
 #include "base64.h"
+#include "ratelimit.h"
 #include "log.h"
 #include "util.h"
 
@@ -168,6 +169,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
+				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, addr)) {
+					continue;
+				}
+
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
 				uint8_t chain_key[BLAKE2S_HASH_SIZE];
@@ -180,7 +185,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
 				curve25519(dh_se, vpn->device->private, packet->ephemeral_public);
 
-				uint8_t enc_static[CURVE25519_KEY_SIZE + POLY1305_MAC_SIZE] = {0};
+				uint8_t enc_static[CHACHA20_POLY1305_ENC_LEN(CURVE25519_KEY_SIZE)] = {0};
 				memcpy(enc_static, packet->static_public, sizeof(packet->static_public));
 				memcpy(enc_static + sizeof(packet->static_public), packet->static_public_mac, sizeof(packet->static_public_mac));
 
@@ -211,11 +216,15 @@ int chipvpn_service(chipvpn_t *vpn) {
 				memcpy(peer->chain_key, chain_key, sizeof(chain_key));
 				memcpy(peer->hash_key, hash_key, sizeof(hash_key));
 
-				chipvpn_peer_recv_wg_connect(peer, vpn->device, vpn->udp, packet, &addr);
+				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_AUTH_REPLY: {
 				if(r < sizeof(chipvpn_packet_auth_reply_t)) {
+					continue;
+				}
+
+				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, addr)) {
 					continue;
 				}
 
@@ -226,11 +235,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				chipvpn_peer_recv_wg_reply(peer, vpn->device, vpn->udp, packet, &addr);
+				chipvpn_peer_recv_reply(peer, vpn->device, vpn->udp, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
-				if(r < sizeof(chipvpn_packet_data_t) + POLY1305_MAC_SIZE) {
+				if(r < CHACHA20_POLY1305_ENC_LEN(sizeof(chipvpn_packet_data_t))) {
 					continue;
 				}
 
@@ -238,7 +247,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				uint32_t               session     = le32toh(packet->session);
 				uint64_t               counter     = le64toh(packet->counter);
 				uint8_t               *data        = packet->payload;
-				uint16_t               data_size   = r - sizeof(chipvpn_packet_data_t) - POLY1305_MAC_SIZE;
+				uint16_t               data_size   = CHACHA20_POLY1305_DEC_LEN(r - sizeof(chipvpn_packet_data_t));
 				uint8_t               *mac         = buffer + (r - POLY1305_MAC_SIZE);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);

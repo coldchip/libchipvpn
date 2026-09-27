@@ -1,12 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stddef.h>
 #include "chacha20poly1305.h"
 #include "chacha20.h"
 #include "poly1305.h"
 #include "util.h"
 
-bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, uint64_t data_size, uint64_t counter, uint8_t *aad, uint64_t aad_size, uint8_t *mac) {
+bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, size_t data_size, uint64_t counter, uint8_t *aad, size_t aad_size, uint8_t *mac) {
 	chacha20_t chacha20_ctx;
 	poly1305_context poly1305_ctx;
 	uint8_t  nonce[CHACHA20_NONCE_SIZE];
@@ -49,7 +50,7 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, uint6
 	return true;
 }
 
-bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, uint64_t data_size, uint64_t counter, uint8_t *aad, uint64_t aad_size, uint8_t *mac) {
+bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, size_t data_size, uint64_t counter, uint8_t *aad, size_t aad_size, uint8_t *mac) {
 	chacha20_t chacha20_ctx;
 	poly1305_context poly1305_ctx;
 	uint8_t  computed_mac[16];

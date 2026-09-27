@@ -119,6 +119,13 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				}
 			}
 
+			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "fwmark") == 0) {
+				int fwmark;
+				if(sscanf(value, "%i", &fwmark) == 1) {
+					chipvpn_udp_set_fwmark(vpn->udp, fwmark);
+				}
+			}
+
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "ifup") == 0) {
 				chipvpn_device_set_enabled(vpn->device);
 			}

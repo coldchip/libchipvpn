@@ -23,6 +23,8 @@ extern "C"
 # define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 #endif
 
+#define TAI64N_SIZE 12
+
 #define _U8C(v) (v##U)
 #define _U8V(v) ((uint8_t)(v) & _U8C(0xFF))
 
@@ -56,7 +58,6 @@ char        *chipvpn_strdup(const char *s);
 char        *chipvpn_read_file(const char *file);
 char        *chipvpn_str_replace(const char* s, const char* oldW, const char* newW);
 char        *chipvpn_sgets(char *buf, int n, const char **str);
-bool         chipvpn_get_gateway(char *ip, char *dev);
 char        *chipvpn_format_bytes(uint64_t bytes);
 bool         chipvpn_secure_random(uint8_t *buf, int size);
 uint64_t     chipvpn_get_time();
