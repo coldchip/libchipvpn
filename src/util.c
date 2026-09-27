@@ -49,16 +49,16 @@ void chipvpn_compute_macs(void *packet, size_t auth_len, uint8_t *mac1, uint8_t 
 void chipvpn_encrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac) {
 	chipvpn_crypto_chacha20_poly1305_encrypt(cipher_key, data, len, 0, hash_key, BLAKE2S_HASH_SIZE, mac);
 	
-	uint8_t mixed[len + POLY1305_MAC_SIZE];
+	uint8_t mixed[CHACHA20_POLY1305_ENC_LEN(len)];
 	if(len > 0) {
 		memcpy(mixed, data, len);
 	}
 	memcpy(mixed + len, mac, POLY1305_MAC_SIZE);
-	chipvpn_blake2s_concat(hash_key, mixed, len + POLY1305_MAC_SIZE);
+	chipvpn_blake2s_concat(hash_key, mixed, sizeof(mixed));
 }
 
 bool chipvpn_decrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac) {
-	uint8_t mixed[len + POLY1305_MAC_SIZE];
+	uint8_t mixed[CHACHA20_POLY1305_ENC_LEN(len)];
 	if(len > 0) {
 		memcpy(mixed, data, len);
 	}
@@ -67,7 +67,7 @@ bool chipvpn_decrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *da
 	if(!chipvpn_crypto_chacha20_poly1305_decrypt(cipher_key, data, len, 0, hash_key, BLAKE2S_HASH_SIZE, mac)) {
 		return false;
 	}
-	chipvpn_blake2s_concat(hash_key, mixed, len + POLY1305_MAC_SIZE);
+	chipvpn_blake2s_concat(hash_key, mixed, sizeof(mixed));
 	return true;
 }
 
@@ -163,65 +163,6 @@ char *chipvpn_sgets(char *buf, int n, const char **str) {
 	return buf;
 }
 
-bool chipvpn_get_gateway(char *ip, char *dev) {
-	bool success = true;
-
-	if(ip) {
-		char cmd[] = "ip route show default | awk '/default/ {print $3}'";
-
-		FILE* fp = popen(cmd, "r");
-
-		if(fgets(ip, 16, fp) == NULL){
-			success = false;
-		}
-
-		ip[15] = '\0';
-
-		int i = 0;
-		while(
-			(ip[i] >= '0' && ip[i] <= '9') || 
-			(ip[i] == '.')
-		) {
-			i++;
-		}
-
-		ip[i] = 0;
-
-		pclose(fp);
-	}
-
-	//
-
-	if(dev) {
-		char cmd2[] = "ip route show default | awk '/default/ {print $5}'";
-
-		FILE* fp1 = popen(cmd2, "r");
-
-		if(fgets(dev, 16, fp1) == NULL){
-			success = false;
-		}
-
-		dev[15] = '\0';
-
-		int z = 0;
-		while(
-			(dev[z] >= 'a' && dev[z] <= 'z') || 
-			(dev[z] >= '0' && dev[z] <= '9') || 
-			(dev[z] >= 'A' && dev[z] <= 'Z') || 
-			(dev[z] == '-') || 
-			(dev[z] == '_')
-		) {
-			z++;
-		}
-
-		dev[z] = 0;
-
-		pclose(fp1);
-	}
-
-	return success;
-}
-
 char *chipvpn_format_bytes(uint64_t bytes) {
 	char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
 	char length = sizeof(suffix) / sizeof(suffix[0]);
@@ -268,7 +209,7 @@ bool chipvpn_secure_random(uint8_t *buf, int size) {
 uint64_t chipvpn_get_time() {
 	struct timespec ts;
 	clock_gettime(CLOCK_REALTIME_COARSE, &ts);
-	return ((int64_t)ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+	return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
 }
 
 int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {

@@ -11,7 +11,7 @@ extern "C"
 
 // Allocate about 1MB of buffer
 #define SOCKET_QUEUE_SIZE 64
-#define SOCKET_QUEUE_ENTRY_SIZE 16000
+#define SOCKET_QUEUE_ENTRY_SIZE 16384
 
 _Static_assert((SOCKET_QUEUE_SIZE & (SOCKET_QUEUE_SIZE - 1)) == 0, 
                "SOCKET_QUEUE_SIZE must be a power of 2");
@@ -44,7 +44,7 @@ typedef struct {
 
 typedef struct {
 	void *data;
-	int size;
+	size_t size;
 } chipvpn_socket_vector_t;
 
 chipvpn_socket_t                *chipvpn_socket_create(int fd, int type);

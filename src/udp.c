@@ -57,6 +57,10 @@ bool chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size) {
 	return setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == 0;
 }
 
+bool chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark) {
+	return setsockopt(sock->fd, SOL_SOCKET, SO_MARK, &fwmark, sizeof(fwmark)) == 0;
+}
+
 bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
 	struct sockaddr_in sa = {
 		.sin_family = AF_INET,

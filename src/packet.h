@@ -9,6 +9,7 @@ extern "C"
 #include <stdbool.h>
 #include "curve25519.h"
 #include "poly1305.h"
+#include "util.h"
 
 typedef struct __attribute__((__packed__)) {
 # if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -93,7 +94,7 @@ typedef struct __attribute__((__packed__)) {
 	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
 	uint8_t static_public[CURVE25519_KEY_SIZE];
 	uint8_t static_public_mac[POLY1305_MAC_SIZE];
-	uint8_t timestamp[12];
+	uint8_t timestamp[TAI64N_SIZE];
 	uint8_t timestamp_mac[POLY1305_MAC_SIZE];
 	uint8_t mac1[POLY1305_MAC_SIZE];
 	uint8_t mac2[POLY1305_MAC_SIZE];
@@ -104,7 +105,7 @@ typedef struct __attribute__((__packed__)) {
     uint8_t padding[3];             
     uint32_t sender_index;          
     uint32_t receiver_index;        
-    uint8_t ephemeral_public[32];  
+    uint8_t ephemeral_public[CURVE25519_KEY_SIZE];  
     uint8_t empty_mac[POLY1305_MAC_SIZE];        
     uint8_t mac1[POLY1305_MAC_SIZE];              
     uint8_t mac2[POLY1305_MAC_SIZE];             
