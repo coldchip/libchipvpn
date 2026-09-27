@@ -248,7 +248,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				uint64_t               counter     = le64toh(packet->counter);
 				uint8_t               *data        = packet->payload;
 				uint16_t               data_size   = CHACHA20_POLY1305_DEC_LEN(r - sizeof(chipvpn_packet_data_t));
-				uint8_t               *mac         = buffer + (r - POLY1305_MAC_SIZE);
+				uint8_t               *mac         = buffer + CHACHA20_POLY1305_DEC_LEN(r);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
 				if(!peer || peer->state != PEER_CONNECTED) {
