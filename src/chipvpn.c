@@ -165,7 +165,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
 		switch(header->type) {
 			case CHIPVPN_PACKET_AUTH: {
-				if(r < sizeof(chipvpn_packet_auth_t)) {
+				if(r != sizeof(chipvpn_packet_auth_t)) {
 					continue;
 				}
 
@@ -220,7 +220,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 			break;
 			case CHIPVPN_PACKET_AUTH_REPLY: {
-				if(r < sizeof(chipvpn_packet_auth_reply_t)) {
+				if(r != sizeof(chipvpn_packet_auth_reply_t)) {
 					continue;
 				}
 
