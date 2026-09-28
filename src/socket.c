@@ -28,12 +28,13 @@ chipvpn_socket_t *chipvpn_socket_create(int fd, int type) {
 	return sock;
 }
 
-int chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
-	int r = -1;
+ssize_t chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
+	ssize_t r = -1;
 
 	if(sock->type == CHIPVPN_SOCKET_DGRAM) {
 		struct sockaddr_in sa;
-		int len = sizeof(sa);
+		memset(&sa, 0, sizeof(sa));
+		size_t len = sizeof(sa);
 
 		r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), MSG_DONTWAIT, (struct sockaddr*)&sa, (socklen_t*)&len);
 
@@ -46,8 +47,8 @@ int chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t
 	return r;
 }
 
-int chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
-	int w = -1;
+ssize_t chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
+	ssize_t w = -1;
 
 	if(sock->type == CHIPVPN_SOCKET_DGRAM) {
 		struct sockaddr_in sa = {
@@ -81,12 +82,12 @@ void chipvpn_socket_postselect_rdset(chipvpn_socket_t *sock, fd_set *rdset) {
 			return;
 		}
 
-		int r = chipvpn_socket_raw_read(sock, entry);
+		ssize_t r = chipvpn_socket_raw_read(sock, entry);
 		if(r <= 0) {
 			return;
 		}
 
-		entry->size = r;
+		entry->size = (uint16_t)r;
 
 		chipvpn_socket_enqueue_commit(&sock->rx_queue, entry);
 	}
@@ -99,7 +100,7 @@ void chipvpn_socket_postselect_wdset(chipvpn_socket_t *sock, fd_set *wdset) {
 			return;
 		}
 
-		int w = chipvpn_socket_raw_write(sock, entry);
+		ssize_t w = chipvpn_socket_raw_write(sock, entry);
 		if(w <= 0) {
 			return;
 		}
@@ -156,7 +157,7 @@ bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
 	return sock->tx_queue.size < SOCKET_QUEUE_SIZE;
 }
 
-int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
+size_t chipvpn_socket_read(chipvpn_socket_t *sock, void *data, size_t size, chipvpn_address_t *addr) {
 	chipvpn_socket_vector_t vector[] = {{
 		.data = data,
 		.size = size
@@ -165,7 +166,7 @@ int chipvpn_socket_read(chipvpn_socket_t *sock, void *data, int size, chipvpn_ad
 	return chipvpn_socket_read_vector(sock, vector, 1, addr);
 }
 
-int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_address_t *addr) {
+size_t chipvpn_socket_write(chipvpn_socket_t *sock, void *data, size_t size, chipvpn_address_t *addr) {
 	chipvpn_socket_vector_t vector[] = {{
 		.data = data,
 		.size = size
@@ -174,7 +175,7 @@ int chipvpn_socket_write(chipvpn_socket_t *sock, void *data, int size, chipvpn_a
 	return chipvpn_socket_write_vector(sock, vector, 1, addr);
 }
 
-int chipvpn_socket_read_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, int size, chipvpn_address_t *addr) {
+size_t chipvpn_socket_read_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, size_t size, chipvpn_address_t *addr) {
 	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_dequeue_acquire(&sock->rx_queue);
 	if(entry == NULL) {
 		return 0;
@@ -184,9 +185,9 @@ int chipvpn_socket_read_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *
 		*addr = entry->addr;
 	}
 
-	int r = 0;
-	for(int i = 0; i < size; i++) {
-		int chunk_size = MIN(vector[i].size, entry->size - r);
+	size_t r = 0;
+	for(size_t i = 0; i < size; i++) {
+		size_t chunk_size = MIN(vector[i].size, entry->size - r);
 		memcpy(vector[i].data, entry->buffer + r, chunk_size);
 		r += chunk_size;
 	}
@@ -198,7 +199,7 @@ int chipvpn_socket_read_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *
 	return r;
 }
 
-int chipvpn_socket_write_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, int size, chipvpn_address_t *addr) {
+size_t chipvpn_socket_write_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, size_t size, chipvpn_address_t *addr) {
 	chipvpn_socket_queue_entry_t *entry = chipvpn_socket_enqueue_acquire(&sock->tx_queue);
 	if(entry == NULL) {
 		return 0;
@@ -208,14 +209,14 @@ int chipvpn_socket_write_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t 
 		entry->addr = *addr;
 	}
 
-	int w = 0;
-	for(int i = 0; i < size; i++) {
-		int chunk_size = MIN(vector[i].size, sizeof(entry->buffer) - w);
+	size_t w = 0;
+	for(size_t i = 0; i < size; i++) {
+		size_t chunk_size = MIN(vector[i].size, sizeof(entry->buffer) - w);
 		memcpy(entry->buffer + w, vector[i].data, chunk_size);
 		w += chunk_size;
 	}
 
-	entry->size = w;
+	entry->size = (uint16_t)w;
 
 	chipvpn_socket_enqueue_commit(&sock->tx_queue, entry);
 

@@ -24,6 +24,10 @@ extern "C"
 #define CHIPVPN_PEER_TIMEOUT 30000
 #define CHIPVPN_PEER_PING 2000
 
+#define PREV_SESSION 0
+#define CURR_SESSION 1
+#define NEXT_SESSION 2
+
 typedef enum {
 	PEER_DISCONNECTED,
 	PEER_CONNECTED
@@ -35,6 +39,22 @@ typedef enum {
 } chipvpn_peer_type_e;
 
 typedef struct {
+	bool used;
+	struct inbound {
+		uint32_t id;
+		uint8_t key[CHACHA20_KEY_SIZE];
+	} inbound;
+
+	struct outbound {
+		uint32_t id;
+		uint8_t key[CHACHA20_KEY_SIZE];
+	} outbound;
+
+	uint64_t counter;
+	chipvpn_bitmap_t bitmap;
+} chipvpn_peer_session_t;
+
+typedef struct {
 	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
 	chipvpn_peer_type_e type;
@@ -42,18 +62,10 @@ typedef struct {
 	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
 	uint8_t ephemeral_private[CURVE25519_KEY_SIZE];
 
-	struct inbound {
-		uint32_t session;
-		uint8_t key[CHACHA20_KEY_SIZE];
-	} inbound;
-
-	struct outbound {
-		uint32_t session;
-		uint8_t key[CHACHA20_KEY_SIZE];
-	} outbound;
-
 	uint8_t chain_key[BLAKE2S_HASH_SIZE];
 	uint8_t hash_key[BLAKE2S_HASH_SIZE];
+
+	chipvpn_peer_session_t session;
 
 	chipvpn_address_t address;
 
@@ -73,8 +85,6 @@ typedef struct {
 	uint64_t rx;
 	uint64_t last_check;
 	uint64_t timeout;
-	uint64_t counter;
-	chipvpn_bitmap_t bitmap;
 } chipvpn_peer_t;
 
 chipvpn_peer_t      *chipvpn_peer_create();

@@ -57,8 +57,8 @@ chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
 
 void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
 	struct timeval tv;
-	tv.tv_sec = timeout / 1000;
-	tv.tv_usec = (timeout % 1000) * 1000;
+	tv.tv_sec  = (time_t)(timeout / 1000);
+	tv.tv_usec = (suseconds_t)((timeout % 1000) * 1000);
 
 	int max = 0;
 
@@ -99,7 +99,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* ipc */
 	while(chipvpn_socket_can_read(vpn->ipc->socket) && chipvpn_socket_can_write(vpn->ipc->socket)) {
-		int x = chipvpn_socket_read(vpn->ipc->socket, buffer, sizeof(buffer), NULL);
+		size_t x = chipvpn_socket_read(vpn->ipc->socket, buffer, sizeof(buffer), NULL);
 		buffer[x] = '\0';
 
 		chipvpn_config_command(vpn, (char*)buffer);
@@ -109,7 +109,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* tunnel => socket */
 	while(chipvpn_socket_can_read(vpn->device->socket) && chipvpn_socket_can_write(vpn->udp->socket)) {
-		int r = chipvpn_socket_read(vpn->device->socket, buffer, sizeof(buffer), NULL);
+		size_t r = chipvpn_socket_read(vpn->device->socket, buffer, sizeof(buffer), NULL);
 		if(r <= 0) {
 			continue;
 		}
@@ -127,17 +127,17 @@ int chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
-		peer->counter++;
+		peer->session.counter++;
 
 		chipvpn_packet_data_t header = {
 			.header.type = CHIPVPN_PACKET_DATA,
-			.session     = htole32(peer->outbound.session),
-			.counter     = htole64(peer->counter)
+			.session     = htole32(peer->session.outbound.id),
+			.counter     = htole64(peer->session.counter)
 		};
 
 		uint8_t mac[POLY1305_MAC_SIZE];
 
-		if(!chipvpn_peer_encrypt_payload(peer, buffer, r, peer->counter, mac)) {
+		if(!chipvpn_peer_encrypt_payload(peer, buffer, r, peer->session.counter, mac)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			continue;
 		}
@@ -157,7 +157,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 	while(chipvpn_socket_can_read(vpn->udp->socket) && chipvpn_socket_can_write(vpn->device->socket)) {
 		chipvpn_address_t addr;
 
-		int r = chipvpn_socket_read(vpn->udp->socket, buffer, sizeof(buffer), &addr);
+		size_t r = chipvpn_socket_read(vpn->udp->socket, buffer, sizeof(buffer), &addr);
 		if(r < sizeof(chipvpn_packet_header_t)) {
 			continue;
 		}
@@ -239,7 +239,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
-				if(r < CHACHA20_POLY1305_ENC_LEN(sizeof(chipvpn_packet_data_t))) {
+				if(r < sizeof(chipvpn_packet_data_t) + CHACHA20_POLY1305_ENC_LEN(0)) {
 					continue;
 				}
 
@@ -247,7 +247,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				uint32_t               session     = le32toh(packet->session);
 				uint64_t               counter     = le64toh(packet->counter);
 				uint8_t               *data        = packet->payload;
-				uint16_t               data_size   = CHACHA20_POLY1305_DEC_LEN(r - sizeof(chipvpn_packet_data_t));
+				size_t                 data_size   = CHACHA20_POLY1305_DEC_LEN(r - sizeof(chipvpn_packet_data_t));
 				uint8_t               *mac         = buffer + CHACHA20_POLY1305_DEC_LEN(r);
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
@@ -266,7 +266,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* must be after decrypt */
-				if(!chipvpn_bitmap_validate(&peer->bitmap, counter)) {
+				if(!chipvpn_bitmap_validate(&peer->session.bitmap, counter)) {
 					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
 					continue;
 				}
