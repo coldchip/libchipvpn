@@ -63,7 +63,7 @@ bool         chipvpn_secure_random(uint8_t *buf, int size);
 uint64_t     chipvpn_get_time();
 int          chipvpn_secure_memcmp(const void *a, const void *b, size_t size);
 void         chipvpn_secure_zero(void *v, size_t n);
-bool         chipvpn_check_key_randomness(const uint8_t *key, size_t length);
+bool         chipvpn_check_key_entropy(const uint8_t *key, size_t length);
 void         chipvpn_tai64n(uint8_t *output);
 
 static inline void chipvpn_wipe_mem_32(uint8_t (*key)[32]) {

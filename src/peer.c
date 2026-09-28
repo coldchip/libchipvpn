@@ -78,10 +78,10 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 }
 
 int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
-	uint8_t key[BLAKE2S_HASH_SIZE] = {0};
-
 	SECURE32 uint8_t dh_ss[CURVE25519_KEY_SIZE];
 	curve25519(dh_ss, device->private, peer->config.public);
+
+	uint8_t key[BLAKE2S_HASH_SIZE] = {0};
 	chipvpn_blake2s_kdf2(peer->chain_key, key, peer->chain_key, dh_ss, sizeof(dh_ss));
 
 	if(!chipvpn_decrypt_and_mix(peer->hash_key, key, packet->timestamp, sizeof(packet->timestamp), packet->timestamp_mac)) {
@@ -166,6 +166,11 @@ int chipvpn_peer_send_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chip
 }
 
 int chipvpn_peer_recv_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr) {
+	if(!chipvpn_check_key_entropy(packet->ephemeral_public, sizeof(packet->ephemeral_public))) {
+		chipvpn_log_append("not enough entropy for ephemeral public\n");
+		return 0;
+	}
+
 	if(le32toh(packet->receiver_index) != peer->session.inbound.id) {
 		chipvpn_log_append("Dropped Handshake Response: Session ID mismatch. %u %u\n", le32toh(packet->receiver_index), peer->session.inbound.id);
 		return 0;
