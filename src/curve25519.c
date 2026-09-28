@@ -838,5 +838,11 @@ int curve25519(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
 	crecip(zmone, z);
 	fmul(z, x, zmone);
 	fcontract(mypublic, z);
-	return 0;
+
+	uint8_t acc = 0;
+	for(i = 0; i < 32; ++i) {
+		acc |= mypublic[i];
+	}
+
+	return (acc != 0) ? 1 : 0;
 }

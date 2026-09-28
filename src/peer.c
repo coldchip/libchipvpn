@@ -47,7 +47,10 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	peer->ephemeral_private[0] &= 248;
 	peer->ephemeral_private[31] = (peer->ephemeral_private[31] & 127) | 64;
 	uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
-	curve25519(peer->ephemeral_public, peer->ephemeral_private, basepoint);
+	if(!curve25519(peer->ephemeral_public, peer->ephemeral_private, basepoint)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 
 	memcpy(packet.ephemeral_public, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
@@ -55,7 +58,10 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	chipvpn_blake2s_concat(peer->hash_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
 	SECURE32 uint8_t dh_es[CURVE25519_KEY_SIZE];
-	curve25519(dh_es, peer->ephemeral_private, peer->config.public);
+	if(!curve25519(dh_es, peer->ephemeral_private, peer->config.public)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 
 	SECURE32 uint8_t key[CHACHA20_KEY_SIZE];
 	chipvpn_blake2s_kdf2(peer->chain_key, key, peer->chain_key, dh_es, sizeof(dh_es));
@@ -65,7 +71,10 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	chipvpn_encrypt_and_mix(peer->hash_key, key, packet.static_public, sizeof(packet.static_public), packet.static_public_mac);
 
 	SECURE32 uint8_t dh_ss[CURVE25519_KEY_SIZE];
-	curve25519(dh_ss, device->private, peer->config.public);
+	if(!curve25519(dh_ss, device->private, peer->config.public)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 	chipvpn_blake2s_kdf2(peer->chain_key, key, peer->chain_key, dh_ss, sizeof(dh_ss));
 
 	chipvpn_tai64n(packet.timestamp);
@@ -79,7 +88,10 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
 	SECURE32 uint8_t dh_ss[CURVE25519_KEY_SIZE];
-	curve25519(dh_ss, device->private, peer->config.public);
+	if(!curve25519(dh_ss, device->private, peer->config.public)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 
 	uint8_t key[BLAKE2S_HASH_SIZE] = {0};
 	chipvpn_blake2s_kdf2(peer->chain_key, key, peer->chain_key, dh_ss, sizeof(dh_ss));
@@ -102,17 +114,26 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 	// calculate public key
 	uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
-	curve25519(peer->ephemeral_public, peer->ephemeral_private, basepoint);
+	if(!curve25519(peer->ephemeral_public, peer->ephemeral_private, basepoint)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 
 	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 	chipvpn_blake2s_concat(peer->hash_key, peer->ephemeral_public, sizeof(peer->ephemeral_public));
 
 	SECURE32 uint8_t dh_ee[CURVE25519_KEY_SIZE];
-	curve25519(dh_ee, peer->ephemeral_private, packet->ephemeral_public);
+	if(!curve25519(dh_ee, peer->ephemeral_private, packet->ephemeral_public)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, dh_ee, sizeof(dh_ee));
 
 	SECURE32 uint8_t dh_es[CURVE25519_KEY_SIZE];
-	curve25519(dh_es, peer->ephemeral_private, peer->config.public);
+	if(!curve25519(dh_es, peer->ephemeral_private, peer->config.public)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, dh_es, sizeof(dh_es));
 
 	/* authenticated */
@@ -175,11 +196,17 @@ int chipvpn_peer_recv_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chip
 	chipvpn_blake2s_concat(peer->hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
 	SECURE32 uint8_t dh_ee[CURVE25519_KEY_SIZE];
-	curve25519(dh_ee, peer->ephemeral_private, packet->ephemeral_public);
+	if(!curve25519(dh_ee, peer->ephemeral_private, packet->ephemeral_public)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, dh_ee, sizeof(dh_ee));
 
 	SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
-	curve25519(dh_se, device->private, packet->ephemeral_public);
+	if(!curve25519(dh_se, device->private, packet->ephemeral_public)) {
+		chipvpn_log_append("curve25519 failed\n");
+		return 0;
+	}
 	chipvpn_blake2s_kdf1(peer->chain_key, peer->chain_key, dh_se, sizeof(dh_se));
 
 	uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
