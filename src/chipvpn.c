@@ -175,17 +175,17 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
+				if(!chipvpn_check_key_entropy(packet->ephemeral_public, sizeof(packet->ephemeral_public))) {
+					chipvpn_log_append("not enough entropy for ephemeral public\n");
+					return 0;
+				}
+
 				uint8_t chain_key[BLAKE2S_HASH_SIZE];
 				uint8_t hash_key[BLAKE2S_HASH_SIZE];
 
 				chipvpn_init_noise(chain_key, hash_key, vpn->device->public);
 				chipvpn_blake2s_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 				chipvpn_blake2s_concat(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
-
-				if(!chipvpn_check_key_entropy(packet->ephemeral_public, sizeof(packet->ephemeral_public))) {
-					chipvpn_log_append("not enough entropy for ephemeral public\n");
-					return 0;
-				}
 
 				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
 				curve25519(dh_se, vpn->device->private, packet->ephemeral_public);
@@ -234,6 +234,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_packet_auth_reply_t *packet = (chipvpn_packet_auth_reply_t*)buffer;
+
+				if(!chipvpn_check_key_entropy(packet->ephemeral_public, sizeof(packet->ephemeral_public))) {
+					chipvpn_log_append("not enough entropy for ephemeral public\n");
+					return 0;
+				}
 
 				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, le32toh(packet->receiver_index));
 				if(!peer) {
