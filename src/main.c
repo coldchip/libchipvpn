@@ -19,6 +19,8 @@
 volatile sig_atomic_t quit = 0;
 
 void terminate(int type) {
+	(void)type;
+
 	chipvpn_log_append("interrupt received\n");
 	quit = 1;
 }
@@ -40,7 +42,9 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 			return 0;
 		}
 
-		write(fd, file, strlen(file) + 1);
+		if(write(fd, file, strlen(file) + 1)) {
+			
+		}
 
 		free(file);
 
@@ -89,11 +93,11 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 	                ssize_t n = read(sock, buf, sizeof(buf));
 	                if(n <= 0) break; 
 	                
-	                ssize_t written = 0;
-	                while(written < n) {
-	                    ssize_t w = write(fd, buf + written, n - written);
+	                size_t written = 0;
+	                while(written < (size_t)n) {
+	                    ssize_t w = write(fd, buf + written, (size_t)n - written);
 	                    if (w <= 0) goto proxy_done;
-	                    written += w;
+	                    written += (size_t)w;
 	                }
 	            }
 
@@ -101,11 +105,11 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 	                ssize_t n = read(fd, buf, sizeof(buf));
 	                if(n <= 0) break;
 	                
-	                ssize_t written = 0;
-	                while(written < n) {
-	                    ssize_t w = write(sock, buf + written, n - written);
+	                size_t written = 0;
+	                while(written < (size_t)n) {
+	                    ssize_t w = write(sock, buf + written, (size_t)n - written);
 	                    if (w <= 0) goto proxy_done;
-	                    written += w;
+	                    written += (size_t)w;
 	                }
 	            }
 	        }
@@ -121,7 +125,7 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 }
 
 int chipvpn_main(int argc, char const *argv[], int fd) {
-	srand(time(NULL)); 
+	srand((unsigned int)time(NULL)); 
 
 	signal(SIGINT, terminate);
 	signal(SIGTERM, terminate);

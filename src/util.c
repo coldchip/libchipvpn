@@ -294,11 +294,11 @@ void chipvpn_tai64n(uint8_t *output) {
 	// Otherwise, the WireGuard remote peer rejects handshake.
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	uint64_t millis = (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL));
+	uint64_t millis = (uint64_t)(tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL));
 
 	// Split into seconds offset + nanos
 	uint64_t seconds = 0x400000000000000aULL + (millis / 1000);
-	uint32_t nanos = (millis % 1000) * 1000;
+	uint32_t nanos = (uint32_t)((millis % 1000) * 1000);
 	U64TO8_BIG(output + 0, seconds);
 	U32TO8_BIG(output + 8, nanos);
 }

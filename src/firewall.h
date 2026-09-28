@@ -4,7 +4,7 @@
 #include "packet.h"
 
 typedef struct {
-	int mss;
+	uint16_t mss;
 } chipvpn_firewall_t;
 
 void    chipvpn_firewall_reset(chipvpn_firewall_t *firewall);
