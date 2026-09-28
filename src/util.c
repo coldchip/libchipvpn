@@ -249,7 +249,7 @@ static int count_set_bits(uint8_t byte) {
 	return count;
 }
 
-bool chipvpn_check_key_randomness(const uint8_t *key, size_t length) {
+bool chipvpn_check_key_entropy(const uint8_t *key, size_t length) {
 	if(!key || length == 0) return false;
 
 	int total_bits = length * 8;
