@@ -262,11 +262,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
-					chipvpn_log_append("%p says: invalid src ip or src port\n", peer);
-					continue;
-				}
-
 				if(!chipvpn_peer_decrypt_payload(session, data, data_size, counter, mac)) {
 					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
 					continue;
@@ -277,6 +272,8 @@ int chipvpn_service(chipvpn_t *vpn) {
 					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
 					continue;
 				}
+
+				peer->address = addr;
 
 				if(session == &peer->next_session) {
 					chipvpn_peer_session_promote(peer);
