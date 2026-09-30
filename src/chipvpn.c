@@ -137,7 +137,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		uint8_t mac[POLY1305_MAC_SIZE];
 
-		if(!chipvpn_peer_encrypt_payload(peer, buffer, r, peer->session.counter, mac)) {
+		if(!chipvpn_peer_encrypt_payload(&peer->session, buffer, r, peer->session.counter, mac)) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			continue;
 		}
@@ -233,12 +233,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_reply_t *packet = (chipvpn_packet_auth_reply_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, le32toh(packet->receiver_index));
-				if(!peer) {
+				chipvpn_peer_session_t *session = NULL;
+
+				chipvpn_peer_t *peer = chipvpn_peer_by_session(&vpn->device->peers, &session, le32toh(packet->receiver_index));
+				if(!peer || !session) {
 					continue;
 				}
 
-				chipvpn_peer_recv_reply(peer, vpn->device, vpn->udp, packet, &addr);
+				chipvpn_peer_recv_auth_reply(peer, vpn->device, vpn->udp, packet, &addr);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -247,14 +249,16 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_packet_data_t *packet      = (chipvpn_packet_data_t*)buffer;
-				uint32_t               session     = le32toh(packet->session);
+				uint32_t               session_id  = le32toh(packet->session);
 				uint64_t               counter     = le64toh(packet->counter);
 				uint8_t               *data        = packet->payload;
 				size_t                 data_size   = CHACHA20_POLY1305_DEC_LEN(r - sizeof(chipvpn_packet_data_t));
 				uint8_t               *mac         = buffer + CHACHA20_POLY1305_DEC_LEN(r);
 
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_inbound_session(&vpn->device->peers, session);
-				if(!peer || peer->state != PEER_CONNECTED) {
+				chipvpn_peer_session_t *session = NULL;
+
+				chipvpn_peer_t *peer = chipvpn_peer_by_session(&vpn->device->peers, &session, session_id);
+				if(!peer || !session || peer->state != PEER_CONNECTED) {
 					continue;
 				}
 
@@ -263,18 +267,20 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				if(!chipvpn_peer_decrypt_payload(peer, data, data_size, counter, mac)) {
+				if(!chipvpn_peer_decrypt_payload(session, data, data_size, counter, mac)) {
 					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
 					continue;
 				}
 
 				/* must be after decrypt */
-				if(!chipvpn_bitmap_validate(&peer->session.bitmap, counter)) {
+				if(!chipvpn_bitmap_validate(&session->bitmap, counter)) {
 					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
 					continue;
 				}
 
-				chipvpn_peer_keepalive(peer);
+				if(session == &peer->next_session) {
+					chipvpn_peer_session_promote(peer);
+				}
 
 				if(data_size == 0) {
 					continue;
