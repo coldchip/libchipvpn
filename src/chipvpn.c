@@ -273,7 +273,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				peer->address = addr;
+				/* authenticated */
+
+				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
+					chipvpn_log_append("%p says: ip or port changed\n", peer);
+					peer->address = addr;
+				}
 
 				if(session == &peer->next_session) {
 					chipvpn_peer_session_promote(peer);
