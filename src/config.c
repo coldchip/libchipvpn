@@ -145,7 +145,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
 				peer->type = PEER_EPHEMERAL;
-				peer->timeout = chipvpn_get_time() + CHIPVPN_PEER_TIMEOUT;
+				peer->last_connect = chipvpn_get_time();
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
