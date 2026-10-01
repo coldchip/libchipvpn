@@ -61,11 +61,13 @@ typedef struct {
 	chipvpn_peer_state_e state;
 	chipvpn_peer_type_e type;
 
-	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
-	uint8_t ephemeral_private[CURVE25519_KEY_SIZE];
+	struct {
+		uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
+		uint8_t ephemeral_private[CURVE25519_KEY_SIZE];
 
-	uint8_t chain_key[BLAKE2S_HASH_SIZE];
-	uint8_t hash_key[BLAKE2S_HASH_SIZE];
+		uint8_t chain_key[BLAKE2S_HASH_SIZE];
+		uint8_t hash_key[BLAKE2S_HASH_SIZE];
+	} handshake;
 
 	chipvpn_peer_session_t prev_session;
 	chipvpn_peer_session_t session;

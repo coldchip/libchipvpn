@@ -24,6 +24,7 @@
 #include "ratelimit.h"
 #include "log.h"
 #include "util.h"
+#include "noise.h"
 
 chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
@@ -175,49 +176,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				uint8_t chain_key[BLAKE2S_HASH_SIZE];
-				uint8_t hash_key[BLAKE2S_HASH_SIZE];
-
-				chipvpn_init_noise(chain_key, hash_key, vpn->device->public);
-				chipvpn_blake2s_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
-				chipvpn_blake2s_concat(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
-
-				SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
-				if(!curve25519(dh_se, vpn->device->private, packet->ephemeral_public)) {
-					chipvpn_log_append("curve25519 failed\n");
-					return 0;
-				}
-
-				uint8_t enc_static[CHACHA20_POLY1305_ENC_LEN(CURVE25519_KEY_SIZE)] = {0};
-				memcpy(enc_static, packet->static_public, sizeof(packet->static_public));
-				memcpy(enc_static + sizeof(packet->static_public), packet->static_public_mac, sizeof(packet->static_public_mac));
-
-				uint8_t key[CHACHA20_KEY_SIZE] = {0};
-
-				chipvpn_blake2s_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se));
-				
-				if(!chipvpn_decrypt_and_mix(hash_key, key, packet->static_public, sizeof(packet->static_public), packet->static_public_mac)) {
-					chipvpn_log_append("unable to decrypt\n");
-					continue;
-				}
-
-				chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, packet->static_public);
+				chipvpn_peer_t *peer = chipvpn_noise_consume_connect(vpn->device, packet);
 				if(!peer) {
-					if(chipvpn_socket_can_write(vpn->ipc->socket)) {
-						char public_b64[64];
-						char bufstr[512];
-
-						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
-
-						sprintf(bufstr, "REJECT %s\n", public_b64);
-						chipvpn_socket_write(vpn->ipc->socket, bufstr, strlen(bufstr), NULL);
-					}
-					chipvpn_log_append("public key not found\n");
+					chipvpn_log_append("noise handshake failed");
 					continue;
 				}
-
-				memcpy(peer->chain_key, chain_key, sizeof(chain_key));
-				memcpy(peer->hash_key, hash_key, sizeof(hash_key));
 
 				chipvpn_peer_recv_connect(peer, vpn->device, vpn->udp, packet, &addr);
 			}
@@ -233,10 +196,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_reply_t *packet = (chipvpn_packet_auth_reply_t*)buffer;
 
-				chipvpn_peer_session_t *session = NULL;
-
-				chipvpn_peer_t *peer = chipvpn_peer_by_session(&vpn->device->peers, &session, le32toh(packet->receiver_index));
-				if(!peer || !session) {
+				chipvpn_peer_t *peer = chipvpn_noise_consume_reply(vpn->device, packet);
+				if(!peer) {
+					chipvpn_log_append("noise handshake failed");
 					continue;
 				}
 
