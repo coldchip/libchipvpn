@@ -20,7 +20,6 @@ extern "C"
 #include "curve25519.h"
 #include "blake2s.h"
 #include "util.h"
-#include "noise.h"
 
 #define CHIPVPN_PEER_PING 2000
 
@@ -42,7 +41,7 @@ typedef enum {
 } chipvpn_peer_type_e;
 
 typedef struct {
-	bool used;
+	chipvpn_list_node_t node;
 	struct inbound {
 		uint32_t id;
 		uint8_t key[CHACHA20_KEY_SIZE];
