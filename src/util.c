@@ -20,57 +20,6 @@
 #include <stddef.h>
 #include <time.h>
 
-void chipvpn_init_noise(uint8_t *chain_key, uint8_t *hash_key, const uint8_t *peer_pub) {
-	const char protocol_name[37] = "Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s";
-	const char prologue[34]      = "WireGuard v1 zx2c4 Jason@zx2c4.com";
-
-	blake2s(chain_key, BLAKE2S_HASH_SIZE, NULL, 0, protocol_name, sizeof(protocol_name));
-
-	memcpy(hash_key, chain_key, BLAKE2S_HASH_SIZE);
-
-	chipvpn_blake2s_concat(hash_key, (const uint8_t*)prologue, sizeof(prologue));
-	chipvpn_blake2s_concat(hash_key, peer_pub, CURVE25519_KEY_SIZE);
-}
-
-void chipvpn_compute_macs(void *packet, size_t auth_len, uint8_t *mac1, uint8_t *mac2, const uint8_t *peer_pub) {
-	uint8_t mac1_key[BLAKE2S_HASH_SIZE];
-	blake2s_ctx ctx;
-	blake2s_init(&ctx, BLAKE2S_HASH_SIZE, NULL, 0);
-	blake2s_update(&ctx, (const uint8_t*)"mac1----", 8);
-	blake2s_update(&ctx, peer_pub, BLAKE2S_HASH_SIZE);
-	blake2s_final(&ctx, mac1_key);
-
-	blake2s_init(&ctx, POLY1305_MAC_SIZE, mac1_key, BLAKE2S_HASH_SIZE);
-	blake2s_update(&ctx, (const uint8_t*)packet, auth_len);
-	blake2s_final(&ctx, mac1);
-	chipvpn_secure_zero(mac2, POLY1305_MAC_SIZE);
-}
-
-void chipvpn_encrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac) {
-	chipvpn_crypto_chacha20_poly1305_encrypt(cipher_key, data, len, 0, hash_key, BLAKE2S_HASH_SIZE, mac);
-	
-	uint8_t mixed[CHACHA20_POLY1305_ENC_LEN(len)];
-	if(len > 0) {
-		memcpy(mixed, data, len);
-	}
-	memcpy(mixed + len, mac, POLY1305_MAC_SIZE);
-	chipvpn_blake2s_concat(hash_key, mixed, sizeof(mixed));
-}
-
-bool chipvpn_decrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac) {
-	uint8_t mixed[CHACHA20_POLY1305_ENC_LEN(len)];
-	if(len > 0) {
-		memcpy(mixed, data, len);
-	}
-	memcpy(mixed + len, mac, POLY1305_MAC_SIZE);
-
-	if(!chipvpn_crypto_chacha20_poly1305_decrypt(cipher_key, data, len, 0, hash_key, BLAKE2S_HASH_SIZE, mac)) {
-		return false;
-	}
-	chipvpn_blake2s_concat(hash_key, mixed, sizeof(mixed));
-	return true;
-}
-
 void chipvpn_print_key(uint8_t *key) {
 	for(int i = 0; i < 32; i++) {
 		printf("%02x", key[i] & 0xff);

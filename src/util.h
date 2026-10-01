@@ -48,11 +48,6 @@ do { \
     (p)[0] = _U8V((v) >> 24); \
 } while (0)
 
-void         chipvpn_init_noise(uint8_t *chain_key, uint8_t *hash_key, const uint8_t *peer_pub);
-void         chipvpn_compute_macs(void *packet, size_t auth_len, uint8_t *mac1, uint8_t *mac2, const uint8_t *peer_pub);
-void         chipvpn_encrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac);
-bool         chipvpn_decrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac);
-
 void         chipvpn_print_key(uint8_t *key);
 char        *chipvpn_strdup(const char *s);
 char        *chipvpn_read_file(const char *file);
