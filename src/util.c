@@ -2,8 +2,6 @@
 #include "base64.h"
 #include "curve25519.h"
 #include "chacha20poly1305.h"
-#include "hmac_blake2s.h"
-#include "blake2s.h"
 #include "poly1305.h"
 #include "log.h"
 #include <stdlib.h>
