@@ -271,6 +271,7 @@ bool chipvpn_noise_produce_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 
 	return true;
 }
+
 chipvpn_peer_t *chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet) {
 	chipvpn_peer_t *peer = chipvpn_peer_by_handshake(&device->peers, le32toh(packet->receiver_index));
 	if(!peer) {
