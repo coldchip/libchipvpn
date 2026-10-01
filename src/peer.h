@@ -20,6 +20,7 @@ extern "C"
 #include "curve25519.h"
 #include "blake2s.h"
 #include "util.h"
+#include "noise.h"
 
 #define CHIPVPN_PEER_PING 2000
 
@@ -56,12 +57,15 @@ typedef struct {
 	chipvpn_bitmap_t bitmap;
 } chipvpn_peer_session_t;
 
-typedef struct {
+typedef struct chipvpn_peer_t {
 	chipvpn_list_node_t node;
 	chipvpn_peer_state_e state;
 	chipvpn_peer_type_e type;
 
 	struct {
+		uint32_t outbound_id;
+		uint32_t inbound_id;
+
 		uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
 		uint8_t ephemeral_private[CURVE25519_KEY_SIZE];
 
@@ -113,6 +117,7 @@ bool                    chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char
 bool                    chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);
 chipvpn_peer_t         *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *public);
 chipvpn_peer_t         *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
+chipvpn_peer_t         *chipvpn_peer_by_handshake(chipvpn_list_t *peers, uint32_t session_id);
 chipvpn_peer_t         *chipvpn_peer_by_session(chipvpn_list_t *peers, chipvpn_peer_session_t **session, uint32_t session_id);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
 void                    chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state);

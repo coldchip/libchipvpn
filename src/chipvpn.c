@@ -3,9 +3,6 @@
 #include <unistd.h>
 #include <endian.h>
 #include <stdio.h>
-#include "chacha20.h"
-#include "chacha20poly1305.h"
-#include "curve25519.h"
 #include "chipvpn.h"
 #include "socket.h"
 #include "udp.h"
@@ -17,14 +14,12 @@
 #include "address.h"
 #include "peer.h"
 #include "bitmap.h"
-#include "blake2s.h"
 #include "hmac_blake2s.h"
-#include "poly1305.h"
-#include "base64.h"
 #include "ratelimit.h"
 #include "log.h"
 #include "util.h"
 #include "noise.h"
+#include "handshake.h"
 
 chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
@@ -176,9 +171,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_noise_consume_connect(vpn->device, packet);
+				chipvpn_peer_t *peer = chipvpn_handshake_consume_connect(vpn->device, packet);
 				if(!peer) {
-					chipvpn_log_append("noise handshake failed");
+					chipvpn_log_append("noise handshake failed\n");
 					continue;
 				}
 
@@ -196,9 +191,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_reply_t *packet = (chipvpn_packet_auth_reply_t*)buffer;
 
-				chipvpn_peer_t *peer = chipvpn_noise_consume_reply(vpn->device, packet);
+				chipvpn_peer_t *peer = chipvpn_handshake_consume_reply(vpn->device, packet);
 				if(!peer) {
-					chipvpn_log_append("noise handshake failed");
+					chipvpn_log_append("noise handshake failed\n");
 					continue;
 				}
 

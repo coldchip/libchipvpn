@@ -17,6 +17,7 @@
 #include "log.h"
 #include "util.h"
 #include "noise.h"
+#include "handshake.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -36,8 +37,8 @@ chipvpn_peer_t *chipvpn_peer_create() {
 int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_t packet;
 	
-	if(!chipvpn_noise_produce_connect(peer, device, &packet)) {
-		chipvpn_log_append("noise handshake failed");
+	if(!chipvpn_handshake_produce_connect(peer, device, &packet)) {
+		chipvpn_log_append("noise handshake failed\n");
 		return 0;
 	}
 
@@ -46,17 +47,20 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
 	/* authenticated */
+	if(!chipvpn_peer_send_auth_reply(peer, device, udp, addr)) {
+		chipvpn_log_append("noise handshake failed\n");
+	}
+
+	if(!chipvpn_handshake_begin_session(peer, false)) {
+		chipvpn_log_append("peer failed to create session\n");
+	}
 
 	peer->address = *addr;
 	peer->last_connect = chipvpn_get_time();
-	peer->next_session.counter = 0llu;
-	peer->next_session.outbound.id = le32toh(packet->sender_index);
-	chipvpn_bitmap_reset(&peer->next_session.bitmap);
 
-	chipvpn_peer_send_auth_reply(peer, device, udp, addr);
-
-	uint8_t dummy[1] = {0};
-	chipvpn_noise_kdf2(peer->next_session.inbound.key, peer->next_session.outbound.key, peer->handshake.chain_key, dummy, 0);
+	chipvpn_log_append("%p says: hello\n", peer);
+	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
+	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
@@ -64,18 +68,14 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		chipvpn_peer_session_promote(peer);
 	}
 
-	chipvpn_log_append("%p says: hello\n", peer);
-	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->next_session.inbound.id, peer->next_session.outbound.id);
-	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
-
 	return 0;
 }
 
 int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_reply_t packet;
 	
-	if(!chipvpn_noise_produce_reply(peer, device, &packet)) {
-		chipvpn_log_append("noise handshake failed");
+	if(!chipvpn_handshake_produce_reply(peer, device, &packet)) {
+		chipvpn_log_append("noise handshake failed\n");
 		return 0;
 	}
 
@@ -85,24 +85,22 @@ int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr) {
 	/* authenticated */
 
+	if(!chipvpn_handshake_begin_session(peer, true)) {
+		chipvpn_log_append("peer failed to create session\n");
+	}
+
 	peer->address = *addr;
 	peer->last_connect = chipvpn_get_time();
-	peer->next_session.counter = 0llu;
-	peer->next_session.outbound.id = le32toh(packet->sender_index);
-	chipvpn_bitmap_reset(&peer->next_session.bitmap);
 
-	uint8_t dummy[1] = {0};
-	chipvpn_noise_kdf2(peer->next_session.outbound.key, peer->next_session.inbound.key, peer->handshake.chain_key, dummy, 0);
+	chipvpn_log_append("%p says: hello\n", peer);
+	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
+	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_peer_session_promote(peer);
 
 	chipvpn_peer_send_ping(peer, device, udp);
-
-	chipvpn_log_append("%p says: hello\n", peer);
-	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->session.inbound.id, peer->session.outbound.id);
-	chipvpn_log_append("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 
 	return 0;
 }
@@ -140,7 +138,7 @@ int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipv
 void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
 	peer->tx = 0llu;
 	peer->rx = 0llu;
-	
+
 	chipvpn_secure_zero(&peer->handshake, sizeof(peer->handshake));
 	chipvpn_log_append("%p says: session cleared\n", peer);
 }
@@ -206,10 +204,21 @@ chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_addre
 	return NULL;
 }
 
+chipvpn_peer_t *chipvpn_peer_by_handshake(chipvpn_list_t *peers, uint32_t session_id) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+		if(session_id == peer->handshake.inbound_id) {
+			return peer;
+		}
+	}
+	return NULL;
+}
+
 chipvpn_peer_t *chipvpn_peer_by_session(chipvpn_list_t *peers, chipvpn_peer_session_t **session, uint32_t session_id) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-		
+
 		if(session_id == peer->prev_session.inbound.id) {
 			if(session) {
 				*session = &peer->prev_session;
