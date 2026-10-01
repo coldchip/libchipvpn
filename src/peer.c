@@ -17,7 +17,6 @@
 #include "log.h"
 #include "util.h"
 #include "noise.h"
-#include "handshake.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -37,7 +36,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_t packet;
 	
-	if(!chipvpn_handshake_produce_connect(peer, device, &packet)) {
+	if(!chipvpn_noise_produce_connect(peer, device, &packet)) {
 		chipvpn_log_append("noise handshake failed\n");
 		return 0;
 	}
@@ -49,10 +48,12 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	/* authenticated */
 	if(!chipvpn_peer_send_auth_reply(peer, device, udp, addr)) {
 		chipvpn_log_append("noise handshake failed\n");
+		return 0;
 	}
 
-	if(!chipvpn_handshake_begin_session(peer, false)) {
+	if(!chipvpn_noise_begin_session(peer, false)) {
 		chipvpn_log_append("peer failed to create session\n");
+		return 0;
 	}
 
 	peer->address = *addr;
@@ -74,7 +75,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_reply_t packet;
 	
-	if(!chipvpn_handshake_produce_reply(peer, device, &packet)) {
+	if(!chipvpn_noise_produce_reply(peer, device, &packet)) {
 		chipvpn_log_append("noise handshake failed\n");
 		return 0;
 	}
@@ -85,8 +86,9 @@ int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr) {
 	/* authenticated */
 
-	if(!chipvpn_handshake_begin_session(peer, true)) {
+	if(!chipvpn_noise_begin_session(peer, true)) {
 		chipvpn_log_append("peer failed to create session\n");
+		return 0;
 	}
 
 	peer->address = *addr;
