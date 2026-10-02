@@ -65,10 +65,6 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
-	if(peer->session.inbound.id == 0) {
-		chipvpn_peer_session_promote(peer);
-	}
-
 	return 0;
 }
 
@@ -101,7 +97,6 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_peer_session_promote(peer);
-
 	chipvpn_peer_send_ping(peer, device, udp);
 
 	return 0;
@@ -249,12 +244,9 @@ void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
 	printf("%p says: promote session\n", peer);
 
 	memcpy(&peer->prev_session, &peer->session, sizeof(peer->session));
-	peer->session.inbound.id = 0;
-	peer->session.outbound.id = 0;
-
+	memset(&peer->session, 0, sizeof(peer->session));
 	memcpy(&peer->session, &peer->next_session, sizeof(peer->next_session));
-	peer->next_session.inbound.id = 0;
-	peer->next_session.outbound.id = 0;
+	memset(&peer->next_session, 0, sizeof(peer->next_session));
 }
 
 void chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state) {

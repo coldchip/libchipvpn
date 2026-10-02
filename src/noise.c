@@ -45,6 +45,21 @@ void chipvpn_noise_compute_macs(void *packet, size_t auth_len, uint8_t *mac1, ui
 	chipvpn_secure_zero(mac2, POLY1305_MAC_SIZE);
 }
 
+bool chipvpn_noise_verify_macs(void *packet, size_t auth_len, uint8_t *mac1, uint8_t *mac2, const uint8_t *peer_pub) {
+	uint8_t computed_mac1[POLY1305_MAC_SIZE];
+	uint8_t computed_mac2[POLY1305_MAC_SIZE];
+
+	memcpy(computed_mac1, mac1, sizeof(computed_mac1));
+	memcpy(computed_mac2, mac2, sizeof(computed_mac2));
+
+	chipvpn_noise_compute_macs(packet, auth_len, computed_mac1, computed_mac2, peer_pub);
+
+	return (
+		chipvpn_secure_memcmp(mac1, computed_mac1, sizeof(computed_mac1)) == 0 &&
+		chipvpn_secure_memcmp(mac2, computed_mac2, sizeof(computed_mac2)) == 0
+	);
+}
+
 void chipvpn_noise_encrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac) {
 	chipvpn_crypto_chacha20_poly1305_encrypt(cipher_key, data, len, 0, hash_key, BLAKE2S_HASH_SIZE, mac);
 	
@@ -172,14 +187,18 @@ bool chipvpn_noise_produce_connect(chipvpn_peer_t *peer, chipvpn_device_t *devic
 
 	chipvpn_noise_encrypt_and_mix(peer->handshake.hash_key, key, packet->timestamp, sizeof(packet->timestamp), packet->timestamp_mac);
 
-	chipvpn_noise_compute_macs(&packet, offsetof(chipvpn_packet_auth_t, mac1), packet->mac1, packet->mac2, peer->config.public);
+	chipvpn_noise_compute_macs(packet, offsetof(chipvpn_packet_auth_t, mac1), packet->mac1, packet->mac2, peer->config.public);
 
 	return true;
 }
 
 chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_packet_auth_t *packet) {
-	uint8_t chain_key[BLAKE2S_HASH_SIZE];
-	uint8_t hash_key[BLAKE2S_HASH_SIZE];
+	if(!chipvpn_noise_verify_macs(packet, offsetof(chipvpn_packet_auth_t, mac1), packet->mac1, packet->mac2, device->public)) {
+		return NULL;
+	}
+
+	SECURE32 uint8_t chain_key[BLAKE2S_HASH_SIZE];
+	SECURE32 uint8_t hash_key[BLAKE2S_HASH_SIZE];
 
 	chipvpn_noise_init(chain_key, hash_key, device->public);
 	chipvpn_noise_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
@@ -190,7 +209,7 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 		return NULL;
 	}
 
-	uint8_t key[CHACHA20_KEY_SIZE] = {0};
+	SECURE32 uint8_t key[CHACHA20_KEY_SIZE] = {0};
 
 	chipvpn_noise_kdf2(chain_key, key, chain_key, dh_se, sizeof(dh_se));
 	
@@ -267,12 +286,16 @@ bool chipvpn_noise_produce_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 
 	memcpy(packet->ephemeral_public, peer->handshake.ephemeral_public, sizeof(peer->handshake.ephemeral_public));
 
-	chipvpn_noise_compute_macs(&packet, offsetof(chipvpn_packet_auth_reply_t, mac1), packet->mac1, packet->mac2, peer->config.public);
+	chipvpn_noise_compute_macs(packet, offsetof(chipvpn_packet_auth_reply_t, mac1), packet->mac1, packet->mac2, peer->config.public);
 
 	return true;
 }
 
 chipvpn_peer_t *chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet) {
+	if(!chipvpn_noise_verify_macs(packet, offsetof(chipvpn_packet_auth_reply_t, mac1), packet->mac1, packet->mac2, device->public)) {
+		return NULL;
+	}
+
 	chipvpn_peer_t *peer = chipvpn_peer_by_handshake(&device->peers, le32toh(packet->receiver_index));
 	if(!peer) {
 		return NULL;
@@ -297,8 +320,8 @@ chipvpn_peer_t *chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn_pa
 	}
 	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, dh_se, sizeof(dh_se));
 
-	uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
-	uint8_t key[CHACHA20_KEY_SIZE] = {0};
+	SECURE32 uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
+	SECURE32 uint8_t key[CHACHA20_KEY_SIZE] = {0};
 
 	chipvpn_noise_kdf3(peer->handshake.chain_key, tau, key, peer->handshake.chain_key, peer->config.psk, sizeof(peer->config.psk));
 	chipvpn_blake2s_concat(peer->handshake.hash_key, tau, sizeof(tau));
