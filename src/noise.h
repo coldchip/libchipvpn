@@ -10,6 +10,7 @@
 void               chipvpn_noise_init(uint8_t *chain_key, uint8_t *hash_key, const uint8_t *peer_pub);
 bool               chipvpn_noise_generate_keypair(uint8_t *public, uint8_t *private);
 void               chipvpn_noise_compute_macs(void *packet, size_t auth_len, uint8_t *mac1, uint8_t *mac2, const uint8_t *peer_pub);
+bool               chipvpn_noise_verify_macs(void *packet, size_t auth_len, uint8_t *mac1, uint8_t *mac2, const uint8_t *peer_pub);
 void               chipvpn_noise_encrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac);
 bool               chipvpn_noise_decrypt_and_mix(uint8_t *hash_key, uint8_t *cipher_key, uint8_t *data, size_t len, uint8_t *mac);
 void               chipvpn_blake2s_concat(uint8_t *hash, const uint8_t *src, size_t src_len);
