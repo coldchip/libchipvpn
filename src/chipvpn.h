@@ -16,7 +16,7 @@ extern "C"
 #include "ratelimit.h"
 
 #define CHIPVPN_VERSION 300041
-#define CHIPVPN_PROTOCOL_VERSION 204
+#define CHIPVPN_PROTOCOL_VERSION 205
 
 typedef struct {
 	chipvpn_device_t   *device;
