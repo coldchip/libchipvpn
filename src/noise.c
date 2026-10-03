@@ -1,4 +1,5 @@
 #include <string.h>
+#include <endian.h>
 #include "noise.h"
 #include "packet.h"
 #include "util.h"
