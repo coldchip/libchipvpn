@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <endian.h>
 #include <stdint.h>
 #include <stddef.h>
 #include "chacha20poly1305.h"
@@ -41,8 +42,11 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(uint8_t *key, uint8_t *data, size_
 	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - data_size) & 0xf);
 
 	// Update poly1305 with size
-	poly1305_update(&poly1305_ctx, (unsigned char*)&aad_size, sizeof(aad_size));
-	poly1305_update(&poly1305_ctx, (unsigned char*)&data_size, sizeof(data_size));
+	uint64_t aad_size_64  = htole64((uint64_t)aad_size);
+	uint64_t data_size_64 = htole64((uint64_t)data_size);
+
+	poly1305_update(&poly1305_ctx, (unsigned char*)&aad_size_64, sizeof(aad_size_64));
+	poly1305_update(&poly1305_ctx, (unsigned char*)&data_size_64, sizeof(data_size_64));
 
 	// Compute poly1305 and output to mac
 	poly1305_finish(&poly1305_ctx, (unsigned char*)mac);
@@ -82,8 +86,11 @@ bool chipvpn_crypto_chacha20_poly1305_decrypt(uint8_t *key, uint8_t *data, size_
 	poly1305_update(&poly1305_ctx, (unsigned char*)pad0, (0x10 - data_size) & 0xf);
 
 	// Update poly1305 with size
-	poly1305_update(&poly1305_ctx, (unsigned char*)&aad_size, sizeof(aad_size));
-	poly1305_update(&poly1305_ctx, (unsigned char*)&data_size, sizeof(data_size));
+	uint64_t aad_size_64  = htole64((uint64_t)aad_size);
+	uint64_t data_size_64 = htole64((uint64_t)data_size);
+
+	poly1305_update(&poly1305_ctx, (unsigned char*)&aad_size_64, sizeof(aad_size_64));
+	poly1305_update(&poly1305_ctx, (unsigned char*)&data_size_64, sizeof(data_size_64));
 
 	// Compute poly1305 and output to mac
 	poly1305_finish(&poly1305_ctx, (unsigned char*)computed_mac);
