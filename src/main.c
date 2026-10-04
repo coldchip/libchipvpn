@@ -15,6 +15,7 @@
 #include <sys/un.h>
 #include <poll.h> 
 #include <errno.h>
+#include <fcntl.h>
 
 volatile sig_atomic_t quit = 0;
 
@@ -25,102 +26,156 @@ void terminate(int type) {
 	quit = 1;
 }
 
+int socket_connect(const char *host, int port) {
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    
+    if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
+        chipvpn_log_append("invalid host IP address: %s\n", host);
+        return -1;
+    }
+
+    while (1) {
+        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        if(sock < 0) {
+            chipvpn_log_append("failed to create tcp socket: %s\n", strerror(errno));
+            sleep(1);
+            continue;
+        }
+
+        int flags = fcntl(sock, F_GETFL, 0);
+        if(flags < 0) flags = 0; 
+        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+
+        int res = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+        
+        if(res == 0) {
+            return sock;
+        } 
+        
+        if(res < 0 && errno == EINPROGRESS) {
+            struct pollfd pfd = { .fd = sock, .events = POLLOUT };
+            
+            if (poll(&pfd, 1, 1000) > 0) {
+                int so_error = 0;
+                socklen_t len = sizeof(so_error);
+                
+                if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len) == 0 && so_error == 0) {
+                    return sock;
+                }
+            }
+        }
+
+        close(sock);
+        chipvpn_log_append("retry to connect to socket: %s:%u\n", host, port);
+        sleep(1); 
+    }
+}
+
 int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 	signal(SIGPIPE, SIG_IGN);
 
-	struct stat path_stat;
-
-    if(stat(argv[1], &path_stat) != 0) {
-    	chipvpn_log_append("unable to open %s\n", argv[1]);
-        return 0;
-    }
-
-    if(S_ISREG(path_stat.st_mode)) {
-        char *file = chipvpn_read_file(argv[1]);
-		if(!file) {
-			chipvpn_log_append("unable to open config %s\n", argv[1]);
-			return 0;
+	for(int i = 1; i < argc; i++) {
+		const char *path = argv[i];
+		if(!path) {
+			continue;
 		}
 
-		if(write(fd, file, strlen(file) + 1)) {
-			
+		struct stat path_stat;
+
+		if(stat(path, &path_stat) != 0) {
+			chipvpn_log_append("file: unable to open %s\n", path);
+			continue;
 		}
 
-		free(file);
+		if(S_ISREG(path_stat.st_mode)) {
+			char *file = chipvpn_read_file(path);
+			if(!file) {
+				chipvpn_log_append("unable to open config %s\n", path);
+				continue;
+			}
 
-		while(1) {
-			pause();
+			if(write(fd, file, strlen(file) + 1)) {
+				
+			}
+
+			free(file);
 		}
 
-        return 0;
-    } 
-    
-    if(S_ISSOCK(path_stat.st_mode)) {
-    	while(1) {
-	    	int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-	        if(sock < 0) {
-	            chipvpn_log_append("failed to create unix socket\n");
-	            return 0;
-	        }
+	}
 
-	        struct sockaddr_un addr;
-	        memset(&addr, 0, sizeof(addr));
-	        addr.sun_family = AF_UNIX;
-	        strncpy(addr.sun_path, argv[1], sizeof(addr.sun_path) - 1);
+	for(int i = 1; i < argc; i++) {
+		const char *path = argv[i];
+		if(!path) {
+			continue;
+		}
 
-	        while(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-	            chipvpn_log_append("retry to connect to unix socket: %s\n", argv[1]);
-	            sleep(1);
-	        }
+		char ip[100];
+		int port = 80;
+		if(sscanf(path, "tcp://%99[^:]:%99d", ip, &port) == 2) {
+			while(1) {
+				int sock = socket_connect(ip, port);
+				if(sock < 0) {
+					printf("invalid socket");
+					continue;
+				}
 
-	        struct pollfd fds[2];
-	        fds[0].fd = sock;
-	        fds[0].events = POLLIN;
-	        
-	        fds[1].fd = fd;
-	        fds[1].events = POLLIN;
+				chipvpn_log_append("connected to: %s\n", path);
 
-	        char buf[8192];
+				struct pollfd fds[2];
+				fds[0].fd = sock;
+				fds[0].events = POLLIN;
+				
+				fds[1].fd = fd;
+				fds[1].events = POLLIN;
 
-	        while (1) {
-	            int ret = poll(fds, 2, -1);
-	            if(ret < 0) {
-	                if(errno == EINTR) continue; 
-	                break; 
-	            }
+				char buf[8192];
 
-	            if(fds[0].revents & (POLLIN | POLLERR | POLLHUP)) {
-	                ssize_t n = read(sock, buf, sizeof(buf));
-	                if(n <= 0) break; 
-	                
-	                size_t written = 0;
-	                while(written < (size_t)n) {
-	                    ssize_t w = write(fd, buf + written, (size_t)n - written);
-	                    if (w <= 0) goto proxy_done;
-	                    written += (size_t)w;
-	                }
-	            }
+				while (1) {
+					int ret = poll(fds, 2, -1);
+					if(ret < 0) {
+						if(errno == EINTR) continue; 
+						break; 
+					}
 
-	            if(fds[1].revents & (POLLIN | POLLERR | POLLHUP)) {
-	                ssize_t n = read(fd, buf, sizeof(buf));
-	                if(n <= 0) break;
-	                
-	                size_t written = 0;
-	                while(written < (size_t)n) {
-	                    ssize_t w = write(sock, buf + written, (size_t)n - written);
-	                    if (w <= 0) goto proxy_done;
-	                    written += (size_t)w;
-	                }
-	            }
-	        }
+					if(fds[0].revents & (POLLIN | POLLERR | POLLHUP)) {
+						ssize_t n = read(sock, buf, sizeof(buf));
+						if(n <= 0) break; 
+						
+						size_t written = 0;
+						while(written < (size_t)n) {
+							ssize_t w = write(fd, buf + written, (size_t)n - written);
+							if (w <= 0) goto proxy_done;
+							written += (size_t)w;
+						}
+					}
 
-			proxy_done:
+					if(fds[1].revents & (POLLIN | POLLERR | POLLHUP)) {
+						ssize_t n = read(fd, buf, sizeof(buf));
+						if(n <= 0) break;
+						
+						size_t written = 0;
+						while(written < (size_t)n) {
+							ssize_t w = write(sock, buf + written, (size_t)n - written);
+							if (w <= 0) goto proxy_done;
+							written += (size_t)w;
+						}
+					}
+				}
 
-	        close(sock);
-	        chipvpn_log_append("socket proxy disconnected\n");
-        }
-    }
+				proxy_done:
 
+				close(sock);
+				chipvpn_log_append("socket proxy disconnected\n");
+			}
+		}
+	}
+
+	pause();
+	
 	return 0;
 }
 
@@ -155,6 +210,7 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 
 int main(int argc, char const *argv[]) {
 	chipvpn_log_append("chipvpn v%i protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION);
+	chipvpn_log_append("compiled on %s %s\n", __DATE__, __TIME__);
 
 	if(!(argc > 1 && argv[1] != NULL)) {
 		chipvpn_log_append("config path required\n");
