@@ -328,7 +328,7 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 				chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
 				if(now > peer->last_connect + CHIPVPN_PEER_REKEY) {
-					chipvpn_log_append("%p says: rekeying to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
+					chipvpn_log_append("%p says: rekeying to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 					chipvpn_peer_send_connect(peer, device, udp, &peer->address);
 				}
 
