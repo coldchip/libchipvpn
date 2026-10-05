@@ -157,11 +157,11 @@ bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_
 }
 
 bool chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key) {
-	return b64_decode((uint8_t*)key, strlen(key), peer->config.public) > 0;
+	return b64_decode((uint8_t*)key, strlen(key), peer->config.public) == CURVE25519_KEY_SIZE;
 }
 
 bool chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key) {
-	return b64_decode((uint8_t*)key, strlen(key), peer->config.psk) > 0;
+	return b64_decode((uint8_t*)key, strlen(key), peer->config.psk) == BLAKE2S_HASH_SIZE;
 }
 
 bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
