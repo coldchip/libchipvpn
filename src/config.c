@@ -7,6 +7,7 @@
 #include "peer.h"
 #include "device.h"
 #include "config.h"
+#include "base64.h"
 #include "util.h"
 
 chipvpn_command_section_e section;
@@ -134,13 +135,6 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				chipvpn_device_set_disabled(vpn->device);
 			}
 
-			if(strcmp(key, "clear") == 0) {
-				while(!chipvpn_list_empty(&vpn->device->peers)) {
-					chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&vpn->device->peers));
-					chipvpn_peer_free(peer);
-				}
-			}
-
 			chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&vpn->device->peers);
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
@@ -195,6 +189,25 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ondisconnect") == 0) {
 				chipvpn_peer_set_ondisconnect(peer, value);
+			}
+
+			if(strcmp(key, "remove") == 0) {
+				char key[1024];
+				if(sscanf(value, "%1023s", key) == 1) {
+					uint8_t key32[CURVE25519_KEY_SIZE];
+					if(b64_decode((uint8_t*)key, strlen(key), key32) != CURVE25519_KEY_SIZE) {
+						return;
+					}
+					chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, key32);
+					if(!peer) {
+						return;
+					}
+
+					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
+
+					chipvpn_list_remove(&peer->node);
+					chipvpn_peer_free(peer);
+				}
 			}
 		}
 	}
