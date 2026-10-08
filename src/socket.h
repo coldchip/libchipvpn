@@ -18,7 +18,8 @@ _Static_assert((SOCKET_QUEUE_SIZE & (SOCKET_QUEUE_SIZE - 1)) == 0,
 
 typedef enum {
 	CHIPVPN_SOCKET_DGRAM = 0,
-	CHIPVPN_SOCKET_STREAM = 1
+	CHIPVPN_SOCKET_STREAM = 1,
+	CHIPVPN_SOCKET_DEV = 2
 } chipvpn_socket_type_e;
 
 typedef struct {
@@ -53,7 +54,9 @@ typedef struct {
 
 
 
-chipvpn_socket_t                *chipvpn_socket_create(int fd, int type);
+chipvpn_socket_t                *chipvpn_socket_create(int fd);
+
+chipvpn_socket_type_e            chipvpn_socket_get_type(int fd);
 
 bool                             chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
 bool                             chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
