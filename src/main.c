@@ -12,6 +12,7 @@
 #include "chipvpn.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 #include <sys/un.h>
 #include <poll.h> 
 #include <errno.h>
@@ -124,6 +125,17 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 				}
 
 				chipvpn_log_append("connected to: %s\n", path);
+
+				int optval = 1;
+				setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval));
+
+				int idle = 10;     
+				int interval = 5; 
+				int maxpkt = 3;   
+
+				setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
+				setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
+				setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &maxpkt, sizeof(maxpkt));
 
 				struct pollfd fds[2];
 				fds[0].fd = sock;
