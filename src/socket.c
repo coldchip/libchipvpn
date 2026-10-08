@@ -8,11 +8,16 @@
 #include "socket.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdio.h>
 #include "packet.h"
 #include "chipvpn.h"
 #include "util.h"
 
-chipvpn_socket_t *chipvpn_socket_create(int fd, int type) {
+chipvpn_socket_t *chipvpn_socket_create(int fd) {
+	if(fd < 0) {
+		return NULL;
+	}
+
 	chipvpn_socket_t *sock = malloc(sizeof(chipvpn_socket_t));
 	if(!sock) {
 		return NULL;
@@ -23,7 +28,7 @@ chipvpn_socket_t *chipvpn_socket_create(int fd, int type) {
 	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 
 	sock->fd = fd;
-	sock->type = type;
+	sock->type = chipvpn_socket_get_type(fd);
 
 	sock->transform_data = NULL;
 
@@ -36,25 +41,54 @@ chipvpn_socket_t *chipvpn_socket_create(int fd, int type) {
 	return sock;
 }
 
+chipvpn_socket_type_e chipvpn_socket_get_type(int fd) {
+    int optval;
+    socklen_t optlen = sizeof(optval);
+
+    if(getsockopt(fd, SOL_SOCKET, SO_TYPE, &optval, &optlen) < 0) {
+        return CHIPVPN_SOCKET_DEV; 
+    }
+
+    if(optval == SOCK_STREAM) {
+        return CHIPVPN_SOCKET_STREAM; 
+    }
+
+    struct sockaddr_storage peer;
+    socklen_t peer_len = sizeof(peer);
+    
+    if(getpeername(fd, (struct sockaddr*)&peer, &peer_len) == 0) {
+        return CHIPVPN_SOCKET_STREAM; 
+    }
+
+    return CHIPVPN_SOCKET_DGRAM; 
+}
+
 bool chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
 	uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 	ssize_t r = -1;
 
 	/* read socket */
 
-	if(sock->type == CHIPVPN_SOCKET_DGRAM) {
-		struct sockaddr_in sa;
-		memset(&sa, 0, sizeof(sa));
-		socklen_t len = sizeof(sa);
+	switch(sock->type) {
+		case CHIPVPN_SOCKET_STREAM: {
+			r = recv(sock->fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+		}
+		break;
+		case CHIPVPN_SOCKET_DEV: {
+			r = read(sock->fd, buffer, sizeof(buffer));
+		}
+		break;
+		case CHIPVPN_SOCKET_DGRAM: {
+			struct sockaddr_in sa;
+			memset(&sa, 0, sizeof(sa));
+			socklen_t len = sizeof(sa);
 
-		r = recvfrom(sock->fd, buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr*)&sa, &len);
+			r = recvfrom(sock->fd, buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr*)&sa, &len);
 
-		if(r > 0) {
 			entry->addr.ip = sa.sin_addr.s_addr;
 			entry->addr.port = ntohs(sa.sin_port);
 		}
-	} else {
-		r = read(sock->fd, buffer, sizeof(buffer));
+		break;
 	}
 
 	if(r <= 0) {
@@ -93,15 +127,24 @@ bool chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry
 
 	/* write socket */
 
-	if(sock->type == CHIPVPN_SOCKET_DGRAM) {
-		struct sockaddr_in sa = {
-			.sin_family = AF_INET,
-			.sin_addr.s_addr = entry->addr.ip,
-			.sin_port = htons(entry->addr.port)
-		};
-		w = sendto(sock->fd, buffer, transformed_size, 0, (struct sockaddr*)&sa, sizeof(sa));
-	} else {
-		w = write(sock->fd, buffer, transformed_size);
+	switch(sock->type) {
+		case CHIPVPN_SOCKET_STREAM: {
+			w = send(sock->fd, buffer, transformed_size, MSG_NOSIGNAL);
+		}
+		break;
+		case CHIPVPN_SOCKET_DEV: {
+			w = write(sock->fd, buffer, transformed_size);
+		}
+		break;
+		case CHIPVPN_SOCKET_DGRAM: {
+			struct sockaddr_in sa = {
+				.sin_family = AF_INET,
+				.sin_addr.s_addr = entry->addr.ip,
+				.sin_port = htons(entry->addr.port)
+			};
+			w = sendto(sock->fd, buffer, transformed_size, 0, (struct sockaddr*)&sa, sizeof(sa));
+		}
+		break;
 	}
 
 	if(w <= 0) {
