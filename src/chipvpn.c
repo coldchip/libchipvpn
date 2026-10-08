@@ -262,7 +262,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_address_t src = { .ip = ip_hdr->src_addr };
 
-				if(chipvpn_peer_get_by_allowip(&vpn->device->peers, &src) != peer) {
+				if(!chipvpn_address_cidr_match(&src, &peer->config.allow)) {
 					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					continue;
 				}
