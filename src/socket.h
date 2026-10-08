@@ -25,7 +25,7 @@ typedef struct {
 	bool is_used;
 	uint16_t size;
 	chipvpn_address_t addr;
-	char buffer[SOCKET_QUEUE_ENTRY_SIZE];
+	uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 } chipvpn_socket_queue_entry_t;
 
 typedef struct {
@@ -36,21 +36,27 @@ typedef struct {
 } chipvpn_socket_queue_t;
 
 typedef struct {
-	int fd;
-	chipvpn_socket_queue_t tx_queue;
-	chipvpn_socket_queue_t rx_queue;
-	chipvpn_socket_type_e type;
-} chipvpn_socket_t;
-
-typedef struct {
 	void *data;
 	size_t size;
 } chipvpn_socket_vector_t;
 
+typedef struct {
+	int fd;
+	chipvpn_socket_queue_t tx_queue;
+	chipvpn_socket_queue_t rx_queue;
+	chipvpn_socket_type_e type;
+
+	void (*tx_transform) (void *transform_data, uint8_t *out, size_t *out_size, uint8_t *in, size_t in_size);
+	void (*rx_transform) (void *transform_data, uint8_t *out, size_t *out_size, uint8_t *in, size_t in_size);
+	void *transform_data;
+} chipvpn_socket_t;
+
+
+
 chipvpn_socket_t                *chipvpn_socket_create(int fd, int type);
 
-ssize_t                          chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
-ssize_t                          chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
+bool                             chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
+bool                             chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);
 
 void                             chipvpn_socket_preselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset, int *max);
 void                             chipvpn_socket_postselect(chipvpn_socket_t *sock, fd_set *rdset, fd_set *wdset);

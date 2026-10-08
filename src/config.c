@@ -9,6 +9,7 @@
 #include "config.h"
 #include "base64.h"
 #include "util.h"
+#include "log.h"
 
 chipvpn_command_section_e section;
 
@@ -19,6 +20,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 		char key[128];
 		char value[4096];
 		if(sscanf(line, "%24[^:]:%1024[^\n]", key, value) == 2) {
+			chipvpn_log_append("%s\n", value);
 			if(strcmp(key, "section") == 0 && strcmp(value, "device") == 0) {
 				section = COMMAND_DEVICE_SECTION;
 				continue;
