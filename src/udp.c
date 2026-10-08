@@ -43,10 +43,35 @@ chipvpn_udp_t *chipvpn_udp_create(int fd) {
 		return NULL;
 	}
 
+	sock->transform_data = udp;
+
+	sock->tx_transform = chipvpn_udp_tx_transform;
+	sock->rx_transform = chipvpn_udp_rx_transform;
+
 	udp->fd = fd;
 	udp->socket = sock;
 
 	return udp;
+}
+
+void chipvpn_udp_tx_transform(void *transform_data, uint8_t *out, size_t *out_size, uint8_t *in, size_t in_size) {
+	chipvpn_socket_t *sock = (chipvpn_socket_t *)transform_data;
+	if(!sock) {
+		return;
+	}
+
+	memcpy(out, in, in_size);
+	*out_size = in_size;
+}
+
+void chipvpn_udp_rx_transform(void *transform_data, uint8_t *out, size_t *out_size, uint8_t *in, size_t in_size) {
+	chipvpn_socket_t *sock = (chipvpn_socket_t *)transform_data;
+	if(!sock) {
+		return;
+	}
+
+	memcpy(out, in, in_size);
+	*out_size = in_size;
 }
 
 bool chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size) {
