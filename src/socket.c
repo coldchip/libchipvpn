@@ -30,11 +30,6 @@ chipvpn_socket_t *chipvpn_socket_create(int fd) {
 	sock->fd = fd;
 	sock->type = chipvpn_socket_get_type(fd);
 
-	sock->transform_data = NULL;
-
-	sock->tx_transform = NULL;
-	sock->rx_transform = NULL;
-
 	chipvpn_socket_reset_queue(&sock->tx_queue);
 	chipvpn_socket_reset_queue(&sock->rx_queue);
 
@@ -64,18 +59,17 @@ chipvpn_socket_type_e chipvpn_socket_get_type(int fd) {
 }
 
 bool chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
-	uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 	ssize_t r = -1;
 
 	/* read socket */
 
 	switch(sock->type) {
 		case CHIPVPN_SOCKET_STREAM: {
-			r = recv(sock->fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+			r = recv(sock->fd, entry->buffer, sizeof(entry->buffer), MSG_DONTWAIT);
 		}
 		break;
 		case CHIPVPN_SOCKET_DEV: {
-			r = read(sock->fd, buffer, sizeof(buffer));
+			r = read(sock->fd, entry->buffer, sizeof(entry->buffer));
 		}
 		break;
 		case CHIPVPN_SOCKET_DGRAM: {
@@ -83,7 +77,7 @@ bool chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_
 			memset(&sa, 0, sizeof(sa));
 			socklen_t len = sizeof(sa);
 
-			r = recvfrom(sock->fd, buffer, sizeof(buffer), MSG_DONTWAIT, (struct sockaddr*)&sa, &len);
+			r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), MSG_DONTWAIT, (struct sockaddr*)&sa, &len);
 
 			entry->addr.ip = sa.sin_addr.s_addr;
 			entry->addr.port = ntohs(sa.sin_port);
@@ -96,44 +90,23 @@ bool chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_
 		return false;
 	}
 
-	/* apply transform */
-
-	size_t transformed_size = 0;
-	if(sock->rx_transform) {
-		sock->rx_transform(sock->transform_data, entry->buffer, &transformed_size, buffer, r);
-	} else {
-		memcpy(entry->buffer, buffer, r);
-		transformed_size = r;
-	}
-
-	entry->size = transformed_size;
+	entry->size = r;
 
 	return true;
 }
 
 bool chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry) {
-	uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 	ssize_t w = -1;
-
-	/* apply transform */
-
-	size_t transformed_size = 0;
-	if(sock->tx_transform) {
-		sock->tx_transform(sock->transform_data, buffer, &transformed_size, entry->buffer, entry->size);
-	} else {
-		memcpy(buffer, entry->buffer, entry->size);
-		transformed_size = entry->size;
-	}
 
 	/* write socket */
 
 	switch(sock->type) {
 		case CHIPVPN_SOCKET_STREAM: {
-			w = send(sock->fd, buffer, transformed_size, MSG_NOSIGNAL);
+			w = send(sock->fd, entry->buffer, entry->size, MSG_NOSIGNAL);
 		}
 		break;
 		case CHIPVPN_SOCKET_DEV: {
-			w = write(sock->fd, buffer, transformed_size);
+			w = write(sock->fd, entry->buffer, entry->size);
 		}
 		break;
 		case CHIPVPN_SOCKET_DGRAM: {
@@ -142,7 +115,7 @@ bool chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry
 				.sin_addr.s_addr = entry->addr.ip,
 				.sin_port = htons(entry->addr.port)
 			};
-			w = sendto(sock->fd, buffer, transformed_size, 0, (struct sockaddr*)&sa, sizeof(sa));
+			w = sendto(sock->fd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
 		}
 		break;
 	}

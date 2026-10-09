@@ -152,6 +152,10 @@ bool chipvpn_noise_produce_connect(chipvpn_peer_t *peer, chipvpn_device_t *devic
 	packet->header.type = CHIPVPN_PACKET_AUTH;
 
 	chipvpn_secure_random((uint8_t*)&peer->handshake.inbound_id, sizeof(peer->handshake.inbound_id));
+	if(peer->handshake.inbound_id == 0) {
+		return false;
+	}
+
 	packet->sender_index = htole32(peer->handshake.inbound_id); 
 
 	chipvpn_noise_init(peer->handshake.chain_key, peer->handshake.hash_key, peer->config.public);
@@ -273,7 +277,12 @@ bool chipvpn_noise_produce_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	
 	packet->header.type = CHIPVPN_PACKET_AUTH_REPLY;
 	packet->receiver_index = htole32(peer->handshake.outbound_id);
+	
 	chipvpn_secure_random((uint8_t*)&peer->handshake.inbound_id, sizeof(peer->handshake.inbound_id));
+	if(peer->handshake.inbound_id == 0) {
+		return false;
+	}
+
 	packet->sender_index = htole32(peer->handshake.inbound_id); 
 
 	SECURE32 uint8_t tau[BLAKE2S_HASH_SIZE] = {0};

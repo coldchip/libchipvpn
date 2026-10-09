@@ -85,7 +85,6 @@ typedef struct chipvpn_peer_t {
 		uint8_t public[CURVE25519_KEY_SIZE];
 		uint8_t psk[BLAKE2S_HASH_SIZE];
 		char *onconnect;
-		char *onping;
 		char *ondisconnect;
 	} config;
 
@@ -103,7 +102,7 @@ int                     chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_
 int                     chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr);
 int                     chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr);
 
-int                     chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
+int                     chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 
 void                    chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 

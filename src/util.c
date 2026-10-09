@@ -140,10 +140,10 @@ bool chipvpn_secure_random(uint8_t *buf, int size) {
 	while(size > 0) {
 		count = size <= 8192 ? size : 8192;
 		tmp = read(fd, (char *)buf + offset, count);
-		if (tmp == -1 && (errno == EAGAIN || errno == EINTR)) {
+		if(tmp == -1 && (errno == EAGAIN || errno == EINTR)) {
 			continue;
 		}
-		if (tmp == -1) return -1; /* Unrecoverable IO error */
+		if(tmp == -1) return false;
 		offset += tmp;
 		size -= tmp;
 	}

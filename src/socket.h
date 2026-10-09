@@ -46,10 +46,6 @@ typedef struct {
 	chipvpn_socket_queue_t tx_queue;
 	chipvpn_socket_queue_t rx_queue;
 	chipvpn_socket_type_e type;
-
-	void (*tx_transform) (void *transform_data, uint8_t *out, size_t *out_size, uint8_t *in, size_t in_size);
-	void (*rx_transform) (void *transform_data, uint8_t *out, size_t *out_size, uint8_t *in, size_t in_size);
-	void *transform_data;
 } chipvpn_socket_t;
 
 
