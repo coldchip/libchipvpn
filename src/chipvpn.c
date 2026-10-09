@@ -138,6 +138,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
+		peer->last_rx_time = 0;
+
+		if(peer->last_tx_time == 0) {
+			peer->last_tx_time = chipvpn_get_time();
+		}
+
 		peer->tx += r;
 
 		chipvpn_socket_vector_t vector[] = {
@@ -248,8 +254,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 					chipvpn_peer_session_promote(peer);
 				}
 
+				peer->last_tx_time = 0;
+
 				if(data_size == 0) {
 					continue;
+				}
+
+				if(peer->last_rx_time == 0) {
+					peer->last_rx_time = chipvpn_get_time();
 				}
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;

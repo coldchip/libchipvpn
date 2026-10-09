@@ -24,7 +24,7 @@ extern "C"
 #define CHIPVPN_PEER_PING 2000
 
 #define CHIPVPN_PEER_REKEY 120000
-#define CHIPVPN_PEER_TIMEOUT CHIPVPN_PEER_REKEY + 90000	
+#define CHIPVPN_PEER_TIMEOUT 90000	
 
 #define PREV_SESSION 0
 #define CURR_SESSION 1
@@ -92,7 +92,10 @@ typedef struct chipvpn_peer_t {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t last_check;
-	uint64_t last_connect;
+	uint64_t next_rekey;
+
+	uint64_t last_tx_time;
+	uint64_t last_rx_time;
 } chipvpn_peer_t;
 
 chipvpn_peer_t         *chipvpn_peer_create();
