@@ -9,7 +9,7 @@ extern "C" {
 #include <stdbool.h>
 
 #define U64_SIZE 64
-#define COUNTER_BITS_TOTAL 8192
+#define COUNTER_BITS_TOTAL 2048
 #define LOG2_64 6
 
 #define COUNTER_WINDOW_SIZE COUNTER_BITS_TOTAL - U64_SIZE

@@ -97,17 +97,13 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
 	chipvpn_peer_session_promote(peer);
-	chipvpn_peer_send_ping(peer, device, udp);
+	chipvpn_peer_send_keepalive(peer, device, udp);
 
 	return 0;
 }
 
-int chipvpn_peer_send_ping(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp) {
+int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp) {
 	peer->session.counter++;
-
-	if(peer->config.onping) {
-		chipvpn_peer_run_command(peer, peer->config.onping);
-	}
 
 	chipvpn_packet_data_t header = {
 		.header.type = CHIPVPN_PACKET_DATA,
@@ -166,11 +162,6 @@ bool chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key) {
 
 bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
 	peer->config.onconnect = chipvpn_strdup(command);
-	return true;
-}
-
-bool chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command) {
-	peer->config.onping = chipvpn_strdup(command);
 	return true;
 }
 
@@ -317,7 +308,7 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 
 			if(peer->state == PEER_CONNECTED) {
 				/* ping peers */
-				chipvpn_peer_send_ping(peer, device, udp);
+				chipvpn_peer_send_keepalive(peer, device, udp);
 
 				char tx[128];
 				char rx[128];
@@ -383,10 +374,6 @@ void chipvpn_peer_free(chipvpn_peer_t *peer) {
 
 	if(peer->config.onconnect) {
 		free(peer->config.onconnect);
-	}
-
-	if(peer->config.onping) {
-		free(peer->config.onping);
 	}
 
 	if(peer->config.ondisconnect) {

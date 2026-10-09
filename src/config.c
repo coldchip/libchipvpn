@@ -183,10 +183,6 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				chipvpn_peer_set_onconnect(peer, value);
 			}
 
-			if(section == COMMAND_PEER_SECTION && strcmp(key, "onping") == 0) {
-				chipvpn_peer_set_onping(peer, value);
-			}
-
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ondisconnect") == 0) {
 				chipvpn_peer_set_ondisconnect(peer, value);
 			}

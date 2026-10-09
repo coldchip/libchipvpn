@@ -31,6 +31,7 @@ typedef struct {
 } chipvpn_ipc_t;
 
 chipvpn_ipc_t          *chipvpn_ipc_create(int fd);
+bool                    chipvpn_ipc_printf(chipvpn_ipc_t *ipc, const char* format, ...);
 void                    chipvpn_ipc_free(chipvpn_ipc_t *ipc);
 
 #ifdef __cplusplus

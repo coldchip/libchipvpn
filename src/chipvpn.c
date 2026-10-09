@@ -175,12 +175,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(!peer) {
 					if(chipvpn_socket_can_write(vpn->ipc->socket)) {
 						char public_b64[64];
-						char bufstr[512];
 
 						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
 
-						sprintf(bufstr, "REJECT %s\n", public_b64);
-						chipvpn_socket_write(vpn->ipc->socket, bufstr, strlen(bufstr), NULL);
+						chipvpn_ipc_printf(vpn->ipc, "REJECT %s\n", public_b64);
 					}
 					chipvpn_log_append("noise handshake failed\n");
 					continue;
