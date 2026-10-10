@@ -15,6 +15,12 @@ extern "C"
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
+#define GT(test, a) (test > a)
+#define LT(test, a) (test < a)
+#define GTEQ(test, a) (test >= a)
+#define LTEQ(test, a) (test <= a)
+#define BETWEEN(test, a, b) (GTEQ(test, a) && LTEQ(test, b))
+
 #if __BIG_ENDIAN__
 # define htonll(x) (x)
 # define ntohll(x) (x)

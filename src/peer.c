@@ -46,7 +46,7 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
 	/* authenticated */
-	
+
 	if(!chipvpn_peer_send_auth_reply(peer, device, udp, addr)) {
 		chipvpn_log_append("noise handshake failed\n");
 		return 0;
@@ -61,8 +61,8 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	peer->ack_state = PEER_ACK_OWE_TX;
 	peer->next_ack = chipvpn_get_time() + 15000;
 	peer->address = *addr;
-	/* schedule a rekey after CHIPVPN_REKEY_AFTER_TIME seconds */
-	peer->next_rekey = chipvpn_get_time() + CHIPVPN_REKEY_AFTER_TIME;
+	
+	peer->last_handshake = chipvpn_get_time();
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
@@ -96,8 +96,8 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	peer->ack_state = PEER_ACK_OWE_RX;
 	peer->next_ack = chipvpn_get_time();
 	peer->address = *addr;
-	/* schedule a rekey after CHIPVPN_REKEY_AFTER_TIME seconds */
-	peer->next_rekey = chipvpn_get_time() + CHIPVPN_REKEY_AFTER_TIME;
+	
+	peer->last_handshake = chipvpn_get_time();
 
 	chipvpn_log_append("%p says: hello\n", peer);
 	chipvpn_log_append("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
@@ -105,12 +105,15 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 
 	chipvpn_peer_set_state(peer, PEER_CONNECTED);
 
+	/* promote peer session immediately from next_session to session */
 	chipvpn_peer_session_promote(peer);
 
 	return 0;
 }
 
 int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp) {
+	chipvpn_log_append("%p says: sent keepalive packet\n", peer);
+
 	peer->session.counter++;
 
 	chipvpn_packet_data_t header = {
@@ -140,6 +143,7 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 }
 
 int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
+	chipvpn_log_append("%p says: received keepalive packet\n", peer);
 	if(peer->ack_state == PEER_ACK_OWE_TX) {
 		peer->ack_state = PEER_ACK_IDLE;
 	}
@@ -331,46 +335,45 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 			peer->last_check = now;
 
 			if(peer->state == PEER_CONNECTED) {
-				/* ping peers */
-
 				char tx[128];
 				char rx[128];
 				strcpy(tx, chipvpn_format_bytes(peer->tx));
 				strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-				chipvpn_log_append("%p says: peer alive, next handshake: %lu sec\n", peer, (now > peer->next_rekey) ? 0lu : (peer->next_rekey - now) / 1000);
+				chipvpn_log_append("%p says: peer alive, last handshake: %lu sec\n", peer, (now - peer->last_handshake) / 1000);
 				chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
-				if(GTEQ(now, peer->next_rekey + CHIPVPN_REKEY_DURATION)) {
-					/* after rekey + 90s, clear and zero all sessions */
+				/* after CHIPVPN_REJECT_AFTER_TIME, clear and zero all sessions */
+				if(GTEQ(now, peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)) {
 					chipvpn_log_append("%p says: peer disconnected\n", peer);
 					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 				}
 
-				if(GTEQ(now, peer->next_rekey) && LT(now, peer->next_rekey + CHIPVPN_REKEY_DURATION)) {
-					/* after rekey and before rekey + 90s */
+				/* after CHIPVPN_REKEY_AFTER_TIME and before CHIPVPN_REJECT_AFTER_TIME */
+				if(GTEQ(now, peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME) && LT(now, peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)) {
 					chipvpn_log_append("%p says: rekeying to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 					chipvpn_peer_send_connect(peer, device, udp, &peer->address);
-				} 
-
-				if(GTEQ(now, peer->next_ack) && peer->ack_state == PEER_ACK_OWE_TX) {
-					/* after next_ack and before rekey */
-					peer->next_rekey = now;
-					peer->next_ack   = now + 1024000;
 				}
 
-				if(GTEQ(now, peer->next_ack) && peer->ack_state == PEER_ACK_OWE_RX) {
-					/* after next_ack and before rekey */
-					chipvpn_peer_send_keepalive(peer, device, udp); // peer->ack_state = PEER_ACK_IDLE; handled in chipvpn_peer_send_keepalive
+				/* after next_ack and before CHIPVPN_REKEY_AFTER_TIME, force a rekey immediately */
+				if(GTEQ(now, peer->next_ack) && LT(now, peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME) && peer->ack_state == PEER_ACK_OWE_TX) {
+					chipvpn_log_append("%p says: rekeying to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+					chipvpn_peer_send_connect(peer, device, udp, &peer->address);
+				}
+
+				/* after next_ack and before CHIPVPN_REKEY_AFTER_TIME */
+				if(GTEQ(now, peer->next_ack) && LT(now, peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME) && peer->ack_state == PEER_ACK_OWE_RX) {
+					chipvpn_peer_send_keepalive(peer, device, udp);
 				}
 			} else if(peer->state == PEER_DISCONNECTED) {
-				/* attempt to connect to peer */
+				/* attempt to connect to peer as initiator */
 				if(peer->config.address.ip > 0) {
 					chipvpn_log_append("%p says: connecting to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->config.address), peer->config.address.port);
 					chipvpn_peer_send_connect(peer, device, udp, &peer->config.address);
 				}
 
-				if(peer->type == PEER_EPHEMERAL && GT(now, peer->next_rekey + CHIPVPN_REKEY_DURATION)) {
+				/* remove peer if it is ephemeral and has timeout */
+				if(peer->type == PEER_EPHEMERAL && GT(now, peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)) {
 					chipvpn_log_append("%p says: ephemeral peer is removed\n", peer);
 					chipvpn_list_remove(&peer->node);
 					chipvpn_peer_free(peer);
