@@ -246,8 +246,6 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 		return NULL;
 	}
 
-	memcpy(peer->timestamp, packet->timestamp, sizeof(packet->timestamp));
-
 	if(!chipvpn_noise_generate_keypair(peer->handshake.ephemeral_public, peer->handshake.ephemeral_private)) {
 		return NULL;
 	}
@@ -268,6 +266,8 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, dh_es, sizeof(dh_es));
 
 	peer->handshake.outbound_id = le32toh(packet->sender_index);
+
+	memcpy(peer->timestamp, packet->timestamp, sizeof(packet->timestamp));
 
 	return peer;
 }

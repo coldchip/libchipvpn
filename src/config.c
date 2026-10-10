@@ -139,7 +139,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
 				peer->type = PEER_EPHEMERAL;
-				peer->last_handshake = chipvpn_get_time();
+				peer->next_rekey = chipvpn_get_time() + CHIPVPN_REKEY_AFTER_TIME;
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {

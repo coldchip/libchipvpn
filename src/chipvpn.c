@@ -140,7 +140,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		if(peer->ack_state != PEER_ACK_OWE_TX) {
 			peer->ack_state = PEER_ACK_OWE_TX;
-			peer->last_ack = chipvpn_get_time();
+			peer->next_ack = chipvpn_get_time() + CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT;
 		}
 
 		peer->tx += r;
@@ -254,15 +254,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				if(data_size == 0) {
-					if(peer->ack_state == PEER_ACK_OWE_TX) {
-					    peer->ack_state = PEER_ACK_IDLE;
-					}
+					chipvpn_peer_recv_keepalive(peer);
 					continue;
 				}
 
 				if(peer->ack_state != PEER_ACK_OWE_RX) {
 					peer->ack_state = PEER_ACK_OWE_RX;
-					peer->last_ack = chipvpn_get_time();
+					peer->next_ack = chipvpn_get_time() + CHIPVPN_KEEPALIVE_TIMEOUT;
 				}
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
@@ -279,6 +277,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				peer->rx += data_size;
+
 				chipvpn_socket_write(vpn->device->socket, data, data_size, NULL);
 			}
 			break;

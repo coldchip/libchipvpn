@@ -21,8 +21,17 @@ extern "C"
 #include "blake2s.h"
 #include "util.h"
 
-#define CHIPVPN_PEER_REKEY 120000
-#define CHIPVPN_PEER_TIMEOUT 90000	
+#define GT(test, a) (test > a)
+#define LT(test, a) (test < a)
+#define GTEQ(test, a) (test >= a)
+#define LTEQ(test, a) (test <= a)
+#define BETWEEN(test, a, b) (GTEQ(test, a) && LTEQ(test, b))
+
+#define CHIPVPN_REKEY_AFTER_TIME 120000
+#define CHIPVPN_REKEY_DURATION 60000
+#define CHIPVPN_KEEPALIVE_TIMEOUT 10000
+#define CHIPVPN_REKEY_TIMEOUT 5000
+
 
 typedef enum {
 	PEER_DISCONNECTED,
@@ -92,9 +101,8 @@ typedef struct chipvpn_peer_t {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t last_check;
-	uint64_t last_handshake;
-
-	uint64_t last_ack;
+	uint64_t next_rekey;
+	uint64_t next_ack;
 	chipvpn_peer_ack_e ack_state;
 } chipvpn_peer_t;
 
@@ -106,6 +114,7 @@ int                     chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipv
 int                     chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr);
 
 int                     chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
+int                     chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer);
 
 void                    chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
