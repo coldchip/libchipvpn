@@ -56,8 +56,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		return 0;
 	}
 
-	peer->last_tx_time = 0;
-	peer->last_rx_time = 0;
+	peer->ack_state = PEER_ACK_IDLE;
 	peer->address = *addr;
 	peer->last_handshake = chipvpn_get_time();
 
@@ -89,8 +88,7 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 		return 0;
 	}
 
-	peer->last_tx_time = 0;
-	peer->last_rx_time = 0;
+	peer->ack_state = PEER_ACK_IDLE;
 	peer->address = *addr;
 	peer->last_handshake = chipvpn_get_time();
 
@@ -321,13 +319,17 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 				chipvpn_log_append("%p says: peer alive, last handshake: %lu sec\n", peer, (now - peer->last_handshake) / 1000);
 				chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
-				if(now > peer->last_tx_time + 15000 && peer->last_tx_time != 0) {
-					peer->last_handshake = 1;
+				if(peer->ack_state == PEER_ACK_OWE_TX && now >= peer->last_ack + 15000) {
+        
+					chipvpn_log_append("%p says: rekeying to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
+					chipvpn_peer_send_connect(peer, device, udp, &peer->address);
+
 				}
 
-				if(now > peer->last_rx_time + 10000 && peer->last_rx_time != 0) {
+				if(peer->ack_state == PEER_ACK_OWE_RX && now >= peer->last_ack + 10000) {
 					chipvpn_peer_send_keepalive(peer, device, udp);
-					peer->last_rx_time = 0;
+
+					peer->ack_state = PEER_ACK_IDLE;
 				}
 
 				if(now > (peer->last_handshake + CHIPVPN_PEER_REKEY)) {

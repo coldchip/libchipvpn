@@ -30,6 +30,12 @@ typedef enum {
 } chipvpn_peer_state_e;
 
 typedef enum {
+	PEER_ACK_IDLE,
+	PEER_ACK_OWE_TX,
+	PEER_ACK_OWE_RX
+} chipvpn_peer_ack_e;
+
+typedef enum {
 	PEER_PERMANENT,
 	PEER_EPHEMERAL
 } chipvpn_peer_type_e;
@@ -88,8 +94,8 @@ typedef struct chipvpn_peer_t {
 	uint64_t last_check;
 	uint64_t last_handshake;
 
-	uint64_t last_tx_time;
-	uint64_t last_rx_time;
+	uint64_t last_ack;
+	chipvpn_peer_ack_e ack_state;
 } chipvpn_peer_t;
 
 chipvpn_peer_t         *chipvpn_peer_create();
