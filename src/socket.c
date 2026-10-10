@@ -218,7 +218,7 @@ bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
 }
 
 size_t chipvpn_socket_read(chipvpn_socket_t *sock, void *data, size_t size, chipvpn_address_t *addr) {
-	chipvpn_socket_vector_t vector[] = {{
+	chipvpn_socket_vector_t vector[1] = {{
 		.data = data,
 		.size = size
 	}};
@@ -227,7 +227,7 @@ size_t chipvpn_socket_read(chipvpn_socket_t *sock, void *data, size_t size, chip
 }
 
 size_t chipvpn_socket_write(chipvpn_socket_t *sock, void *data, size_t size, chipvpn_address_t *addr) {
-	chipvpn_socket_vector_t vector[] = {{
+	chipvpn_socket_vector_t vector[1] = {{
 		.data = data,
 		.size = size
 	}};

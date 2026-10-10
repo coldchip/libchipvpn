@@ -1,6 +1,6 @@
 section:device
 name:cv-client
-network:10.64.0.2/16
+network:10.128.0.2/16
 mtu:1500
 public:ihjaCjeBm1xpEeVj9NEYfgLb5L51ByG6J4hFu4lYoQM=
 private:UE+1SZSYYjblA2KZ3RMlVXPoyIVVQ0p7Kx/gToXHyqo=

@@ -1,6 +1,6 @@
 section:device
 name:cv-server
-network:10.64.0.1/16
+network:10.128.0.1/16
 bind:0.0.0.0:4433
 mtu:1500
 public:GMgfpuBPrYdxWSH3CqnpG9MUe1CcbNMxfivZyTPCNE8=
