@@ -21,17 +21,11 @@ extern "C"
 #include "blake2s.h"
 #include "util.h"
 
-#define GT(test, a) (test > a)
-#define LT(test, a) (test < a)
-#define GTEQ(test, a) (test >= a)
-#define LTEQ(test, a) (test <= a)
-#define BETWEEN(test, a, b) (GTEQ(test, a) && LTEQ(test, b))
-
+/* timers (wireguard compliant) */
 #define CHIPVPN_REKEY_AFTER_TIME 120000
-#define CHIPVPN_REKEY_DURATION 60000
+#define CHIPVPN_REJECT_AFTER_TIME 180000
 #define CHIPVPN_KEEPALIVE_TIMEOUT 10000
 #define CHIPVPN_REKEY_TIMEOUT 5000
-
 
 typedef enum {
 	PEER_DISCONNECTED,
@@ -101,7 +95,7 @@ typedef struct chipvpn_peer_t {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t last_check;
-	uint64_t next_rekey;
+	uint64_t last_handshake;
 	uint64_t next_ack;
 	chipvpn_peer_ack_e ack_state;
 } chipvpn_peer_t;
