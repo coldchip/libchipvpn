@@ -47,6 +47,7 @@
 
 #include "curve25519.h"
 #include <string.h>
+#include <stdbool.h>
 
 /* Field element representation:
  *
@@ -823,7 +824,7 @@ static void crecip(limb *out, const limb *z) {
 	/* 2^255 - 21 */ fmul(out,t1,z11);
 }
 
-int curve25519(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
+bool curve25519(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
 	limb bp[10], x[10], z[11], zmone[10];
 	uint8_t e[32];
 	int i;
@@ -844,5 +845,5 @@ int curve25519(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
 		acc |= mypublic[i];
 	}
 
-	return (acc != 0) ? 1 : 0;
+	return (acc != 0) ? true : false;
 }
