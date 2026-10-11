@@ -7,7 +7,6 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include "util.h"
-#include "log.h"
 #include "config.h"
 #include "chipvpn.h"
 #include <arpa/inet.h>

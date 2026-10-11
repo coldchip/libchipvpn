@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <time.h>
-#include "log.h"
 #include "util.h"
 #include "address.h"
 #include "ratelimit.h"

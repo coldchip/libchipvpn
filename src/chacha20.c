@@ -1,10 +1,10 @@
 #include "chacha20.h"
 
 static void chacha20_init_block(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]) {
-    ctx->state[0]  = 0x61707865;
-    ctx->state[1]  = 0x3320646e;
-    ctx->state[2]  = 0x79622d32;
-    ctx->state[3]  = 0x6b206574;
+    ctx->state[0]  = 0x61707865; /* expa */
+    ctx->state[1]  = 0x3320646e; /* nd 3 */
+    ctx->state[2]  = 0x79622d32; /* 2-by */
+    ctx->state[3]  = 0x6b206574; /* te k */
     ctx->state[4]  = PACK4_LE(key + 0 * 4);
     ctx->state[5]  = PACK4_LE(key + 1 * 4);
     ctx->state[6]  = PACK4_LE(key + 2 * 4);

@@ -16,7 +16,6 @@ extern "C"
 #include "device.h"
 #include "packet.h"
 #include "chipvpn.h"
-#include "firewall.h"
 #include "curve25519.h"
 #include "blake2s.h"
 #include "util.h"
@@ -61,9 +60,8 @@ typedef struct {
 
 typedef struct chipvpn_peer_t {
 	chipvpn_list_node_t node;
-	chipvpn_peer_state_e state;
-	chipvpn_peer_type_e type;
 
+	/* handshake and ephemerals */
 	struct {
 		uint32_t outbound_id;
 		uint32_t inbound_id;
@@ -75,22 +73,26 @@ typedef struct chipvpn_peer_t {
 		uint8_t hash_key[BLAKE2S_HASH_SIZE];
 	} handshake;
 
+	/* sessions */
 	chipvpn_peer_session_t prev_session;
 	chipvpn_peer_session_t session;
 	chipvpn_peer_session_t next_session;
 
 	chipvpn_address_t address;
 
+	/* config */
 	struct {
 		chipvpn_address_t address;
 		chipvpn_address_t allow;
-		chipvpn_firewall_t firewall;
 		uint8_t public[CURVE25519_KEY_SIZE];
 		uint8_t psk[BLAKE2S_HASH_SIZE];
 		char *onconnect;
 		char *ondisconnect;
 	} config;
 
+	/* states and timers */
+	chipvpn_peer_state_e state;
+	chipvpn_peer_type_e type;
 	uint8_t timestamp[TAI64N_SIZE];
 	uint64_t tx;
 	uint64_t rx;
@@ -129,6 +131,7 @@ void                    chipvpn_peer_run_command(chipvpn_peer_t *peer, const cha
 void                    chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipvpn_udp_t *socket);
 bool                    chipvpn_peer_encrypt_payload(chipvpn_peer_session_t *session, uint8_t *data, size_t size, uint64_t counter, uint8_t *mac);
 bool                    chipvpn_peer_decrypt_payload(chipvpn_peer_session_t *session, uint8_t *data, size_t size, uint64_t counter, uint8_t *mac);
+
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);
 
 #ifdef __cplusplus

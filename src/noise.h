@@ -1,6 +1,11 @@
 #ifndef NOISE_H
 #define NOISE_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "curve25519.h"
@@ -26,5 +31,8 @@ chipvpn_peer_t    *chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn
 
 bool               chipvpn_noise_begin_session(chipvpn_peer_t *peer, bool is_initiator);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

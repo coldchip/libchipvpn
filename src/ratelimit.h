@@ -1,6 +1,11 @@
 #ifndef RATELIMIT_H
 #define RATELIMIT_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include "address.h"
 
@@ -20,5 +25,9 @@ typedef struct {
 
 uint32_t   chipvpn_ratelimit_hash_ip(uint32_t ip);
 bool       chipvpn_ratelimit_verify(chipvpn_ratelimit_t *ratelimit, chipvpn_address_t addr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

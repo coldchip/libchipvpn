@@ -3,7 +3,6 @@
 #include "curve25519.h"
 #include "chacha20poly1305.h"
 #include "poly1305.h"
-#include "log.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -17,6 +16,20 @@
 #include <unistd.h>
 #include <stddef.h>
 #include <time.h>
+#include <stdarg.h>
+
+void chipvpn_log_append(char* format, ...) {
+	char buffer[1024];
+
+	va_list args;
+	va_start(args, format);
+	vsprintf(buffer, format, args);
+	va_end(args);
+
+	fprintf(stdout, "\033[32m%s\033[0m", buffer);
+
+	fflush(stdout);
+}
 
 void chipvpn_print_key(uint8_t *key) {
 	for(int i = 0; i < 32; i++) {
@@ -185,15 +198,6 @@ float chipvpn_log2(float val) {
 	u.x   += 127 << 23;
 	log_2 += ((-0.3358287811f) * u.val + 2.0f) * u.val  -0.65871759316667f; 
 	return (log_2);
-}
-
-static int count_set_bits(uint8_t byte) {
-	int count = 0;
-	while (byte) {
-		count += byte & 1;
-		byte >>= 1;
-	}
-	return count;
 }
 
 void chipvpn_tai64n(uint8_t *output) {
