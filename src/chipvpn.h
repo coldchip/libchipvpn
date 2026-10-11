@@ -15,7 +15,7 @@ extern "C"
 #include "ipc.h"
 #include "ratelimit.h"
 
-#define CHIPVPN_VERSION 300049
+#define CHIPVPN_VERSION 300050
 #define CHIPVPN_PROTOCOL_VERSION 205
 
 typedef struct {
