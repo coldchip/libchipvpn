@@ -71,8 +71,8 @@ bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
 	return bind(sock->fd, (struct sockaddr *)&sa, sizeof(sa)) == 0;
 }
 
-void chipvpn_udp_free(chipvpn_udp_t *ipc) {
-	chipvpn_socket_free(ipc->socket);
-	close(ipc->fd);
-	free(ipc);
+void chipvpn_udp_free(chipvpn_udp_t *udp) {
+	chipvpn_socket_free(udp->socket);
+	close(udp->fd);
+	free(udp);
 }

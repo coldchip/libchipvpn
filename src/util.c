@@ -191,15 +191,6 @@ void chipvpn_secure_zero(void *v, size_t n) {
 	}
 }
 
-float chipvpn_log2(float val) {
-	union { float val; int32_t x; } u = { val };
-	register float log_2 = (float)(((u.x >> 23) & 255) - 128);
-	u.x   &= ~(255 << 23);
-	u.x   += 127 << 23;
-	log_2 += ((-0.3358287811f) * u.val + 2.0f) * u.val  -0.65871759316667f; 
-	return (log_2);
-}
-
 void chipvpn_tai64n(uint8_t *output) {
 	// See https://cr.yp.to/libtai/tai64.html
 	// 64 bit seconds from 1970 = 8 bytes
@@ -208,9 +199,7 @@ void chipvpn_tai64n(uint8_t *output) {
 	// Get timestamp. Note that the timestamp must be synced by NTP, 
 	//  or at least preserved in NVS, not to go back after reset.
 	// Otherwise, the WireGuard remote peer rejects handshake.
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	uint64_t millis = (uint64_t)(tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL));
+	uint64_t millis = chipvpn_get_time();
 
 	// Split into seconds offset + nanos
 	uint64_t seconds = 0x400000000000000aULL + (millis / 1000);

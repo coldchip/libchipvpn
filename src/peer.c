@@ -55,10 +55,12 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	}
 
 	/* expects a keepalive packet from initiator */
+	peer->address = *addr;
+
 	peer->ack_state = PEER_ACK_OWE_TX;
 	peer->next_ack = chipvpn_get_time() + 15000;
-	peer->address = *addr;
-	
+
+	peer->last_check = 0;
 	peer->last_handshake = chipvpn_get_time();
 
 	chipvpn_log_append("%p says: hello\n", peer);
@@ -90,10 +92,12 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	}
 
 	/* responder expects a keepalive packet (immediately) */
-	peer->ack_state = PEER_ACK_OWE_RX;
-	peer->next_ack = chipvpn_get_time();
 	peer->address = *addr;
 	
+	peer->ack_state = PEER_ACK_OWE_RX;
+	peer->next_ack = chipvpn_get_time();
+
+	peer->last_check = 0;
 	peer->last_handshake = chipvpn_get_time();
 
 	chipvpn_log_append("%p says: hello\n", peer);

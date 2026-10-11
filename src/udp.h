@@ -36,7 +36,7 @@ bool                    chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size);
 bool                    chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size);
 bool                    chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark);
 bool                    chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *bind);
-void                    chipvpn_udp_free(chipvpn_udp_t *ipc);
+void                    chipvpn_udp_free(chipvpn_udp_t *udp);
 
 #ifdef __cplusplus
 }
