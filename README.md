@@ -41,7 +41,7 @@ Cryptographic Transcript Syncing: Maintains a flawless running hash (H) of all p
 Getting Started
 (Assuming a standard UNIX-like environment)
 
-## Build the VPN server
+## Building
 ```
 autoreconf -vfi
 ./configure
@@ -50,5 +50,9 @@ make
 
 ## Run the server with your configuration file (requires root for TUN/TAP interface creation)
 ```sudo ./chipvpn config2.txt```
+
+## Run the client with your configuration file (requires root for TUN/TAP interface creation)
+```sudo ./chipvpn config.txt```
+
 ## Server Configuration
 ```config.txt``` and ```config2.txt```
