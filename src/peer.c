@@ -340,29 +340,32 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 				strcpy(tx, chipvpn_format_bytes(peer->tx));
 				strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-				chipvpn_log_append("%p says: peer alive, last handshake: %lu sec\n", peer, (now - peer->last_handshake) / 1000);
+				chipvpn_log_append("%p says: peer alive, last handshake: [%lu] second(s)\n", peer, (now - peer->last_handshake) / 1000);
 				chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 
+				uint64_t next_rekey      = peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME;
+				uint64_t next_disconnect = peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME;
+
 				/* after CHIPVPN_REJECT_AFTER_TIME, clear and zero all sessions */
-				if(GTEQ(now, peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)) {
+				if(GTEQ(now, next_disconnect)) {
 					chipvpn_log_append("%p says: peer disconnected\n", peer);
 					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 				}
 
 				/* after CHIPVPN_REKEY_AFTER_TIME and before CHIPVPN_REJECT_AFTER_TIME */
-				if(GTEQ(now, peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME) && LT(now, peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)) {
+				if(GTEQ(now, next_rekey) && LT(now, next_disconnect)) {
 					chipvpn_log_append("%p says: rekeying to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 					chipvpn_peer_send_connect(peer, device, udp, &peer->address);
 				}
 
 				/* after next_ack and before CHIPVPN_REKEY_AFTER_TIME, force a rekey immediately */
-				if(GTEQ(now, peer->next_ack) && LT(now, peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME) && peer->ack_state == PEER_ACK_OWE_TX) {
+				if(GTEQ(now, peer->next_ack) && LT(now, next_rekey) && peer->ack_state == PEER_ACK_OWE_TX) {
 					chipvpn_log_append("%p says: rekeying to [%s:%i]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
 					chipvpn_peer_send_connect(peer, device, udp, &peer->address);
 				}
 
 				/* after next_ack and before CHIPVPN_REKEY_AFTER_TIME */
-				if(GTEQ(now, peer->next_ack) && LT(now, peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME) && peer->ack_state == PEER_ACK_OWE_RX) {
+				if(GTEQ(now, peer->next_ack) && LT(now, next_rekey) && peer->ack_state == PEER_ACK_OWE_RX) {
 					chipvpn_peer_send_keepalive(peer, device, udp);
 				}
 			} else if(peer->state == PEER_DISCONNECTED) {
