@@ -8,7 +8,6 @@
 #include "udp.h"
 #include "device.h"
 #include "ipc.h"
-#include "firewall.h"
 #include "config.h"
 #include "packet.h"
 #include "address.h"
@@ -17,7 +16,6 @@
 #include "base64.h"
 #include "hmac_blake2s.h"
 #include "ratelimit.h"
-#include "log.h"
 #include "util.h"
 #include "noise.h"
 
@@ -112,14 +110,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		ip_hdr_t *ip_hdr = (ip_hdr_t*)buffer;
 
+		if(ip_hdr->version != 4) {
+			continue;
+		}
+
 		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
 		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(&vpn->device->peers, &dst);
 		if(!peer || peer->state != PEER_CONNECTED) {
-			continue;
-		}
-
-		if(!chipvpn_firewall_process_ip(&peer->config.firewall, ip_hdr)) {
 			continue;
 		}
 
@@ -265,7 +263,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
 
-				if(!chipvpn_firewall_process_ip(&peer->config.firewall, ip_hdr)) {
+				if(ip_hdr->version != 4) {
 					continue;
 				}
 

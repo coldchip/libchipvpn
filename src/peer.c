@@ -13,8 +13,6 @@
 #include "chacha20poly1305.h"
 #include "chacha20.h"
 #include "hmac_blake2s.h"
-#include "firewall.h"
-#include "log.h"
 #include "util.h"
 #include "noise.h"
 
@@ -27,7 +25,6 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	peer->type = PEER_PERMANENT;
 
 	chipvpn_secure_zero(peer, sizeof(chipvpn_peer_t));
-	chipvpn_firewall_reset(&peer->config.firewall);
 	chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 
 	return peer;
@@ -57,7 +54,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 		return 0;
 	}
 
-	/* wait for keepalive packet for 15s, else attempt rekey */
+	/* expects a keepalive packet from initiator */
 	peer->ack_state = PEER_ACK_OWE_TX;
 	peer->next_ack = chipvpn_get_time() + 15000;
 	peer->address = *addr;
@@ -92,7 +89,7 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 		return 0;
 	}
 
-	/* trigger sending keepalive immediately */
+	/* responder expects a keepalive packet (immediately) */
 	peer->ack_state = PEER_ACK_OWE_RX;
 	peer->next_ack = chipvpn_get_time();
 	peer->address = *addr;

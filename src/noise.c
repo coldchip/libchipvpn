@@ -202,6 +202,7 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 		return NULL;
 	}
 
+	/* init chain_key and hash_key as a working copy to prevent unauthorized changes to the real copy */
 	SECURE32 uint8_t chain_key[BLAKE2S_HASH_SIZE];
 	SECURE32 uint8_t hash_key[BLAKE2S_HASH_SIZE];
 
@@ -227,18 +228,15 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 		return NULL;
 	}
 
-	memcpy(peer->handshake.chain_key, chain_key, sizeof(chain_key));
-	memcpy(peer->handshake.hash_key, hash_key, sizeof(hash_key));
-
 	SECURE32 uint8_t dh_ss[CURVE25519_KEY_SIZE];
 	if(!curve25519(dh_ss, device->private, peer->config.public)) {
 		return NULL;
 	}
 
 	uint8_t key1[BLAKE2S_HASH_SIZE] = {0};
-	chipvpn_noise_kdf2(peer->handshake.chain_key, key1, peer->handshake.chain_key, dh_ss, sizeof(dh_ss));
+	chipvpn_noise_kdf2(chain_key, key1, chain_key, dh_ss, sizeof(dh_ss));
 
-	if(!chipvpn_noise_decrypt_and_mix(peer->handshake.hash_key, key1, packet->timestamp, sizeof(packet->timestamp), packet->timestamp_mac)) {
+	if(!chipvpn_noise_decrypt_and_mix(hash_key, key1, packet->timestamp, sizeof(packet->timestamp), packet->timestamp_mac)) {
 		return NULL;
 	}
 
@@ -250,24 +248,27 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 		return NULL;
 	}
 
-	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, peer->handshake.ephemeral_public, sizeof(peer->handshake.ephemeral_public));
-	chipvpn_blake2s_concat(peer->handshake.hash_key, peer->handshake.ephemeral_public, sizeof(peer->handshake.ephemeral_public));
+	chipvpn_noise_kdf1(chain_key, chain_key, peer->handshake.ephemeral_public, sizeof(peer->handshake.ephemeral_public));
+	chipvpn_blake2s_concat(hash_key, peer->handshake.ephemeral_public, sizeof(peer->handshake.ephemeral_public));
 
 	SECURE32 uint8_t dh_ee[CURVE25519_KEY_SIZE];
 	if(!curve25519(dh_ee, peer->handshake.ephemeral_private, packet->ephemeral_public)) {
 		return NULL;
 	}
-	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, dh_ee, sizeof(dh_ee));
+	chipvpn_noise_kdf1(chain_key, chain_key, dh_ee, sizeof(dh_ee));
 
 	SECURE32 uint8_t dh_es[CURVE25519_KEY_SIZE];
 	if(!curve25519(dh_es, peer->handshake.ephemeral_private, peer->config.public)) {
 		return NULL;
 	}
-	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, dh_es, sizeof(dh_es));
+	chipvpn_noise_kdf1(chain_key, chain_key, dh_es, sizeof(dh_es));
 
 	peer->handshake.outbound_id = le32toh(packet->sender_index);
 
+	/* copy back timestamp, chain_key and hash_key back to peer after all the checks */
 	memcpy(peer->timestamp, packet->timestamp, sizeof(packet->timestamp));
+	memcpy(peer->handshake.chain_key, chain_key, sizeof(chain_key));
+	memcpy(peer->handshake.hash_key, hash_key, sizeof(hash_key));
 
 	return peer;
 }
@@ -311,37 +312,48 @@ chipvpn_peer_t *chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn_pa
 		return NULL;
 	}
 
+	/* init & copy chain_key and hash_key as a working copy to prevent unauthorized changes to the real copy */
+	SECURE32 uint8_t chain_key[BLAKE2S_HASH_SIZE];
+	SECURE32 uint8_t hash_key[BLAKE2S_HASH_SIZE];
+
+	memcpy(chain_key, peer->handshake.chain_key, sizeof(peer->handshake.chain_key));
+	memcpy(hash_key, peer->handshake.hash_key, sizeof(peer->handshake.hash_key));
+
 	if(le32toh(packet->receiver_index) != peer->handshake.inbound_id) {
 		return NULL;
 	}
 
-	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
-	chipvpn_blake2s_concat(peer->handshake.hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
+	chipvpn_noise_kdf1(chain_key, chain_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
+	chipvpn_blake2s_concat(hash_key, packet->ephemeral_public, sizeof(packet->ephemeral_public));
 
 	SECURE32 uint8_t dh_ee[CURVE25519_KEY_SIZE];
 	if(!curve25519(dh_ee, peer->handshake.ephemeral_private, packet->ephemeral_public)) {
 		return NULL;
 	}
-	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, dh_ee, sizeof(dh_ee));
+	chipvpn_noise_kdf1(chain_key, chain_key, dh_ee, sizeof(dh_ee));
 
 	SECURE32 uint8_t dh_se[CURVE25519_KEY_SIZE];
 	if(!curve25519(dh_se, device->private, packet->ephemeral_public)) {
 		return NULL;
 	}
-	chipvpn_noise_kdf1(peer->handshake.chain_key, peer->handshake.chain_key, dh_se, sizeof(dh_se));
+	chipvpn_noise_kdf1(chain_key, chain_key, dh_se, sizeof(dh_se));
 
 	SECURE32 uint8_t tau[BLAKE2S_HASH_SIZE] = {0};
 	SECURE32 uint8_t key[CHACHA20_KEY_SIZE] = {0};
 
-	chipvpn_noise_kdf3(peer->handshake.chain_key, tau, key, peer->handshake.chain_key, peer->config.psk, sizeof(peer->config.psk));
-	chipvpn_blake2s_concat(peer->handshake.hash_key, tau, sizeof(tau));
+	chipvpn_noise_kdf3(chain_key, tau, key, chain_key, peer->config.psk, sizeof(peer->config.psk));
+	chipvpn_blake2s_concat(hash_key, tau, sizeof(tau));
 
 	uint8_t dummy[1] = {0};
-	if(!chipvpn_noise_decrypt_and_mix(peer->handshake.hash_key, key, dummy, 0, packet->empty_mac)) {
+	if(!chipvpn_noise_decrypt_and_mix(hash_key, key, dummy, 0, packet->empty_mac)) {
 		return NULL;
 	}
 
 	peer->handshake.outbound_id = le32toh(packet->sender_index);
+
+	/* copy back chain_key and hash_key back to peer after all the checks */
+	memcpy(peer->handshake.chain_key, chain_key, sizeof(chain_key));
+	memcpy(peer->handshake.hash_key, hash_key, sizeof(hash_key));
 
 	return peer;
 }

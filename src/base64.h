@@ -1,5 +1,10 @@
 #ifndef BASE64_H
 #define BASE64_H
+
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
 /*
 	base64.c - by Joe DF (joedf@ahkscript.org)
 	Released under the MIT License
@@ -35,5 +40,8 @@ unsigned int b64_encode(uint8_t* in, unsigned int in_len, uint8_t* out);
 // returns size of output excluding null byte
 unsigned int b64_decode(uint8_t* in, unsigned int in_len, uint8_t* out);
 
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif
