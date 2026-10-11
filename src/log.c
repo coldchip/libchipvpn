@@ -10,7 +10,7 @@ void chipvpn_log_append(char* format, ...) {
 	vsprintf(buffer, format, args);
 	va_end(args);
 
-	fprintf(stdout, "%s", buffer);
+	fprintf(stdout, "\033[32m%s\033[0m", buffer);
 
 	fflush(stdout);
 }

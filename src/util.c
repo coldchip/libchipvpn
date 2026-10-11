@@ -196,41 +196,6 @@ static int count_set_bits(uint8_t byte) {
 	return count;
 }
 
-bool chipvpn_check_key_entropy(const uint8_t *key, size_t length) {
-	if(!key || length == 0) return false;
-
-	int total_bits = length * 8;
-	int set_bits = 0;
-	int byte_frequencies[256] = {0};
-
-	for(size_t i = 0; i < length; i++) {
-		set_bits += count_set_bits(key[i]);
-		byte_frequencies[key[i]]++;
-	}
-
-	double bit_ratio = ((double)set_bits / total_bits) * 100.0;
-	if(bit_ratio < 37.5 || bit_ratio > 62.5) {
-		return false;
-	}
-
-	double entropy = 0.0;
-	for(int i = 0; i < 256; i++) {
-		if(byte_frequencies[i] > 0) {
-			double p = (double)byte_frequencies[i] / length;
-			entropy -= p * chipvpn_log2(p);
-		}
-	}
-
-	double max_entropy = chipvpn_log2((double)length);
-	if(max_entropy > 8.0) max_entropy = 8.0; 
-
-	if(entropy < (max_entropy * 0.75)) {
-		return false; 
-	}
-
-	return true;
-}
-
 void chipvpn_tai64n(uint8_t *output) {
 	// See https://cr.yp.to/libtai/tai64.html
 	// 64 bit seconds from 1970 = 8 bytes

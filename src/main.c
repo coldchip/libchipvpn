@@ -221,6 +221,15 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 }
 
 int main(int argc, char const *argv[]) {
+	chipvpn_log_append("\n");
+	chipvpn_log_append(" ██████╗██╗  ██╗██╗██████╗ ██╗   ██╗██████╗ ███╗   ██╗\n");
+	chipvpn_log_append("██╔════╝██║  ██║██║██╔══██╗██║   ██║██╔══██╗████╗  ██║\n");
+	chipvpn_log_append("██║     ███████║██║██████╔╝██║   ██║██████╔╝██╔██╗ ██║\n");
+	chipvpn_log_append("██║     ██╔══██║██║██╔═══╝ ╚██╗ ██╔╝██╔═══╝ ██║╚██╗██║\n");
+	chipvpn_log_append("╚██████╗██║  ██║██║██║      ╚████╔╝ ██║     ██║ ╚████║\n");
+	chipvpn_log_append(" ╚═════╝╚═╝  ╚═╝╚═╝╚═╝       ╚═══╝  ╚═╝     ╚═╝  ╚═══╝\n");
+	chipvpn_log_append("\n");
+
 	chipvpn_log_append("chipvpn v%i protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION);
 	chipvpn_log_append("compiled on %s %s\n", __DATE__, __TIME__);
 
