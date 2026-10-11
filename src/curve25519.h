@@ -7,6 +7,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef _MSC_VER
 #define inline __inline
@@ -18,7 +19,7 @@ typedef int64_t limb;
 
 #define CURVE25519_KEY_SIZE 32
 
-int curve25519(u8 *mypublic, const u8 *secret, const u8 *basepoint);
+bool curve25519(u8 *mypublic, const u8 *secret, const u8 *basepoint);
 
 #ifdef __cplusplus
 }
