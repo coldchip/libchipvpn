@@ -1,18 +1,3 @@
-/*
- * ColdChip ChipVPN
- *
- * Copyright (c) 2016-2021, Ryan Loh <ryan@chip.sg>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README for more details.
- */
-
 #ifndef DEVICE_H
 #define DEVICE_H
 
@@ -39,6 +24,9 @@ extern "C"
 #define TUNSETPERSIST _IOW('T', 203, int)
 #endif
 
+typedef struct chipvpn_peer chipvpn_peer_t;
+typedef struct chipvpn_peer_session chipvpn_peer_session_t;
+
 typedef enum {
     COMMAND_DEVICE_SECTION,
     COMMAND_PEER_SECTION
@@ -55,6 +43,14 @@ typedef struct {
 } chipvpn_device_t;
 
 chipvpn_device_t       *chipvpn_device_create(int tun_fd);
+
+uint32_t                chipvpn_device_generate_index(chipvpn_device_t *device);
+
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_pubkey(chipvpn_device_t *device, const uint8_t *public);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *ip);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_handshake(chipvpn_device_t *device, uint32_t session_id);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id);
+
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
 bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu);

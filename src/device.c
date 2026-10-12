@@ -1,18 +1,3 @@
-/*
- * ColdChip ChipVPN
- *
- * Copyright (c) 2016-2021, Ryan Loh <ryan@chip.sg>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README for more details.
- */
-
 #include "device.h"
 #include "peer.h"
 #include <stdint.h>
@@ -66,6 +51,86 @@ chipvpn_device_t *chipvpn_device_create(int fd) {
 	chipvpn_list_clear(&device->peers);
 
 	return device;
+}
+
+uint32_t chipvpn_device_generate_index(chipvpn_device_t *device) {
+	uint32_t index;
+
+	chipvpn_secure_random((uint8_t*)&index, sizeof(index));
+	if(index == 0) {
+		return 0;
+	}
+
+	if(chipvpn_device_lookup_peer_by_handshake(device, index) != NULL) {
+		return 0;
+	}
+
+	if(chipvpn_device_lookup_peer_by_session(device, NULL, index) != NULL) {
+		return 0;
+	}
+
+	return index;
+}
+
+chipvpn_peer_t *chipvpn_device_lookup_peer_by_pubkey(chipvpn_device_t *device, const uint8_t *public) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+		if(chipvpn_secure_memcmp(public, peer->config.public, sizeof(peer->config.public)) == 0) {
+			return peer;
+		}
+	}
+	return NULL;
+}
+
+chipvpn_peer_t *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *ip) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+		if(chipvpn_address_cidr_match(ip, &peer->config.allow)) {
+			return peer;
+		}
+	}
+	return NULL;
+}
+
+chipvpn_peer_t *chipvpn_device_lookup_peer_by_handshake(chipvpn_device_t *device, uint32_t session_id) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+		if(session_id == peer->handshake.inbound_id) {
+			return peer;
+		}
+	}
+	return NULL;
+}
+
+chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id) {
+	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+		if(session_id == peer->prev_session.inbound.id) {
+			if(session) {
+				*session = &peer->prev_session;
+			}
+			return peer;
+		}
+
+		if(session_id == peer->session.inbound.id) {
+			if(session) {
+				*session = &peer->session;
+			}
+			return peer;
+		}
+
+		if(session_id == peer->next_session.inbound.id) {
+			if(session) {
+				*session = &peer->next_session;
+			}
+			return peer;
+		}
+	}
+	return NULL;
 }
 
 bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {

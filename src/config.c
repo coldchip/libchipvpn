@@ -187,7 +187,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 					if(b64_decode((uint8_t*)key, strlen(key), key32) != CURVE25519_KEY_SIZE) {
 						return;
 					}
-					chipvpn_peer_t *peer = chipvpn_peer_get_by_public_key(&vpn->device->peers, key32);
+					chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_pubkey(vpn->device, key32);
 					if(!peer) {
 						return;
 					}
