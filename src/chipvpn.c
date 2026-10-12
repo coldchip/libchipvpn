@@ -239,7 +239,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				bool success = chipvpn_crypto_chacha20_poly1305_decrypt(
-					peer->session.inbound.key, 
+					session->inbound.key, 
 					data, 
 					data_size, 
 					counter, 
