@@ -9,10 +9,6 @@
 #include "device.h"
 #include "util.h"
 #include "base64.h"
-#include "curve25519.h"
-#include "chacha20poly1305.h"
-#include "chacha20.h"
-#include "hmac_blake2s.h"
 #include "util.h"
 #include "noise.h"
 
@@ -93,7 +89,7 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 
 	/* responder expects a keepalive packet (immediately) */
 	peer->address = *addr;
-	
+
 	peer->ack_state = PEER_ACK_OWE_RX;
 	peer->next_ack = chipvpn_get_time();
 
@@ -126,7 +122,17 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 	uint8_t empty[1] = {0};
 	uint8_t mac[CHACHA20_POLY1305_ENC_LEN(0)];
 
-	if(!chipvpn_peer_encrypt_payload(&peer->session, empty, 0, peer->session.counter, mac)) {
+	bool success = chipvpn_crypto_chacha20_poly1305_encrypt(
+		peer->session.outbound.key, 
+		empty, 
+		0, 
+		peer->session.counter, 
+		NULL, 
+		0,
+		mac
+	);
+
+	if(!success) {
 		chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 		return 0;
 	}
@@ -198,67 +204,6 @@ bool chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command) {
 bool chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command) {
 	peer->config.ondisconnect = chipvpn_strdup(command);
 	return true;
-}
-
-chipvpn_peer_t *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *public) {
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-
-		if(chipvpn_secure_memcmp(public, peer->config.public, sizeof(peer->config.public)) == 0) {
-			return peer;
-		}
-	}
-	return NULL;
-}
-
-chipvpn_peer_t *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip) {
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-
-		if(chipvpn_address_cidr_match(ip, &peer->config.allow)) {
-			return peer;
-		}
-	}
-	return NULL;
-}
-
-chipvpn_peer_t *chipvpn_peer_by_handshake(chipvpn_list_t *peers, uint32_t session_id) {
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-
-		if(session_id == peer->handshake.inbound_id) {
-			return peer;
-		}
-	}
-	return NULL;
-}
-
-chipvpn_peer_t *chipvpn_peer_by_session(chipvpn_list_t *peers, chipvpn_peer_session_t **session, uint32_t session_id) {
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(peers); p != chipvpn_list_end(peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-
-		if(session_id == peer->prev_session.inbound.id) {
-			if(session) {
-				*session = &peer->prev_session;
-			}
-			return peer;
-		}
-
-		if(session_id == peer->session.inbound.id) {
-			if(session) {
-				*session = &peer->session;
-			}
-			return peer;
-		}
-
-		if(session_id == peer->next_session.inbound.id) {
-			if(session) {
-				*session = &peer->next_session;
-			}
-			return peer;
-		}
-	}
-	return NULL;
 }
 
 void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
@@ -386,30 +331,6 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 			}
 		}
 	}
-}
-
-bool chipvpn_peer_encrypt_payload(chipvpn_peer_session_t *session, uint8_t *data, size_t size, uint64_t counter, uint8_t *mac) {
-	return chipvpn_crypto_chacha20_poly1305_encrypt(
-		session->outbound.key, 
-		data, 
-		size, 
-		counter, 
-		NULL, 
-		0,
-		mac
-	);
-}
-
-bool chipvpn_peer_decrypt_payload(chipvpn_peer_session_t *session, uint8_t *data, size_t size, uint64_t counter, uint8_t *mac) {
-	return chipvpn_crypto_chacha20_poly1305_decrypt(
-		session->inbound.key, 
-		data, 
-		size, 
-		counter, 
-		NULL, 
-		0, 
-		mac
-	);
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {

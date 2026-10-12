@@ -14,7 +14,6 @@
 #include "peer.h"
 #include "bitmap.h"
 #include "base64.h"
-#include "hmac_blake2s.h"
 #include "ratelimit.h"
 #include "util.h"
 #include "noise.h"
@@ -116,7 +115,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
-		chipvpn_peer_t *peer = chipvpn_peer_get_by_allowip(&vpn->device->peers, &dst);
+		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(vpn->device, &dst);
 		if(!peer || peer->state != PEER_CONNECTED) {
 			continue;
 		}
@@ -131,7 +130,17 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		uint8_t mac[POLY1305_MAC_SIZE];
 
-		if(!chipvpn_peer_encrypt_payload(&peer->session, buffer, r, peer->session.counter, mac)) {
+		bool success = chipvpn_crypto_chacha20_poly1305_encrypt(
+			peer->session.outbound.key, 
+			buffer, 
+			r, 
+			peer->session.counter, 
+			NULL, 
+			0,
+			mac
+		);
+
+		if(!success) {
 			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
 			continue;
 		}
@@ -224,12 +233,22 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_session_t *session = NULL;
 
-				chipvpn_peer_t *peer = chipvpn_peer_by_session(&vpn->device->peers, &session, session_id);
+				chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_session(vpn->device, &session, session_id);
 				if(!peer || !session || peer->state != PEER_CONNECTED) {
 					continue;
 				}
 
-				if(!chipvpn_peer_decrypt_payload(session, data, data_size, counter, mac)) {
+				bool success = chipvpn_crypto_chacha20_poly1305_decrypt(
+					peer->session.inbound.key, 
+					data, 
+					data_size, 
+					counter, 
+					NULL, 
+					0, 
+					mac
+				);
+
+				if(!success) {
 					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
 					continue;
 				}

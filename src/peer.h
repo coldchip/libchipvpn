@@ -42,7 +42,7 @@ typedef enum {
 	PEER_EPHEMERAL
 } chipvpn_peer_type_e;
 
-typedef struct {
+typedef struct chipvpn_peer_session {
 	chipvpn_list_node_t node;
 	struct inbound {
 		uint32_t id;
@@ -58,7 +58,7 @@ typedef struct {
 	chipvpn_bitmap_t bitmap;
 } chipvpn_peer_session_t;
 
-typedef struct chipvpn_peer_t {
+typedef struct chipvpn_peer {
 	chipvpn_list_node_t node;
 
 	/* handshake and ephemerals */
@@ -121,16 +121,10 @@ bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *k
 bool                    chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command);
 bool                    chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command);
 bool                    chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);
-chipvpn_peer_t         *chipvpn_peer_get_by_public_key(chipvpn_list_t *peers, uint8_t *public);
-chipvpn_peer_t         *chipvpn_peer_get_by_allowip(chipvpn_list_t *peers, chipvpn_address_t *ip);
-chipvpn_peer_t         *chipvpn_peer_by_handshake(chipvpn_list_t *peers, uint32_t session_id);
-chipvpn_peer_t         *chipvpn_peer_by_session(chipvpn_list_t *peers, chipvpn_peer_session_t **session, uint32_t session_id);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
 void                    chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state);
 void                    chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command);
 void                    chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipvpn_udp_t *socket);
-bool                    chipvpn_peer_encrypt_payload(chipvpn_peer_session_t *session, uint8_t *data, size_t size, uint64_t counter, uint8_t *mac);
-bool                    chipvpn_peer_decrypt_payload(chipvpn_peer_session_t *session, uint8_t *data, size_t size, uint64_t counter, uint8_t *mac);
 
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);
 

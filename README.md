@@ -54,5 +54,5 @@ make
 ## Run the client with your configuration file (requires root for TUN/TAP interface creation)
 ```sudo ./chipvpn config.txt```
 
-## Server Configuration
+## Client & Server Configuration
 ```config.txt``` and ```config2.txt```
