@@ -28,6 +28,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 
 int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_t packet;
+	memset(packet, 0, sizeof(packet));
 	
 	if(!chipvpn_noise_produce_connect(peer, device, &packet)) {
 		chipvpn_log_append("noise handshake failed\n");
@@ -70,6 +71,7 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 
 int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	chipvpn_packet_auth_reply_t packet;
+	memset(packet, 0, sizeof(packet));
 	
 	if(!chipvpn_noise_produce_reply(peer, device, &packet)) {
 		chipvpn_log_append("noise handshake failed\n");

@@ -26,7 +26,7 @@ void chipvpn_log_append(char* format, ...) {
 	vsprintf(buffer, format, args);
 	va_end(args);
 
-	fprintf(stdout, "\033[32m%s\033[0m", buffer);
+	fprintf(stdout, "\033[1;33m[%lu]\033[0m \033[32m%s\033[0m", (chipvpn_get_time() / 1000), buffer);
 
 	fflush(stdout);
 }

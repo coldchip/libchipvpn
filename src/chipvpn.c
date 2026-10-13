@@ -260,7 +260,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* authenticated */
-
 				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
 					chipvpn_log_append("%p says: ip or port changed\n", peer);
 					peer->address = addr;
