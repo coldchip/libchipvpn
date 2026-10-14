@@ -76,7 +76,7 @@ typedef enum {
 
 #define PEER_NEED_KEEPALIVE(peer, now)  ( \
 	( \
-		/* 1. if peer RX is not acknowledged while its fresh */ \
+		/* premise 1: if peer RX is not acknowledged while its fresh */ \
 		PEER_FRESH(peer, now) && \
 		PEER_OVERDUE_RX(peer, now) \
 	) \
