@@ -116,7 +116,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(vpn->device, &dst);
-		if(!peer || peer->state != PEER_CONNECTED) {
+		if(!peer || !PEER_CONNECTED(peer)) {
 			continue;
 		}
 
@@ -234,7 +234,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_peer_session_t *session = NULL;
 
 				chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_session(vpn->device, &session, session_id);
-				if(!peer || !session || peer->state != PEER_CONNECTED) {
+				if(!peer || !session || !PEER_CONNECTED(peer)) {
 					continue;
 				}
 
@@ -303,11 +303,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 }
 
 void chipvpn_cleanup(chipvpn_t *vpn) {
-	for(chipvpn_list_node_t *p = chipvpn_list_begin(&vpn->device->peers); p != chipvpn_list_end(&vpn->device->peers); p = chipvpn_list_next(p)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
-		chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
-	}
-
 	chipvpn_device_free(vpn->device);
 	chipvpn_udp_free(vpn->udp);
 	chipvpn_ipc_free(vpn->ipc);
