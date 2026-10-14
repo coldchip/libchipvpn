@@ -127,6 +127,14 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				}
 			}
 
+			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "postup") == 0) {
+				chipvpn_device_set_postup(vpn->device, value);
+			}
+
+			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "postdown") == 0) {
+				chipvpn_device_set_postdown(vpn->device, value);
+			}
+
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "ifup") == 0) {
 				chipvpn_device_set_enabled(vpn->device);
 			}
@@ -139,7 +147,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
 				peer->type = PEER_EPHEMERAL;
-				peer->last_handshake = chipvpn_get_time() + CHIPVPN_REJECT_AFTER_TIME;
+				peer->expiry = chipvpn_get_time() + CHIPVPN_REJECT_AFTER_TIME;
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
@@ -172,14 +180,6 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				}
 			}
 
-			if(section == COMMAND_PEER_SECTION && strcmp(key, "onconnect") == 0) {
-				chipvpn_peer_set_onconnect(peer, value);
-			}
-
-			if(section == COMMAND_PEER_SECTION && strcmp(key, "ondisconnect") == 0) {
-				chipvpn_peer_set_ondisconnect(peer, value);
-			}
-
 			if(strcmp(key, "remove") == 0) {
 				char key[1024];
 				if(sscanf(value, "%1023s", key) == 1) {
@@ -191,8 +191,6 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 					if(!peer) {
 						return;
 					}
-
-					chipvpn_peer_set_state(peer, PEER_DISCONNECTED);
 
 					chipvpn_list_remove(&peer->node);
 					chipvpn_peer_free(peer);

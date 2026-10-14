@@ -27,11 +27,6 @@ extern "C"
 #define CHIPVPN_REKEY_TIMEOUT 5000
 
 typedef enum {
-	PEER_DISCONNECTED,
-	PEER_CONNECTED
-} chipvpn_peer_state_e;
-
-typedef enum {
 	PEER_ACK_IDLE,
 	PEER_ACK_OWE_TX,
 	PEER_ACK_OWE_RX
@@ -41,6 +36,8 @@ typedef enum {
 	PEER_PERMANENT,
 	PEER_EPHEMERAL
 } chipvpn_peer_type_e;
+
+#define PEER_CONNECTED(peer) (LT(chipvpn_get_time(), peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME))
 
 typedef struct chipvpn_peer_session {
 	chipvpn_list_node_t node;
@@ -86,12 +83,9 @@ typedef struct chipvpn_peer {
 		chipvpn_address_t allow;
 		uint8_t public[CURVE25519_KEY_SIZE];
 		uint8_t psk[BLAKE2S_HASH_SIZE];
-		char *onconnect;
-		char *ondisconnect;
 	} config;
 
 	/* states and timers */
-	chipvpn_peer_state_e state;
 	chipvpn_peer_type_e type;
 	uint8_t timestamp[TAI64N_SIZE];
 	uint64_t tx;
@@ -99,6 +93,7 @@ typedef struct chipvpn_peer {
 	uint64_t last_check;
 	uint64_t last_handshake;
 	uint64_t next_ack;
+	uint64_t expiry;
 	chipvpn_peer_ack_e ack_state;
 } chipvpn_peer_t;
 
@@ -118,12 +113,7 @@ bool                    chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char 
 bool                    chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key);
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
-bool                    chipvpn_peer_set_onconnect(chipvpn_peer_t *peer, const char *command);
-bool                    chipvpn_peer_set_onping(chipvpn_peer_t *peer, const char *command);
-bool                    chipvpn_peer_set_ondisconnect(chipvpn_peer_t *peer, const char *command);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
-void                    chipvpn_peer_set_state(chipvpn_peer_t *peer, chipvpn_peer_state_e state);
-void                    chipvpn_peer_run_command(chipvpn_peer_t *peer, const char *command);
 void                    chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipvpn_udp_t *socket);
 
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);

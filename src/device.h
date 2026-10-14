@@ -40,6 +40,9 @@ typedef struct {
     chipvpn_socket_t *socket;
     uint8_t public[CURVE25519_KEY_SIZE];
     uint8_t private[CURVE25519_KEY_SIZE];
+
+    char *postup;
+    char *postdown;
 } chipvpn_device_t;
 
 chipvpn_device_t       *chipvpn_device_create(int tun_fd);
@@ -51,9 +54,13 @@ chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *devic
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_handshake(chipvpn_device_t *device, uint32_t session_id);
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id);
 
+bool                    chipvpn_device_set_postup(chipvpn_device_t *device, const char *command);
+bool                    chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command);
+
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
 bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu);
+bool                    chipvpn_device_toggle(chipvpn_device_t *device, bool enable);
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_disabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key);

@@ -45,8 +45,10 @@ chipvpn_device_t *chipvpn_device_create(int fd) {
 		return NULL;
 	}
 
-	device->fd     = fd;
-	device->socket = sock;
+	device->fd       = fd;
+	device->socket   = sock;
+	device->postup   = NULL;
+	device->postdown = NULL;
 
 	chipvpn_list_clear(&device->peers);
 
@@ -133,6 +135,16 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, 
 	return NULL;
 }
 
+bool chipvpn_device_set_postup(chipvpn_device_t *device, const char *command) {
+	device->postup = chipvpn_strdup(command);
+	return true;
+}
+
+bool chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command) {
+	device->postdown = chipvpn_strdup(command);
+	return true;
+}
+
 bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {
 	struct ifreq ifr;
 
@@ -215,52 +227,54 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 	return success;
 }
 
-bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
-	bool success = true;
+bool chipvpn_device_toggle(chipvpn_device_t *device, bool enable) {
+    struct ifreq ifr = {0};
+    strncpy(ifr.ifr_name, device->dev, IFNAMSIZ - 1);
 
-	struct ifreq ifr;
-	ifr.ifr_addr.sa_family = AF_INET;
-
-	strcpy(ifr.ifr_name, device->dev);
-
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(fd < 0) {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(fd < 0) {
         return false;
     }
 
-	ifr.ifr_flags |= IFF_UP;
+    if(ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+        close(fd);
+        return false;
+    }
 
-	if(ioctl(fd, SIOCSIFFLAGS, &ifr) == -1) {
-		success = false;
+    if(enable) {
+        ifr.ifr_flags |= IFF_UP;
+    } else {
+        ifr.ifr_flags &= ~IFF_UP;
+    }
+
+    bool success = (ioctl(fd, SIOCSIFFLAGS, &ifr) == 0);
+    close(fd);
+
+    return success;
+}
+
+bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
+	if(!chipvpn_device_toggle(device, true)) {
+        return false;
+    }
+
+	if(device->postup) {
+		chipvpn_run_command(device->postup);
 	}
 
-	close(fd);
-
-	return success;
+	return true;
 }
 
 bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
-	bool success = true;
+	if(device->postdown) {
+		chipvpn_run_command(device->postdown);
+	}
 
-	struct ifreq ifr;
-	ifr.ifr_addr.sa_family = AF_INET;
-
-	strcpy(ifr.ifr_name, device->dev);
-
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(fd < 0) {
+	if(!chipvpn_device_toggle(device, false)) {
         return false;
     }
 
-	ifr.ifr_flags &= ~IFF_UP;
-
-	if(ioctl(fd, SIOCSIFFLAGS, &ifr) == -1) {
-		success = false;
-	}
-
-	close(fd);
-
-	return success;
+	return true;
 }
 
 bool chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key) {
@@ -287,7 +301,17 @@ void chipvpn_device_free(chipvpn_device_t *device) {
 
 	chipvpn_socket_free(device->socket);
 
+	chipvpn_device_set_disabled(device);
+
 	close(device->fd);
+
+	if(device->postup) {
+		free(device->postup);
+	}
+
+	if(device->postdown) {
+		free(device->postdown);
+	}
 
 	free(device);
 }
