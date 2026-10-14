@@ -37,7 +37,50 @@ typedef enum {
 	PEER_EPHEMERAL
 } chipvpn_peer_type_e;
 
-#define PEER_CONNECTED(peer) (LT(chipvpn_get_time(), peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME))
+#define PEER_IS_INITIATOR(peer)    (peer->config.address.ip > 0)
+#define PEER_IS_EXPIRE(peer, now)  (peer->type == PEER_EPHEMERAL && GTEQ(now, peer->expiry))
+
+#define PEER_NEXT_REKEY(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
+#define PEER_NEXT_DISCONNECT(peer) (peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)
+
+#define PEER_CONNECTED(peer, now)  (GTEQ(now, peer->last_handshake) && LT(now, PEER_NEXT_DISCONNECT(peer)))
+#define PEER_FRESH(peer, now)      (GTEQ(now, peer->last_handshake) && LT(now, PEER_NEXT_REKEY(peer)))
+
+#define PEER_OVERDUE_TX(peer, now)   ( \
+	GTEQ(now, peer->next_ack) && \
+	peer->ack_state == PEER_ACK_OWE_TX \
+)
+
+#define PEER_OVERDUE_RX(peer, now)   ( \
+	GTEQ(now, peer->next_ack) && \
+	peer->ack_state == PEER_ACK_OWE_RX \
+)
+
+#define PEER_NEED_REKEY(peer, now) ( \
+	( \
+		/* premise 1: if peer is disconnected and an is an initiator */ \
+		!PEER_CONNECTED(peer, now) && \
+		PEER_IS_INITIATOR(peer) \
+	) || \
+	( \
+		/* premise 2: if peer's session is stale */ \
+		PEER_CONNECTED(peer, now) && \
+		!PEER_FRESH(peer, now) \
+	) || \
+	( \
+		/* premise 3: if peer TX is not acknowledged while its fresh */ \
+		PEER_FRESH(peer, now) && \
+		PEER_OVERDUE_TX(peer, now) \
+	) \
+)
+
+#define PEER_NEED_KEEPALIVE(peer, now)  ( \
+	( \
+		/* 1. if peer RX is not acknowledged while its fresh */ \
+		PEER_FRESH(peer, now) && \
+		PEER_OVERDUE_RX(peer, now) \
+	) \
+)
 
 typedef struct chipvpn_peer_session {
 	chipvpn_list_node_t node;
@@ -107,6 +150,7 @@ int                     chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipv
 int                     chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 int                     chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer);
 
+void                    chipvpn_peer_reset_handshake(chipvpn_peer_t *peer);
 void                    chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
 bool                    chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
