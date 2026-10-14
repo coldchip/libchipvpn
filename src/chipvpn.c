@@ -116,7 +116,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(vpn->device, &dst);
-		if(!peer || !PEER_CONNECTED(peer)) {
+		if(!peer || !PEER_CONNECTED(peer, chipvpn_get_time())) {
 			continue;
 		}
 
@@ -234,7 +234,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_peer_session_t *session = NULL;
 
 				chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_session(vpn->device, &session, session_id);
-				if(!peer || !session || !PEER_CONNECTED(peer)) {
+				if(!peer || !session || !PEER_CONNECTED(peer, chipvpn_get_time())) {
 					continue;
 				}
 
