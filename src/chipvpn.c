@@ -123,9 +123,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 		peer->session.counter++;
 
 		chipvpn_packet_data_t header = {
-			.header.type = CHIPVPN_PACKET_DATA,
-			.session     = htole32(peer->session.outbound.id),
-			.counter     = htole64(peer->session.counter)
+			.type    = CHIPVPN_PACKET_DATA,
+			.session = htole32(peer->session.outbound.id),
+			.counter = htole64(peer->session.counter)
 		};
 
 		uint8_t mac[POLY1305_MAC_SIZE];
@@ -166,12 +166,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_address_t addr;
 
 		size_t r = chipvpn_socket_read(vpn->udp->socket, buffer, sizeof(buffer), &addr);
-		if(r < sizeof(chipvpn_packet_header_t)) {
+		if(r < sizeof(uint8_t)) {
 			continue;
 		}
 
-		chipvpn_packet_header_t *header = (chipvpn_packet_header_t*)buffer;
-		switch(header->type) {
+		uint8_t type = buffer[0];
+		switch(type) {
 			case CHIPVPN_PACKET_AUTH: {
 				if(r != sizeof(chipvpn_packet_auth_t)) {
 					continue;

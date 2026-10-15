@@ -149,7 +149,7 @@ void chipvpn_noise_kdf3(uint8_t *tau1, uint8_t *tau2, uint8_t *tau3, const uint8
 bool chipvpn_noise_produce_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_auth_t *packet) {
 	chipvpn_secure_zero(packet, sizeof(chipvpn_packet_auth_t));
 
-	packet->header.type = CHIPVPN_PACKET_AUTH;
+	packet->type = CHIPVPN_PACKET_AUTH;
 
 	peer->handshake.inbound_id = chipvpn_device_generate_index(device);
 	if(peer->handshake.inbound_id == 0) {
@@ -276,7 +276,7 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 bool chipvpn_noise_produce_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet) {
 	chipvpn_secure_zero(packet, sizeof(chipvpn_packet_auth_reply_t));
 	
-	packet->header.type = CHIPVPN_PACKET_AUTH_REPLY;
+	packet->type = CHIPVPN_PACKET_AUTH_REPLY;
 	packet->receiver_index = htole32(peer->handshake.outbound_id);
 	
 	peer->handshake.inbound_id = chipvpn_device_generate_index(device);
