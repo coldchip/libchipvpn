@@ -136,9 +136,22 @@ void chipvpn_run_command(const char *command) {
 }
 
 uint64_t chipvpn_get_time() {
-	struct timespec ts;
-	clock_gettime(CLOCK_REALTIME_COARSE, &ts);
-	return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+	static uint64_t last_real = 0ul;
+	static uint64_t last_mono = 0ul;
+
+	struct timespec ts_mono;
+	clock_gettime(CLOCK_MONOTONIC, &ts_mono);
+	uint64_t current_mono = (uint64_t)ts_mono.tv_sec * 1000ULL + (uint64_t)ts_mono.tv_nsec / 1000000ULL;
+
+	if(current_mono > last_mono + 1000 || last_mono == 0) {
+		struct timespec ts_real;
+		clock_gettime(CLOCK_REALTIME, &ts_real);
+		last_real = (uint64_t)ts_real.tv_sec * 1000ULL + (uint64_t)ts_real.tv_nsec / 1000000ULL;
+
+		last_mono = current_mono;
+	}
+
+	return last_real + (current_mono - last_mono);
 }
 
 int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {

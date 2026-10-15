@@ -53,9 +53,9 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	peer->address = *addr;
 
 	peer->ack_state = PEER_ACK_OWE_TX;
-	peer->next_ack = chipvpn_get_time() + 15000;
+	peer->last_ack = chipvpn_get_time();
 
-	peer->last_check = 0;
+	peer->last_check = 0llu;
 	peer->last_handshake = chipvpn_get_time();
 
 	chipvpn_log_append("%p says: hello\n", peer);
@@ -91,9 +91,9 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	peer->address = *addr;
 
 	peer->ack_state = PEER_ACK_OWE_RX;
-	peer->next_ack = chipvpn_get_time();
+	peer->last_ack = 0llu;
 
-	peer->last_check = 0;
+	peer->last_check = 0llu;
 	peer->last_handshake = chipvpn_get_time();
 
 	/* promote peer session immediately from next_session to session */
@@ -223,7 +223,7 @@ void chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipv
 		if(now > peer->last_check + 2000) {
 			peer->last_check = now;
 
-			if(PEER_CONNECTED(peer, now)) {
+			if(PEER_ACTIVE(peer, now)) {
 				char tx[128];
 				char rx[128];
 				strcpy(tx, chipvpn_format_bytes(peer->tx));

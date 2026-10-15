@@ -26,45 +26,38 @@ extern "C"
 #define CHIPVPN_KEEPALIVE_TIMEOUT 10000
 #define CHIPVPN_REKEY_TIMEOUT 5000
 
-typedef enum {
-	PEER_ACK_IDLE,
-	PEER_ACK_OWE_TX,
-	PEER_ACK_OWE_RX
-} chipvpn_peer_ack_e;
-
-typedef enum {
-	PEER_PERMANENT,
-	PEER_EPHEMERAL
-} chipvpn_peer_type_e;
-
+/* timer logic */
 #define PEER_IS_INITIATOR(peer)    (peer->config.address.ip > 0)
 #define PEER_IS_EXPIRE(peer, now)  (peer->type == PEER_EPHEMERAL && GTEQ(now, peer->expiry))
 
 #define PEER_NEXT_REKEY(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
 #define PEER_NEXT_DISCONNECT(peer) (peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)
 
-#define PEER_CONNECTED(peer, now)  (GTEQ(now, peer->last_handshake) && LT(now, PEER_NEXT_DISCONNECT(peer)))
+#define PEER_NEXT_OVERDUE_TX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT)
+#define PEER_NEXT_OVERDUE_RX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT)
+
+#define PEER_ACTIVE(peer, now)     (GTEQ(now, peer->last_handshake) && LT(now, PEER_NEXT_DISCONNECT(peer)))
 #define PEER_FRESH(peer, now)      (GTEQ(now, peer->last_handshake) && LT(now, PEER_NEXT_REKEY(peer)))
 
 #define PEER_OVERDUE_TX(peer, now)   ( \
-	GTEQ(now, peer->next_ack) && \
+	GTEQ(now, PEER_NEXT_OVERDUE_TX(peer)) && \
 	peer->ack_state == PEER_ACK_OWE_TX \
 )
 
 #define PEER_OVERDUE_RX(peer, now)   ( \
-	GTEQ(now, peer->next_ack) && \
+	GTEQ(now, PEER_NEXT_OVERDUE_RX(peer)) && \
 	peer->ack_state == PEER_ACK_OWE_RX \
 )
 
 #define PEER_NEED_REKEY(peer, now) ( \
 	( \
 		/* premise 1: if peer is disconnected and an is an initiator */ \
-		!PEER_CONNECTED(peer, now) && \
+		!PEER_ACTIVE(peer, now) && \
 		PEER_IS_INITIATOR(peer) \
 	) || \
 	( \
 		/* premise 2: if peer's session is stale */ \
-		PEER_CONNECTED(peer, now) && \
+		PEER_ACTIVE(peer, now) && \
 		!PEER_FRESH(peer, now) \
 	) || \
 	( \
@@ -81,6 +74,17 @@ typedef enum {
 		PEER_OVERDUE_RX(peer, now) \
 	) \
 )
+
+typedef enum {
+	PEER_ACK_IDLE,
+	PEER_ACK_OWE_TX,
+	PEER_ACK_OWE_RX
+} chipvpn_peer_ack_e;
+
+typedef enum {
+	PEER_PERMANENT,
+	PEER_EPHEMERAL
+} chipvpn_peer_type_e;
 
 typedef struct chipvpn_peer_session {
 	chipvpn_list_node_t node;
@@ -133,10 +137,10 @@ typedef struct chipvpn_peer {
 	uint8_t timestamp[TAI64N_SIZE];
 	uint64_t tx;
 	uint64_t rx;
+	uint64_t expiry;
 	uint64_t last_check;
 	uint64_t last_handshake;
-	uint64_t next_ack;
-	uint64_t expiry;
+	uint64_t last_ack;
 	chipvpn_peer_ack_e ack_state;
 } chipvpn_peer_t;
 
