@@ -116,7 +116,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(vpn->device, &dst);
-		if(!peer || !PEER_CONNECTED(peer, chipvpn_get_time())) {
+		if(!peer || !PEER_ACTIVE(peer, chipvpn_get_time())) {
 			continue;
 		}
 
@@ -147,7 +147,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		if(peer->ack_state != PEER_ACK_OWE_TX) {
 			peer->ack_state = PEER_ACK_OWE_TX;
-			peer->next_ack = chipvpn_get_time() + CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT;
+			peer->last_ack = chipvpn_get_time();
 		}
 
 		peer->tx += r;
@@ -234,7 +234,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_peer_session_t *session = NULL;
 
 				chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_session(vpn->device, &session, session_id);
-				if(!peer || !session || !PEER_CONNECTED(peer, chipvpn_get_time())) {
+				if(!peer || !session || !PEER_ACTIVE(peer, chipvpn_get_time())) {
 					continue;
 				}
 
@@ -276,7 +276,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				if(peer->ack_state != PEER_ACK_OWE_RX) {
 					peer->ack_state = PEER_ACK_OWE_RX;
-					peer->next_ack = chipvpn_get_time() + CHIPVPN_KEEPALIVE_TIMEOUT;
+					peer->last_ack = chipvpn_get_time();
 				}
 
 				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
