@@ -56,7 +56,6 @@ extern "C"
 	peer->ack_state == PEER_ACK_IDLE \
 )
 
-/* (p ∧ ¬q) ∨ (r ∧ q) */
 #define PEER_NEED_REKEY(peer, now) ( \
 	( \
 		/* premise 1: if initiator is outside of the fresh window */ \
