@@ -140,6 +140,7 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 
 	if(peer->ack_state != PEER_ACK_OWE_TX) {
 		peer->ack_state = PEER_ACK_IDLE;
+		/* keep track of the last keepalive so it's scheduled for the next */
 		peer->last_ack = chipvpn_get_time();
 	}
 
@@ -153,9 +154,9 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 
 int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
 	chipvpn_log_append("%p says: received keepalive packet\n", peer);
+
 	if(peer->ack_state != PEER_ACK_OWE_RX) {
 		peer->ack_state = PEER_ACK_IDLE;
-		peer->last_ack = chipvpn_get_time();
 	}
 
 	return 0;
