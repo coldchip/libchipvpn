@@ -63,7 +63,6 @@ bool                    chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu
 bool                    chipvpn_device_toggle(chipvpn_device_t *device, bool enable);
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_disabled(chipvpn_device_t *device);
-bool                    chipvpn_device_set_public_key(chipvpn_device_t *device, const char *key);
 bool                    chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key);
 void                    chipvpn_device_free(chipvpn_device_t *device);
 

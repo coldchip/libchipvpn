@@ -68,13 +68,6 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				}
 			}
 
-			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "public") == 0) {
-				char key[1024];
-				if(sscanf(value, "%1023s", key) == 1) {
-					chipvpn_device_set_public_key(vpn->device, key);
-				}
-			}
-
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "private") == 0) {
 				char key[1024];
 				if(sscanf(value, "%1023s", key) == 1) {
