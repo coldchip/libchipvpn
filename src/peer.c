@@ -115,9 +115,9 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 	peer->session.counter++;
 
 	chipvpn_packet_data_t header = {
-		.header.type = CHIPVPN_PACKET_DATA,
-		.session     = htole32(peer->session.outbound.id),
-		.counter     = htole64(peer->session.counter)
+		.type    = CHIPVPN_PACKET_DATA,
+		.session = htole32(peer->session.outbound.id),
+		.counter = htole64(peer->session.counter)
 	};
 
 	uint8_t empty[1] = {0};
@@ -138,8 +138,9 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 		return 0;
 	}
 
-	if(peer->ack_state == PEER_ACK_OWE_RX) {
+	if(peer->ack_state != PEER_ACK_OWE_TX) {
 		peer->ack_state = PEER_ACK_IDLE;
+		peer->last_ack = chipvpn_get_time();
 	}
 
 	chipvpn_socket_vector_t vector[] = {
@@ -152,8 +153,9 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 
 int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
 	chipvpn_log_append("%p says: received keepalive packet\n", peer);
-	if(peer->ack_state == PEER_ACK_OWE_TX) {
+	if(peer->ack_state != PEER_ACK_OWE_RX) {
 		peer->ack_state = PEER_ACK_IDLE;
+		peer->last_ack = chipvpn_get_time();
 	}
 
 	return 0;

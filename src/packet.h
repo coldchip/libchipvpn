@@ -85,10 +85,6 @@ typedef enum {
 
 typedef struct __attribute__((__packed__)) {
 	uint8_t type;
-} chipvpn_packet_header_t;
-
-typedef struct __attribute__((__packed__)) {
-	chipvpn_packet_header_t header;
 	uint8_t padding[3];
 	uint32_t sender_index;
 	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
@@ -101,7 +97,7 @@ typedef struct __attribute__((__packed__)) {
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {
-    chipvpn_packet_header_t header; 
+    uint8_t type;
     uint8_t padding[3];             
     uint32_t sender_index;          
     uint32_t receiver_index;        
@@ -109,10 +105,19 @@ typedef struct __attribute__((__packed__)) {
     uint8_t empty_mac[POLY1305_MAC_SIZE];        
     uint8_t mac1[POLY1305_MAC_SIZE];              
     uint8_t mac2[POLY1305_MAC_SIZE];             
-} chipvpn_packet_auth_reply_t; 
+} chipvpn_packet_auth_reply_t;
 
 typedef struct __attribute__((__packed__)) {
-	chipvpn_packet_header_t header;
+    uint8_t type;
+    uint8_t padding[3];
+    uint32_t receiver_index;
+    uint8_t nonce[24];
+    uint8_t cookie[16];
+    uint8_t mac[POLY1305_MAC_SIZE]; 
+} chipvpn_packet_cookie_t;
+
+typedef struct __attribute__((__packed__)) {
+	uint8_t type;
 	uint8_t padding[3]; 
 	uint32_t session;
 	uint64_t counter;
