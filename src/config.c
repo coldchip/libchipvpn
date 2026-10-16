@@ -140,7 +140,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
 				peer->type = PEER_EPHEMERAL;
-				peer->expiry = chipvpn_get_time() + CHIPVPN_REJECT_AFTER_TIME;
+				peer->last_created = chipvpn_get_time();
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
