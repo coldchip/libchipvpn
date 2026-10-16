@@ -26,60 +26,63 @@ extern "C"
 #define CHIPVPN_KEEPALIVE_TIMEOUT 10000
 #define CHIPVPN_REKEY_TIMEOUT 5000
 #define CHIPVPN_PERSISTENT_KEEPALIVE 20000
+#define CHIPVPN_EPHEMERAL_EXPIRY 60000
 
 /* timer logic */
-#define PEER_IS_INITIATOR(peer)    (peer->config.address.ip > 0)
-#define PEER_IS_EXPIRE(peer, now)  (peer->type == PEER_EPHEMERAL && GTEQ(now, peer->expiry))
-
 #define PEER_NEXT_REKEY(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
 #define PEER_NEXT_INACTIVE(peer)   (peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)
-
 #define PEER_NEXT_OVERDUE_TX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT)
 #define PEER_NEXT_OVERDUE_RX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT)
-#define PEER_NEXT_KEEPALIVE(peer)  (peer->last_ack + CHIPVPN_PERSISTENT_KEEPALIVE)
+#define PEER_NEXT_KEEPALIVE(peer)  (peer->last_keepalive + CHIPVPN_PERSISTENT_KEEPALIVE)
+#define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
 
-#define PEER_ACTIVE(peer, now)     (GTEQ(now, peer->last_handshake) && LT(now, PEER_NEXT_INACTIVE(peer)))
-#define PEER_FRESH(peer, now)      (GTEQ(now, peer->last_handshake) && LT(now, PEER_NEXT_REKEY(peer)))
+#define PEER_INITIATOR(peer) (peer->config.address.ip > 0)
 
-#define PEER_OVERDUE_TX(peer, now)   ( \
-	GTEQ(now, PEER_NEXT_OVERDUE_TX(peer)) && \
-	peer->ack_state == PEER_ACK_OWE_TX \
+#define PEER_ACTIVE(peer, now) ( \
+	GTEQ(now, peer->last_handshake) && \
+	LT(now, PEER_NEXT_INACTIVE(peer)) \
+)
+#define PEER_FRESH(peer, now) ( \
+	GTEQ(now, peer->last_handshake) && \
+	LT(now, PEER_NEXT_REKEY(peer)) \
 )
 
-#define PEER_OVERDUE_RX(peer, now)   ( \
-	GTEQ(now, PEER_NEXT_OVERDUE_RX(peer)) && \
-	peer->ack_state == PEER_ACK_OWE_RX \
+#define PEER_OVERDUE_TX(peer, now) ( \
+	PEER_FRESH(peer, now) && \
+	peer->ack_state == PEER_ACK_OWE_TX && \
+	GTEQ(now, PEER_NEXT_OVERDUE_TX(peer)) \
 )
 
-#define PEER_PERSISTENT_KEEPALIVE(peer, now)   ( \
-	GTEQ(now, PEER_NEXT_KEEPALIVE(peer)) && \
-	peer->ack_state == PEER_ACK_IDLE \
+#define PEER_OVERDUE_RX(peer, now) ( \
+	PEER_FRESH(peer, now) && \
+	peer->ack_state == PEER_ACK_OWE_RX && \
+	GTEQ(now, PEER_NEXT_OVERDUE_RX(peer)) \
 )
 
-#define PEER_NEED_REKEY(peer, now) ( \
-	( \
-		/* premise 1: if initiator is outside of the fresh window */ \
-		PEER_IS_INITIATOR(peer) && \
-		!PEER_FRESH(peer, now) \
-	) || \
-	( \
-		/* premise 2: if peer TX is not acknowledged while its fresh */ \
-		PEER_FRESH(peer, now) && \
-		PEER_OVERDUE_TX(peer, now) \
-	) \
+#define PEER_PERIODIC_REKEY(peer, now) ( \
+	PEER_INITIATOR(peer) && \
+	!PEER_FRESH(peer, now) \
 )
 
-#define PEER_NEED_KEEPALIVE(peer, now)  ( \
-	( \
-		/* premise 1: peer needs to send keepalive */ \
-		PEER_FRESH(peer, now) && \
-		PEER_PERSISTENT_KEEPALIVE(peer, now) \
-	) || \
-	( \
-		/* premise 2: if peer RX is not acknowledged while its fresh */ \
-		PEER_FRESH(peer, now) && \
-		PEER_OVERDUE_RX(peer, now) \
-	) \
+#define PEER_PERIODIC_KEEPALIVE(peer, now) ( \
+	PEER_FRESH(peer, now) && \
+	GTEQ(now, PEER_NEXT_KEEPALIVE(peer)) \
+)
+
+#define PEER_REKEY(peer, now) ( \
+	PEER_PERIODIC_REKEY(peer, now) || \
+	PEER_OVERDUE_TX(peer, now) \
+)
+
+#define PEER_KEEPALIVE(peer, now)  ( \
+	PEER_PERIODIC_KEEPALIVE(peer, now) || \
+	PEER_OVERDUE_RX(peer, now) \
+)
+
+#define PEER_EXPIRE(peer, now) ( \
+	!PEER_ACTIVE(peer, now) && \
+	peer->type == PEER_EPHEMERAL && \
+	GTEQ(now, PEER_NEXT_EXPIRY(peer)) \
 )
 
 typedef enum {
@@ -144,10 +147,17 @@ typedef struct chipvpn_peer {
 	uint64_t tx;
 	uint64_t rx;
 	uint8_t timestamp[TAI64N_SIZE];
-	uint64_t expiry;
+	/* last created, used for removing expired ephemeral peers */
+	uint64_t last_created;
+	/* last service loop */
 	uint64_t last_check;
+	/* last successful handshake with peer */
 	uint64_t last_handshake;
+	/* last persistent keepalive, cleared when there is any tx packet */
+	uint64_t last_keepalive;
+	/* last timestamp of the first unacknowledged tx or unreplied rx packet */
 	uint64_t last_ack;
+	/* keepalive timeout state that dictates the next timeout action */
 	chipvpn_peer_ack_e ack_state;
 } chipvpn_peer_t;
 

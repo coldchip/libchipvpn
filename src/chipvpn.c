@@ -150,6 +150,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 			peer->last_ack = chipvpn_get_time();
 		}
 
+		/* any outbound packet is considered sending a keepalive packet */
+		peer->last_keepalive = chipvpn_get_time();
+
 		peer->tx += r;
 
 		chipvpn_socket_vector_t vector[] = {
