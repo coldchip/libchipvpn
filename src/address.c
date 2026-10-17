@@ -8,9 +8,10 @@
 #include <stdio.h>
 
 bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
-	addr->ip = inet_addr(ip);
-
-	return true;
+	if(inet_pton(AF_INET, ip, &addr->ip) == 1) {
+		return true;
+	}
+	return false;
 }
 
 bool chipvpn_address_cidr_match(chipvpn_address_t *addr, chipvpn_address_t *net) {

@@ -11,6 +11,8 @@
 #include "address.h"
 #include "util.h"
 #include "base64.h"
+#include "peer.h"
+#include "udp.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
@@ -133,6 +135,22 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, 
 		}
 	}
 	return NULL;
+}
+
+void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
+	chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers);
+
+	while(p != chipvpn_list_end(&device->peers)) {
+		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+		p = chipvpn_list_next(p);
+
+		if(!chipvpn_peer_service(peer, device, udp)) {
+			/* peer has expired */
+			chipvpn_list_remove(&peer->node);
+			chipvpn_peer_free(peer);
+		}
+	}
 }
 
 bool chipvpn_device_set_postup(chipvpn_device_t *device, const char *command) {

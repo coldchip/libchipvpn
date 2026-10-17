@@ -86,7 +86,7 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 
 int chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
-	chipvpn_peer_service(&vpn->device->peers, vpn->device, vpn->udp);
+	chipvpn_device_peer_service(vpn->device, vpn->udp);
 
 	uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
 
@@ -151,7 +151,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		/* any outbound packet is considered sending a keepalive packet */
-		peer->last_keepalive = chipvpn_get_time();
+		peer->last_transmission = chipvpn_get_time();
 
 		peer->tx += r;
 
