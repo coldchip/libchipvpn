@@ -33,7 +33,7 @@ extern "C"
 #define PEER_NEXT_INACTIVE(peer)   (peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)
 #define PEER_NEXT_OVERDUE_TX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT)
 #define PEER_NEXT_OVERDUE_RX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT)
-#define PEER_NEXT_KEEPALIVE(peer)  (peer->last_keepalive + CHIPVPN_PERSISTENT_KEEPALIVE)
+#define PEER_NEXT_KEEPALIVE(peer)  (peer->last_transmission + CHIPVPN_PERSISTENT_KEEPALIVE)
 #define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
 
 #define PEER_INITIATOR(peer) (peer->config.address.ip > 0)
@@ -60,8 +60,8 @@ extern "C"
 )
 
 #define PEER_PERIODIC_REKEY(peer, now) ( \
-	PEER_INITIATOR(peer) && \
-	!PEER_FRESH(peer, now) \
+	!PEER_FRESH(peer, now) && \
+	PEER_INITIATOR(peer) \
 )
 
 #define PEER_PERIODIC_KEEPALIVE(peer, now) ( \
@@ -98,6 +98,7 @@ typedef enum {
 
 typedef struct chipvpn_peer_session {
 	chipvpn_list_node_t node;
+	
 	struct inbound {
 		uint32_t id;
 		uint8_t key[CHACHA20_KEY_SIZE];
@@ -143,9 +144,13 @@ typedef struct chipvpn_peer {
 	} config;
 
 	/* states and timers */
+	/* peer type, permanent or ephemeral */
 	chipvpn_peer_type_e type;
+	/* packets sent in the inner tunnel */
 	uint64_t tx;
+	/* packets received in the inner tunnel */
 	uint64_t rx;
+	/* last timestamp of the initiator */
 	uint8_t timestamp[TAI64N_SIZE];
 	/* last created, used for removing expired ephemeral peers */
 	uint64_t last_created;
@@ -153,8 +158,8 @@ typedef struct chipvpn_peer {
 	uint64_t last_check;
 	/* last successful handshake with peer */
 	uint64_t last_handshake;
-	/* last persistent keepalive, cleared when there is any tx packet */
-	uint64_t last_keepalive;
+	/* last packet sent, used for NAT traversal & persistent keepalive, updated when there is any tx packet */
+	uint64_t last_transmission;
 	/* last timestamp of the first unacknowledged tx or unreplied rx packet */
 	uint64_t last_ack;
 	/* keepalive timeout state that dictates the next timeout action */
@@ -179,7 +184,8 @@ bool                    chipvpn_peer_set_address(chipvpn_peer_t *peer, const cha
 bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key);
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
-void                    chipvpn_peer_service(chipvpn_list_t *peers, chipvpn_device_t *device, chipvpn_udp_t *socket);
+
+bool                    chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);
 

@@ -13,6 +13,7 @@ extern "C"
 #include "socket.h"
 #include "address.h"
 #include "list.h"
+#include "udp.h"
 #include "curve25519.h"
 #include <netinet/in.h>
 #include <net/if.h>
@@ -53,6 +54,8 @@ chipvpn_peer_t         *chipvpn_device_lookup_peer_by_pubkey(chipvpn_device_t *d
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *ip);
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_handshake(chipvpn_device_t *device, uint32_t session_id);
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id);
+
+void                    chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp);
 
 bool                    chipvpn_device_set_postup(chipvpn_device_t *device, const char *command);
 bool                    chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command);

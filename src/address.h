@@ -10,8 +10,6 @@ extern "C"
 #include <stdbool.h>
 #include <sys/un.h>
 
-#define UNIX_PATH_MAX sizeof(((struct sockaddr_un *)0)->sun_path)
-
 typedef struct {
 	uint32_t ip;
 	uint16_t port;
