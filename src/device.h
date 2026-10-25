@@ -51,7 +51,7 @@ chipvpn_device_t       *chipvpn_device_create(int tun_fd);
 uint32_t                chipvpn_device_generate_index(chipvpn_device_t *device);
 
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_pubkey(chipvpn_device_t *device, const uint8_t *public);
-chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *ip);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *address);
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_handshake(chipvpn_device_t *device, uint32_t session_id);
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id);
 

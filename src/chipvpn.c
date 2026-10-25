@@ -20,6 +20,9 @@
 
 chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
 	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
+	if(!vpn) {
+		return NULL;
+	}
 
 	setbuf(stdout, 0);
 
@@ -44,6 +47,9 @@ chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
 	vpn->device = device;
 	vpn->udp    = udp;
 	vpn->ipc    = ipc;
+
+	/* clear ratelimit list */
+	chipvpn_ratelimit_clear(&vpn->ratelimit);
 
 	return vpn;
 }
@@ -290,7 +296,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_address_t src = { .ip = ip_hdr->src_addr };
 
-				if(!chipvpn_address_cidr_match(&src, &peer->config.allow)) {
+				if(!chipvpn_address_cidr_match(&peer->config.allow, &src)) {
 					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					continue;
 				}

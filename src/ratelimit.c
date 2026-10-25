@@ -13,6 +13,10 @@ uint32_t chipvpn_ratelimit_hash_ip(uint32_t ip) {
     return ip & (CHIPVPN_RATELIMIT_SIZE - 1);
 }
 
+void chipvpn_ratelimit_clear(chipvpn_ratelimit_t *ratelimit) {
+    memset(ratelimit, 0, sizeof(chipvpn_ratelimit_t));
+}
+
 bool chipvpn_ratelimit_verify(chipvpn_ratelimit_t *ratelimit, chipvpn_address_t addr) {
     uint64_t now = chipvpn_get_time();
     

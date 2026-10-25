@@ -36,6 +36,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				int cpu;
 				if(sscanf(value, "%i", &cpu) == 1) {
 					cpu_set_t set;
+					CPU_ZERO(&set);
 					CPU_SET(cpu, &set);
 
 					if(sched_setaffinity(0, sizeof(cpu_set_t), &set) != 0) {
@@ -54,9 +55,9 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "network") == 0) {
-				char address[24];
+				char address[128];
 				int prefix;
-				if(sscanf(value, "%24[^/]/%i", address, &prefix) == 2) {
+				if(sscanf(value, "%100[^/]/%i", address, &prefix) == 2) {
 					chipvpn_address_t network;
 					if(!chipvpn_address_set_ip(&network, address)) {
 						return;
@@ -144,17 +145,17 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
-				char address[512];
+				char address[128];
 				int port;
-				if(sscanf(value, "%512[^:]:%i", address, &port) == 2) {
+				if(sscanf(value, "%100[^:]:%i", address, &port) == 2) {
 					chipvpn_peer_set_address(peer, address, port);
 				}
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "allow") == 0) {
-				char address[24];
+				char address[128];
 				int prefix;
-				if(sscanf(value, "%24[^/]/%i", address, &prefix) == 2) {
+				if(sscanf(value, "%100[^/]/%i", address, &prefix) == 2) {
 					chipvpn_peer_set_allow(peer, address, prefix);
 				}
 			}

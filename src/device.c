@@ -87,11 +87,11 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_pubkey(chipvpn_device_t *device, c
 	return NULL;
 }
 
-chipvpn_peer_t *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *ip) {
+chipvpn_peer_t *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *address) {
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_address_cidr_match(ip, &peer->config.allow)) {
+		if(chipvpn_address_cidr_match(&peer->config.allow, address)) {
 			return peer;
 		}
 	}
@@ -189,6 +189,7 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *net
 	bool success = true;
 
 	struct ifreq ifr;
+	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_addr.sa_family = AF_INET;
 
 	strcpy(ifr.ifr_name, device->dev);
