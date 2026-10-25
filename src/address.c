@@ -14,7 +14,7 @@ bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
 	return false;
 }
 
-bool chipvpn_address_cidr_match(chipvpn_address_t *addr, chipvpn_address_t *net) {
+bool chipvpn_address_cidr_match(chipvpn_address_t *net, chipvpn_address_t *addr) {
 	if (net->prefix == 0) {
 		// C99 6.5.7 (3): u32 << 32 is undefined behaviour
 		return true;

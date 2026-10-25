@@ -24,6 +24,7 @@ typedef struct {
 } chipvpn_ratelimit_t;
 
 uint32_t   chipvpn_ratelimit_hash_ip(uint32_t ip);
+void       chipvpn_ratelimit_clear(chipvpn_ratelimit_t *ratelimit);
 bool       chipvpn_ratelimit_verify(chipvpn_ratelimit_t *ratelimit, chipvpn_address_t addr);
 
 #ifdef __cplusplus
