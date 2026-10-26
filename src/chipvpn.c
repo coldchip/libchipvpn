@@ -126,7 +126,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			case 6: {
 				ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)buffer;
 				dst.type = CHIPVPN_ADDRESS_IPV6;
-				memcpy(dst.ipv6, ipv6_hdr->dst_addr, 16);
+				memcpy(dst.ipv6, ipv6_hdr->dst_addr, sizeof(ipv6_hdr->dst_addr));
 			}
 			break;
 			default: {
@@ -314,7 +314,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					case 6: {
 						ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)data;
 						src.type = CHIPVPN_ADDRESS_IPV6;
-						memcpy(src.ipv6, ipv6_hdr->src_addr, 16);
+						memcpy(src.ipv6, ipv6_hdr->src_addr, sizeof(ipv6_hdr->src_addr));
 					}
 					break;
 					default: {

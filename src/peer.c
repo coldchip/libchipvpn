@@ -199,20 +199,23 @@ void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
 }
 
 bool chipvpn_peer_add_allowed_address(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
-	size_t i = peer->config.allow_size++;
+	size_t i = peer->config.allow_size;
 
 	if(!chipvpn_address_set_ip(&peer->config.allow[i], address)) {
 		return false;
 	}
 	peer->config.allow[i].prefix = prefix;
+
+	peer->config.allow_size++;
+
 	return true;
 }
 
 bool chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16_t port) {
-	if(!chipvpn_address_set_ip(&peer->config.address, address)) {
+	if(!chipvpn_address_set_ip(&peer->config.endpoint, address)) {
 		return false;
 	}
-	peer->config.address.port = port;
+	peer->config.endpoint.port = port;
 	return true;
 }
 
@@ -255,7 +258,7 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvp
 
 		/* whenever peer requires a rekey */
 		if(PEER_REKEY(peer, now)) {
-			chipvpn_address_t *addr = peer->config.address.ipv4 > 0 ? &peer->config.address : &peer->address;
+			chipvpn_address_t *addr = peer->config.endpoint.ipv4 > 0 ? &peer->config.endpoint : &peer->address;
 			chipvpn_peer_send_connect(
 				peer, 
 				device, 
