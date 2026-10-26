@@ -79,6 +79,7 @@ bool chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_
 
 			r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), MSG_DONTWAIT, (struct sockaddr*)&sa, &len);
 
+			entry->addr.type = CHIPVPN_ADDRESS_IPV4;
 			entry->addr.ipv4 = sa.sin_addr.s_addr;
 			entry->addr.port = ntohs(sa.sin_port);
 		}
