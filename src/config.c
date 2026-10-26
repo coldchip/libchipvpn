@@ -148,7 +148,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				char address[128];
 				int port;
 				if(sscanf(value, "%100[^:]:%i", address, &port) == 2) {
-					chipvpn_peer_set_address(peer, address, port);
+					chipvpn_peer_set_endpoint(peer, address, port);
 				}
 			}
 
@@ -156,7 +156,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				char address[128];
 				int prefix;
 				if(sscanf(value, "%100[^/]/%i", address, &prefix) == 2) {
-					chipvpn_peer_set_allow(peer, address, prefix);
+					chipvpn_peer_add_allowed_address(peer, address, prefix);
 				}
 			}
 

@@ -30,7 +30,25 @@ typedef struct __attribute__((__packed__)) {
 	uint16_t ip_sum;
 	uint32_t src_addr;
 	uint32_t dst_addr;
-} ip_hdr_t;
+} ipv4_hdr_t;
+
+typedef struct __attribute__((packed)) {
+# if __BYTE_ORDER == __LITTLE_ENDIAN
+    uint8_t ihl:4;
+    uint8_t version:4;
+# elif __BYTE_ORDER == __BIG_ENDIAN
+    uint8_t version:4;
+    uint8_t ihl:4;
+# else
+#	error "Please fix <bits/endian.h>"
+# endif
+	uint8_t flow[3];
+	uint16_t payload_len;
+	uint8_t  next_header;
+	uint8_t  hop_limit;
+	uint8_t  src_addr[16];
+	uint8_t  dst_addr[16];
+} ipv6_hdr_t;
 
 typedef struct __attribute__((__packed__)) {
 	uint16_t src;

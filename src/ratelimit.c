@@ -20,11 +20,11 @@ void chipvpn_ratelimit_clear(chipvpn_ratelimit_t *ratelimit) {
 bool chipvpn_ratelimit_verify(chipvpn_ratelimit_t *ratelimit, chipvpn_address_t addr) {
     uint64_t now = chipvpn_get_time();
     
-    uint32_t idx = chipvpn_ratelimit_hash_ip(addr.ip);
+    uint32_t idx = chipvpn_ratelimit_hash_ip(addr.ipv4);
 
     chipvpn_ratelimit_entry_t *entry = &ratelimit->map[idx];
 
-    if(entry->addr.ip != addr.ip) {
+    if(entry->addr.ipv4 != addr.ipv4) {
         entry->addr = addr;
         entry->tokens = CHIPVPN_RATELIMIT_MAX_TOKENS;
         entry->last_update = now;

@@ -17,6 +17,7 @@
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
+#include <linux/ipv6.h>
 
 chipvpn_device_t *chipvpn_device_create(int fd) {
 	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));
@@ -91,7 +92,7 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipv
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_address_cidr_match(&peer->config.allow, address)) {
+		if(chipvpn_peer_is_allowed_address(peer, address)) {
 			return peer;
 		}
 	}
@@ -188,38 +189,67 @@ bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {
 bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network) {
 	bool success = true;
 
-	struct ifreq ifr;
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_addr.sa_family = AF_INET;
+	if (network->type == CHIPVPN_ADDRESS_IPV4) {
+		struct ifreq ifr;
+		memset(&ifr, 0, sizeof(ifr));
+		ifr.ifr_addr.sa_family = AF_INET;
+		strcpy(ifr.ifr_name, device->dev);
 
-	strcpy(ifr.ifr_name, device->dev);
+		int fd = socket(AF_INET, SOCK_DGRAM, 0);
+		if(fd < 0) {
+			return false;
+		}
 
-	struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
+		struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
+		addr->sin_addr.s_addr = network->ipv4; 
 
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(fd < 0) {
-        return false;
-    }
+		if(ioctl(fd, SIOCSIFADDR, &ifr) == -1) {
+			success = false;
+		}
 
-	addr->sin_addr.s_addr = network->ip;
+		if(network->prefix == 0) {
+			addr->sin_addr.s_addr = 0;
+		} else {
+			addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
+		}
 
-	if(ioctl(fd, SIOCSIFADDR, &ifr) == -1) {
-		success = false;
+		if(ioctl(fd, SIOCSIFNETMASK, &ifr) == -1) {
+			success = false;
+		}
+
+		close(fd);
+		return success;
+	} 
+	else if (network->type == CHIPVPN_ADDRESS_IPV6) {
+		int fd = socket(AF_INET6, SOCK_DGRAM, 0);
+		if(fd < 0) {
+			return false;
+		}
+
+		struct ifreq ifr;
+		memset(&ifr, 0, sizeof(ifr));
+		strcpy(ifr.ifr_name, device->dev);
+
+		if(ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
+			close(fd);
+			return false;
+		}
+
+		struct in6_ifreq ifr6;
+		memset(&ifr6, 0, sizeof(ifr6));
+		memcpy(&ifr6.ifr6_addr, network->ipv6, 16); /* Use network->ip.ipv6 if union is named */
+		ifr6.ifr6_prefixlen = network->prefix;
+		ifr6.ifr6_ifindex = ifr.ifr_ifindex;
+
+		if(ioctl(fd, SIOCSIFADDR, &ifr6) == -1) {
+			success = false;
+		}
+
+		close(fd);
+		return success;
 	}
 
-	if(network->prefix == 0) {
-		addr->sin_addr.s_addr = 0;
-	} else {
-		addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
-	}
-
-	if(ioctl(fd, SIOCSIFNETMASK, &ifr) == -1) {
-		success = false;
-	}
-
-	close(fd);
-
-	return success;
+	return false;
 }
 
 bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {

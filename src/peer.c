@@ -171,6 +171,16 @@ int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
 	return 0;
 }
 
+bool chipvpn_peer_is_allowed_address(chipvpn_peer_t *peer, chipvpn_address_t *address) {
+	for(size_t i = 0; i < peer->config.allow_size; i++) {
+		if(chipvpn_address_cidr_match(&peer->config.allow[i], address)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void chipvpn_peer_reset_handshake(chipvpn_peer_t *peer) {
 	chipvpn_log_append("%p says: clearing handshake data\n", peer);
 
@@ -188,15 +198,17 @@ void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
 	chipvpn_secure_zero(&peer->next_session, sizeof(peer->next_session));
 }
 
-bool chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
-	if(!chipvpn_address_set_ip(&peer->config.allow, address)) {
+bool chipvpn_peer_add_allowed_address(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
+	size_t i = peer->config.allow_size++;
+
+	if(!chipvpn_address_set_ip(&peer->config.allow[i], address)) {
 		return false;
 	}
-	peer->config.allow.prefix = prefix;
+	peer->config.allow[i].prefix = prefix;
 	return true;
 }
 
-bool chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port) {
+bool chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16_t port) {
 	if(!chipvpn_address_set_ip(&peer->config.address, address)) {
 		return false;
 	}
@@ -243,7 +255,7 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvp
 
 		/* whenever peer requires a rekey */
 		if(PEER_REKEY(peer, now)) {
-			chipvpn_address_t *addr = peer->config.address.ip > 0 ? &peer->config.address : &peer->address;
+			chipvpn_address_t *addr = peer->config.address.ipv4 > 0 ? &peer->config.address : &peer->address;
 			chipvpn_peer_send_connect(
 				peer, 
 				device, 

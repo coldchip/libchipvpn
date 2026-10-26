@@ -113,13 +113,26 @@ int chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
-		ip_hdr_t *ip_hdr = (ip_hdr_t*)buffer;
+		chipvpn_address_t dst = {0};
+		uint8_t version = ((uint8_t *)buffer)[0] >> 4;
 
-		if(ip_hdr->version != 4) {
-			continue;
+		switch(version) {
+			case 4: {
+				ipv4_hdr_t *ipv4_hdr = (ipv4_hdr_t *)buffer;
+				dst.type = CHIPVPN_ADDRESS_IPV4;
+				dst.ipv4 = ipv4_hdr->dst_addr;
+			}
+			break;
+			case 6: {
+				ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)buffer;
+				dst.type = CHIPVPN_ADDRESS_IPV6;
+				memcpy(dst.ipv6, ipv6_hdr->dst_addr, 16);
+			}
+			break;
+			default: {
+				continue;
+			}
 		}
-
-		chipvpn_address_t dst = { .ip = ip_hdr->dst_addr };
 
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(vpn->device, &dst);
 		if(!peer || !PEER_ACTIVE(peer, chipvpn_get_time())) {
@@ -269,7 +282,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* authenticated */
-				if(peer->address.ip != addr.ip || peer->address.port != addr.port) {
+				if(peer->address.ipv4 != addr.ipv4 || peer->address.port != addr.port) {
 					chipvpn_log_append("%p says: ip or port changed\n", peer);
 					peer->address = addr;
 				}
@@ -288,15 +301,28 @@ int chipvpn_service(chipvpn_t *vpn) {
 					peer->last_ack = chipvpn_get_time();
 				}
 
-				ip_hdr_t *ip_hdr = (ip_hdr_t*)data;
+				chipvpn_address_t src = {0};
+				uint8_t version = ((uint8_t *)data)[0] >> 4;
 
-				if(ip_hdr->version != 4) {
-					continue;
+				switch(version) {
+					case 4: {
+						ipv4_hdr_t *ipv4_hdr = (ipv4_hdr_t *)data;
+						src.type = CHIPVPN_ADDRESS_IPV4;
+						src.ipv4 = ipv4_hdr->src_addr;
+					}
+					break;
+					case 6: {
+						ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)data;
+						src.type = CHIPVPN_ADDRESS_IPV6;
+						memcpy(src.ipv6, ipv6_hdr->src_addr, 16);
+					}
+					break;
+					default: {
+						continue;
+					}
 				}
 
-				chipvpn_address_t src = { .ip = ip_hdr->src_addr };
-
-				if(!chipvpn_address_cidr_match(&peer->config.allow, &src)) {
+				if(!chipvpn_peer_is_allowed_address(peer, &src)) {
 					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					continue;
 				}
