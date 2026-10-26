@@ -47,9 +47,13 @@ bool chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark) {
 }
 
 bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
+	if(addr->type != CHIPVPN_ADDRESS_IPV4) {
+		return false;
+	}
+
 	struct sockaddr_in sa = {
 		.sin_family = AF_INET,
-		.sin_addr.s_addr = addr->ip,
+		.sin_addr.s_addr = addr->ipv4,
 		.sin_port = htons(addr->port)
 	};
 

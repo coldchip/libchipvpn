@@ -10,8 +10,17 @@ extern "C"
 #include <stdbool.h>
 #include <sys/un.h>
 
+typedef enum {
+	CHIPVPN_ADDRESS_IPV4,
+	CHIPVPN_ADDRESS_IPV6
+} chipvpn_address_type_e;
+
 typedef struct {
-	uint32_t ip;
+	chipvpn_address_type_e type;
+	union {
+		uint32_t ipv4;
+		uint8_t ipv6[16];
+	};
 	uint16_t port;
 	uint8_t prefix;
 } chipvpn_address_t;

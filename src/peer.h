@@ -36,7 +36,7 @@ extern "C"
 #define PEER_NEXT_KEEPALIVE(peer)  (peer->last_transmission + CHIPVPN_PERSISTENT_KEEPALIVE)
 #define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
 
-#define PEER_INITIATOR(peer) (peer->config.address.ip > 0)
+#define PEER_INITIATOR(peer) (peer->config.address.ipv4 > 0)
 
 #define PEER_ACTIVE(peer, now) ( \
 	GTEQ(now, peer->last_handshake) && \
@@ -138,7 +138,8 @@ typedef struct chipvpn_peer {
 	/* config */
 	struct {
 		chipvpn_address_t address;
-		chipvpn_address_t allow;
+		chipvpn_address_t allow[128];
+		size_t allow_size;
 		uint8_t public[CURVE25519_KEY_SIZE];
 		uint8_t psk[BLAKE2S_HASH_SIZE];
 	} config;
@@ -176,11 +177,13 @@ int                     chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipv
 int                     chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
 int                     chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer);
 
+bool                    chipvpn_peer_is_allowed_address(chipvpn_peer_t *peer, chipvpn_address_t *address);
+
 void                    chipvpn_peer_reset_handshake(chipvpn_peer_t *peer);
 void                    chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_set_allow(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
-bool                    chipvpn_peer_set_address(chipvpn_peer_t *peer, const char *address, uint16_t port);
+bool                    chipvpn_peer_add_allowed_address(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
+bool                    chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key);
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);

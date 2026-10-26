@@ -79,7 +79,7 @@ bool chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_
 
 			r = recvfrom(sock->fd, entry->buffer, sizeof(entry->buffer), MSG_DONTWAIT, (struct sockaddr*)&sa, &len);
 
-			entry->addr.ip = sa.sin_addr.s_addr;
+			entry->addr.ipv4 = sa.sin_addr.s_addr;
 			entry->addr.port = ntohs(sa.sin_port);
 		}
 		break;
@@ -112,7 +112,7 @@ bool chipvpn_socket_raw_write(chipvpn_socket_t *sock, chipvpn_socket_queue_entry
 		case CHIPVPN_SOCKET_DGRAM: {
 			struct sockaddr_in sa = {
 				.sin_family = AF_INET,
-				.sin_addr.s_addr = entry->addr.ip,
+				.sin_addr.s_addr = entry->addr.ipv4,
 				.sin_port = htons(entry->addr.port)
 			};
 			w = sendto(sock->fd, entry->buffer, entry->size, 0, (struct sockaddr*)&sa, sizeof(sa));
