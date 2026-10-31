@@ -13,11 +13,11 @@ extern "C"
 
 typedef struct __attribute__((__packed__)) {
 # if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint8_t ihl:4;
-    uint8_t version:4;
+	uint8_t ihl:4;
+	uint8_t version:4;
 # elif __BYTE_ORDER == __BIG_ENDIAN
-    uint8_t version:4;
-    uint8_t ihl:4;
+	uint8_t version:4;
+	uint8_t ihl:4;
 # else
 #	error "Please fix <bits/endian.h>"
 # endif
@@ -33,16 +33,7 @@ typedef struct __attribute__((__packed__)) {
 } ipv4_hdr_t;
 
 typedef struct __attribute__((packed)) {
-# if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint8_t ihl:4;
-    uint8_t version:4;
-# elif __BYTE_ORDER == __BIG_ENDIAN
-    uint8_t version:4;
-    uint8_t ihl:4;
-# else
-#	error "Please fix <bits/endian.h>"
-# endif
-	uint8_t flow[3];
+	uint32_t vtc_flow;   
 	uint16_t payload_len;
 	uint8_t  next_header;
 	uint8_t  hop_limit;
@@ -115,23 +106,23 @@ typedef struct __attribute__((__packed__)) {
 } chipvpn_packet_auth_t;
 
 typedef struct __attribute__((__packed__)) {
-    uint8_t type;
-    uint8_t padding[3];             
-    uint32_t sender_index;          
-    uint32_t receiver_index;        
-    uint8_t ephemeral_public[CURVE25519_KEY_SIZE];  
-    uint8_t empty_mac[POLY1305_MAC_SIZE];        
-    uint8_t mac1[POLY1305_MAC_SIZE];              
-    uint8_t mac2[POLY1305_MAC_SIZE];             
+	uint8_t type;
+	uint8_t padding[3];
+	uint32_t sender_index;
+	uint32_t receiver_index;
+	uint8_t ephemeral_public[CURVE25519_KEY_SIZE];
+	uint8_t empty_mac[POLY1305_MAC_SIZE];
+	uint8_t mac1[POLY1305_MAC_SIZE];
+	uint8_t mac2[POLY1305_MAC_SIZE];
 } chipvpn_packet_auth_reply_t;
 
 typedef struct __attribute__((__packed__)) {
-    uint8_t type;
-    uint8_t padding[3];
-    uint32_t receiver_index;
-    uint8_t nonce[24];
-    uint8_t cookie[16];
-    uint8_t mac[POLY1305_MAC_SIZE]; 
+	uint8_t type;
+	uint8_t padding[3];
+	uint32_t receiver_index;
+	uint8_t nonce[24];
+	uint8_t cookie[16];
+	uint8_t mac[POLY1305_MAC_SIZE]; 
 } chipvpn_packet_cookie_t;
 
 typedef struct __attribute__((__packed__)) {
