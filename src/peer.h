@@ -36,7 +36,7 @@ extern "C"
 #define PEER_NEXT_KEEPALIVE(peer)  (peer->last_transmission + CHIPVPN_PERSISTENT_KEEPALIVE)
 #define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
 
-#define PEER_INITIATOR(peer) (peer->config.endpoint.ipv4 > 0)
+#define PEER_INITIATOR(peer) (peer->config.endpoint.port > 0)
 
 #define PEER_ACTIVE(peer, now) ( \
 	GTEQ(now, peer->last_handshake) && \

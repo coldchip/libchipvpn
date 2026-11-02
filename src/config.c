@@ -57,7 +57,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "network") == 0) {
 				char address[128];
 				int prefix;
-				if(sscanf(value, "%100[^/]/%i", address, &prefix) == 2) {
+				if(sscanf(value, "[%45[^]]]/%i", address, &prefix) == 2 || sscanf(value, "%45[^/]/%i", address, &prefix) == 2) {
 					chipvpn_address_t network;
 					if(!chipvpn_address_set_ip(&network, address)) {
 						return;
@@ -66,6 +66,8 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 					if(!chipvpn_device_set_address(vpn->device, &network)) {
 						return;
 					}
+
+					chipvpn_log_append("interface address: [%s]/%i\n", chipvpn_address_to_char(&network), network.prefix);
 				}
 			}
 
@@ -86,17 +88,20 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "bind") == 0) {
-				char address[24];
+				char address[128];
 				int port;
-				if(sscanf(value, "%24[^:]:%i", address, &port) == 2) {
+				if(sscanf(value, "[%45[^]]]:%i", address, &port) == 2 || sscanf(value, "%45[^:]:%i", address, &port) == 2) {
 					chipvpn_address_t bind;
 					if(!chipvpn_address_set_ip(&bind, address)) {
 						return;
 					}
+
 					bind.port = port;
 					if(!chipvpn_udp_bind(vpn->udp, &bind)) {
 						return;
 					}
+
+					chipvpn_log_append("binding to [%s]:%i\n", chipvpn_address_to_char(&bind), bind.port);
 				}
 			}
 
@@ -147,7 +152,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
 				char address[128];
 				int port;
-				if(sscanf(value, "%100[^:]:%i", address, &port) == 2) {
+				if(sscanf(value, "[%45[^]]]:%i", address, &port) == 2 || sscanf(value, "%45[^:]:%i", address, &port) == 2) {
 					chipvpn_peer_set_endpoint(peer, address, port);
 				}
 			}
