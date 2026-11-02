@@ -199,7 +199,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, addr)) {
+				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, &addr)) {
 					continue;
 				}
 
@@ -226,7 +226,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, addr)) {
+				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, &addr)) {
 					continue;
 				}
 

@@ -45,13 +45,13 @@ typedef struct {
 	int fd;
 	chipvpn_socket_queue_t tx_queue;
 	chipvpn_socket_queue_t rx_queue;
+	chipvpn_address_type_e mode;
 	chipvpn_socket_type_e type;
 } chipvpn_socket_t;
 
-
-
 chipvpn_socket_t                *chipvpn_socket_create(int fd);
 
+chipvpn_address_type_e           chipvpn_socket_get_mode(int fd);
 chipvpn_socket_type_e            chipvpn_socket_get_type(int fd);
 
 bool                             chipvpn_socket_raw_read(chipvpn_socket_t *sock, chipvpn_socket_queue_entry_t *entry);

@@ -9,6 +9,7 @@
 
 bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
 	if(inet_pton(AF_INET, ip, &addr->ipv4) == 1) {
+		chipvpn_address_v4_mapped_v6(addr);
 		addr->type = CHIPVPN_ADDRESS_IPV4;
 		return true;
 	}
@@ -19,6 +20,12 @@ bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
 	}
 	
 	return false;
+}
+
+void chipvpn_address_v4_mapped_v6(chipvpn_address_t *addr) {
+	memset(addr->_ipv4_prefix, 0, 10);
+	addr->_ipv4_prefix[10] = 0xff;
+	addr->_ipv4_prefix[11] = 0xff;
 }
 
 bool chipvpn_address_cidr_match(chipvpn_address_t *net, chipvpn_address_t *addr) {

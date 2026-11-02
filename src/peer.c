@@ -258,12 +258,11 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvp
 
 		/* whenever peer requires a rekey */
 		if(PEER_REKEY(peer, now)) {
-			chipvpn_address_t *addr = peer->config.endpoint.ipv4 > 0 ? &peer->config.endpoint : &peer->address;
 			chipvpn_peer_send_connect(
 				peer, 
 				device, 
 				udp, 
-				addr
+				PEER_INITIATOR(peer) ? &peer->config.endpoint : &peer->address
 			);
 		}
 

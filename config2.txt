@@ -1,7 +1,7 @@
 section:device
 name:cv-server
 network:10.128.0.1/16
-bind:0.0.0.0:4433
+bind:[::0]:4433
 mtu:1500
 public:GMgfpuBPrYdxWSH3CqnpG9MUe1CcbNMxfivZyTPCNE8=
 private:UNiQ+s2rphl9UczJ6Z9Wnm+xwEzT82VY2XPy1cuEKm4=
