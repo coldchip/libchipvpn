@@ -76,7 +76,15 @@ bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
 	if(sock->socket->mode == CHIPVPN_ADDRESS_IPV6) {
 		struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)&ss;
 		sa6->sin6_family = AF_INET6;
-		memcpy(&sa6->sin6_addr, &addr->ipv6, sizeof(sa6->sin6_addr));
+
+		if(addr->type == CHIPVPN_ADDRESS_IPV4) {
+			memset(&sa6->sin6_addr.s6_addr[0], 0, 10);
+			memset(&sa6->sin6_addr.s6_addr[10], 0xff, 2);
+			memcpy(&sa6->sin6_addr.s6_addr[12], &addr->ipv4, sizeof(addr->ipv4));
+		} else {
+			memcpy(&sa6->sin6_addr, &addr->ipv6, sizeof(sa6->sin6_addr));
+		}
+		
 		sa6->sin6_port = htons(addr->port);
 		len = sizeof(struct sockaddr_in6);
 	} else if(sock->socket->mode == CHIPVPN_ADDRESS_IPV4) {

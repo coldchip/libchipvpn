@@ -26,7 +26,7 @@ chipvpn_peer_t *chipvpn_peer_create() {
 }
 
 int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr) {
-	chipvpn_log_append("%p says: keying to [%s:%i]\n", peer, chipvpn_address_to_char(addr), addr->port);
+	chipvpn_log_append("%p says: keying to [%s]:%i\n", peer, chipvpn_address_to_char(addr), addr->port);
 
 	chipvpn_packet_auth_t packet;
 
