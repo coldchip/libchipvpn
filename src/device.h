@@ -63,6 +63,7 @@ bool                    chipvpn_device_set_postdown(chipvpn_device_t *device, co
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
 bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu);
+bool                    chipvpn_device_set_txqueuelen(chipvpn_device_t *device, int qlen);
 bool                    chipvpn_device_toggle(chipvpn_device_t *device, bool enable);
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_disabled(chipvpn_device_t *device);
