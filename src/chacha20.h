@@ -1,12 +1,16 @@
 #pragma once
 
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
-#ifdef __cplusplus 
-extern "C" {
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
 #endif
 
 #define CHACHA20_KEY_SIZE 32
