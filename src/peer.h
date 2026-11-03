@@ -144,6 +144,10 @@ typedef struct chipvpn_peer {
 		uint8_t psk[BLAKE2S_HASH_SIZE];
 	} config;
 
+	/* firewall */
+	chipvpn_list_t firewall_inbound;
+	chipvpn_list_t firewall_outbound;
+
 	/* states and timers */
 	/* peer type, permanent or ephemeral */
 	chipvpn_peer_type_e type;

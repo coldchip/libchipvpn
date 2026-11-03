@@ -5,6 +5,7 @@
 #include <sched.h>
 #include <stdlib.h>
 #include "peer.h"
+#include "firewall.h"
 #include "device.h"
 #include "config.h"
 #include "base64.h"
@@ -176,7 +177,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "allow") == 0) {
 				char address[128];
 				int prefix;
-				if(sscanf(value, "%100[^/]/%i", address, &prefix) == 2) {
+				if(sscanf(value, "[%45[^]]]/%i", address, &prefix) == 2 || sscanf(value, "%100[^/]/%i", address, &prefix) == 2) {
 					chipvpn_peer_add_allowed_address(peer, address, prefix);
 				}
 			}
@@ -192,6 +193,30 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				char key[1024];
 				if(sscanf(value, "%1023s", key) == 1) {
 					chipvpn_peer_set_psk(peer, key);
+				}
+			}
+
+			if(section == COMMAND_PEER_SECTION && strcmp(key, "inbound") == 0) {
+				char address[128];
+				int prefix;
+				if(sscanf(value, "[%45[^]]]/%i", address, &prefix) == 2 || sscanf(value, "%45[^/]/%i", address, &prefix) == 2) {
+					chipvpn_address_t entry;
+					chipvpn_address_set_ip(&entry, address);
+					entry.prefix = prefix;
+
+					chipvpn_firewall_insert(&peer->firewall_inbound, &entry);
+				}
+			}
+
+			if(section == COMMAND_PEER_SECTION && strcmp(key, "outbound") == 0) {
+				char address[128];
+				int prefix;
+				if(sscanf(value, "[%45[^]]]/%i", address, &prefix) == 2 || sscanf(value, "%45[^/]/%i", address, &prefix) == 2) {
+					chipvpn_address_t entry;
+					chipvpn_address_set_ip(&entry, address);
+					entry.prefix = prefix;
+
+					chipvpn_firewall_insert(&peer->firewall_outbound, &entry);
 				}
 			}
 
