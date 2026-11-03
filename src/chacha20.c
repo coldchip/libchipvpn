@@ -24,6 +24,42 @@ static void chacha20_block_set_counter(chacha20_t *ctx, uint32_t counter) {
 }
 
 static void chacha20_block_next(chacha20_t *ctx) {
+    #if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    /* 1. Load the 4x4 matrix into four 128-bit NEON row registers */
+    uint32x4_t s0 = vld1q_u32(&ctx->state[0]);
+    uint32x4_t s1 = vld1q_u32(&ctx->state[4]);
+    uint32x4_t s2 = vld1q_u32(&ctx->state[8]);
+    uint32x4_t s3 = vld1q_u32(&ctx->state[12]);
+
+    uint32x4_t r0 = s0;
+    uint32x4_t r1 = s1;
+    uint32x4_t r2 = s2;
+    uint32x4_t r3 = s3;
+
+    for (int i = 0; i < 10; i++) {
+        /* 2. Compute ALL 4 columns instantly */
+        CHACHA20_QUARTERROUND_NEON(r0, r1, r2, r3);
+
+        /* 3. Shift the rows to line up the diagonals */
+        r1 = vextq_u32(r1, r1, 1);
+        r2 = vextq_u32(r2, r2, 2);
+        r3 = vextq_u32(r3, r3, 3);
+
+        /* 4. Compute ALL 4 diagonals instantly */
+        CHACHA20_QUARTERROUND_NEON(r0, r1, r2, r3);
+
+        /* 5. Shift the rows back */
+        r1 = vextq_u32(r1, r1, 3);
+        r2 = vextq_u32(r2, r2, 2);
+        r3 = vextq_u32(r3, r3, 1);
+    }
+
+    /* 6. Add initial state and store directly to keystream */
+    vst1q_u32(&ctx->keystream[0],  vaddq_u32(r0, s0));
+    vst1q_u32(&ctx->keystream[4],  vaddq_u32(r1, s1));
+    vst1q_u32(&ctx->keystream[8],  vaddq_u32(r2, s2));
+    vst1q_u32(&ctx->keystream[12], vaddq_u32(r3, s3));
+#else
     memcpy(ctx->keystream, ctx->state, 64);
 
     for(int i = 0; i < 10; i++) {
@@ -40,6 +76,7 @@ static void chacha20_block_next(chacha20_t *ctx) {
     for(int i = 0; i < 16; i++) {
         ctx->keystream[i] = PLUS(ctx->keystream[i], ctx->state[i]);
     }
+#endif
 
     ctx->state[12] = PLUS(ctx->state[12], 1);
 }
