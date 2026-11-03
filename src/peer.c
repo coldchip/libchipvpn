@@ -22,6 +22,9 @@ chipvpn_peer_t *chipvpn_peer_create() {
 
 	chipvpn_secure_zero(peer, sizeof(chipvpn_peer_t));
 
+	chipvpn_list_clear(&peer->firewall_inbound);
+	chipvpn_list_clear(&peer->firewall_outbound);
+
 	return peer;
 }
 

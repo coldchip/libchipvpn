@@ -15,6 +15,7 @@
 #include "bitmap.h"
 #include "base64.h"
 #include "ratelimit.h"
+#include "firewall.h"
 #include "util.h"
 #include "noise.h"
 
@@ -136,6 +137,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(vpn->device, &dst);
 		if(!peer || !PEER_ACTIVE(peer, chipvpn_get_time())) {
+			continue;
+		}
+
+		if(!chipvpn_firewall_execute(&peer->firewall_outbound, &dst)) {
 			continue;
 		}
 
@@ -324,6 +329,10 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				if(!chipvpn_peer_is_allowed_address(peer, &src)) {
 					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
+					continue;
+				}
+
+				if(!chipvpn_firewall_execute(&peer->firewall_inbound, &src)) {
 					continue;
 				}
 
