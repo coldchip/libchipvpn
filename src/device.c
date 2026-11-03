@@ -276,6 +276,31 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 	return success;
 }
 
+bool chipvpn_device_set_txqueuelen(chipvpn_device_t *device, int qlen) {
+	bool success = true;
+
+	struct ifreq ifr;
+	memset(&ifr, 0, sizeof(ifr)); 
+	ifr.ifr_addr.sa_family = AF_INET;
+
+	strcpy(ifr.ifr_name, device->dev);
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) {
+		return false;
+	}
+
+	ifr.ifr_qlen = qlen;
+
+	if(ioctl(fd, SIOCSIFTXQLEN, &ifr) == -1) {
+		success = false;
+	}
+
+	close(fd);
+
+	return success;
+}
+
 bool chipvpn_device_toggle(chipvpn_device_t *device, bool enable) {
     struct ifreq ifr = {0};
     strncpy(ifr.ifr_name, device->dev, IFNAMSIZ - 1);
