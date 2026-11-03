@@ -9,13 +9,6 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-#include <arm_neon.h>
-#endif
-
-#define CHACHA20_KEY_SIZE 32
-#define CHACHA20_NONCE_SIZE 12
-
 #define U8V(v) ((uint8_t)(v) & (0xFF))
 #define U16V(v) ((uint16_t)(v) & (0xFFFF))
 #define U32V(v) ((uint32_t)(v) & (0xFFFFFFFF))
@@ -39,20 +32,6 @@ extern "C" {
 	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 12); \
 	x[a] = PLUS(x[a], x[b]); x[d] = ROTATE(XOR(x[d], x[a]), 8); \
 	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 7);
-
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-#define ROTL32_NEON_16(v) \
-	vreinterpretq_u32_u16(vrev32q_u16(vreinterpretq_u16_u32(v)))
-
-#define ROTL32_NEON(v, n) \
-	vsriq_n_u32(vshlq_n_u32((v), (n)), (v), 32 - (n))
-
-#define CHACHA20_QUARTERROUND_NEON(a, b, c, d) \
-	a = vaddq_u32(a, b); d = veorq_u32(d, a); d = ROTL32_NEON_16(d); \
-	c = vaddq_u32(c, d); b = veorq_u32(b, c); b = ROTL32_NEON(b, 12); \
-	a = vaddq_u32(a, b); d = veorq_u32(d, a); d = ROTL32_NEON(d, 8);  \
-	c = vaddq_u32(c, d); b = veorq_u32(b, c); b = ROTL32_NEON(b, 7);
-#endif
 
 typedef struct {
 	uint32_t keystream[16] __attribute__((aligned(32)));
