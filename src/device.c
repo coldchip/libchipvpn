@@ -38,7 +38,7 @@ bool chipvpn_device_init(chipvpn_device_t *device, int fd) {
 		strcpy(device->dev, ifr.ifr_name);
 	}
 
-	if(!chipvpn_socket_init(&device->socket, fd)) {
+	if(!chipvpn_socket_init(&device->socket, fd, 32)) {
 		return false;
 	}
 

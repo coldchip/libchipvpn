@@ -10,11 +10,7 @@ extern "C"
 #include <unistd.h>
 #include "address.h"
 
-#define SOCKET_QUEUE_SIZE 128
 #define SOCKET_QUEUE_ENTRY_SIZE 8192
-
-_Static_assert((SOCKET_QUEUE_SIZE & (SOCKET_QUEUE_SIZE - 1)) == 0, 
-               "SOCKET_QUEUE_SIZE must be a power of 2");
 
 typedef enum {
 	CHIPVPN_SOCKET_DGRAM = 0,
@@ -33,6 +29,7 @@ typedef struct {
     int head;
     int tail;
     int size;
+    int total_size;
 } chipvpn_socket_queue_t;
 
 typedef struct {
@@ -48,7 +45,7 @@ typedef struct {
 	chipvpn_socket_type_e type;
 } chipvpn_socket_t;
 
-bool                             chipvpn_socket_init(chipvpn_socket_t *sock, int fd);
+bool                             chipvpn_socket_init(chipvpn_socket_t *sock, int fd, int queue_size);
 
 chipvpn_address_type_e           chipvpn_socket_get_mode(int fd);
 chipvpn_socket_type_e            chipvpn_socket_get_type(int fd);
