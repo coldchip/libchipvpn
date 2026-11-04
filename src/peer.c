@@ -9,6 +9,7 @@
 #include "device.h"
 #include "util.h"
 #include "base64.h"
+#include "firewall.h"
 #include "util.h"
 #include "noise.h"
 
@@ -22,8 +23,15 @@ chipvpn_peer_t *chipvpn_peer_create() {
 
 	chipvpn_secure_zero(peer, sizeof(chipvpn_peer_t));
 
-	chipvpn_list_clear(&peer->firewall_inbound);
-	chipvpn_list_clear(&peer->firewall_outbound);
+	if(!chipvpn_firewall_init(&peer->firewall_inbound)) {
+		chipvpn_peer_free(peer);
+		return NULL;
+	}
+
+	if(!chipvpn_firewall_init(&peer->firewall_outbound)) {
+		chipvpn_peer_free(peer);
+		return NULL;
+	}
 
 	return peer;
 }
@@ -41,7 +49,7 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	/* any outbound packet is considered sending a keepalive packet */
 	peer->last_transmission = chipvpn_get_time();
 
-	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
+	return chipvpn_socket_write(&udp->socket, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
@@ -88,7 +96,7 @@ int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	/* any outbound packet is considered sending a keepalive packet */
 	peer->last_transmission = chipvpn_get_time();
 
-	return chipvpn_socket_write(udp->socket, &packet, sizeof(packet), addr);
+	return chipvpn_socket_write(&udp->socket, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr) {
@@ -161,7 +169,7 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 		{ .data = mac, .size = sizeof(mac) }
 	};
 
-	return chipvpn_socket_write_vector(udp->socket, vector, 2, &peer->address);
+	return chipvpn_socket_write_vector(&udp->socket, vector, 2, &peer->address);
 }
 
 int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
@@ -286,6 +294,9 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvp
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
 	chipvpn_peer_reset_handshake(peer);
 	chipvpn_peer_reset_session(peer);
+
+	chipvpn_firewall_cleanup(&peer->firewall_inbound);
+	chipvpn_firewall_cleanup(&peer->firewall_outbound);
 
 	chipvpn_secure_zero(peer, sizeof(chipvpn_peer_t));
 

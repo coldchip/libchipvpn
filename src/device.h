@@ -38,7 +38,7 @@ typedef struct {
 	int fd;
 	char dev[IF_NAMESIZE + 1];
     chipvpn_list_t peers;
-    chipvpn_socket_t *socket;
+    chipvpn_socket_t socket;
     uint8_t public[CURVE25519_KEY_SIZE];
     uint8_t private[CURVE25519_KEY_SIZE];
 
@@ -46,7 +46,7 @@ typedef struct {
     char *postdown;
 } chipvpn_device_t;
 
-chipvpn_device_t       *chipvpn_device_create(int tun_fd);
+bool                    chipvpn_device_init(chipvpn_device_t *device, int fd);
 
 uint32_t                chipvpn_device_generate_index(chipvpn_device_t *device);
 
@@ -68,7 +68,7 @@ bool                    chipvpn_device_toggle(chipvpn_device_t *device, bool ena
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_disabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key);
-void                    chipvpn_device_free(chipvpn_device_t *device);
+void                    chipvpn_device_cleanup(chipvpn_device_t *device);
 
 #ifdef __cplusplus
 }

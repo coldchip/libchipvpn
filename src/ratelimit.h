@@ -14,9 +14,9 @@ extern "C"
 #define CHIPVPN_RATELIMIT_REFILL_MS 500
 
 typedef struct {
-    chipvpn_address_t addr;
-    uint64_t tokens;
-    uint64_t last_update;
+	chipvpn_address_t addr;
+	uint64_t tokens;
+	uint64_t last_update;
 } chipvpn_ratelimit_entry_t;
 
 typedef struct {

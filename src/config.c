@@ -29,7 +29,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 				section = COMMAND_PEER_SECTION;
 
 				chipvpn_peer_t *peer = chipvpn_peer_create();
-				chipvpn_list_insert(chipvpn_list_end(&vpn->device->peers), peer);
+				chipvpn_list_insert(chipvpn_list_end(&vpn->device.peers), peer);
 				continue;
 			}
 
@@ -49,7 +49,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "name") == 0) {
 				char name[IF_NAMESIZE + 1];
 				if(sscanf(value, "%16[^\n]", name) == 1) {
-					if(!chipvpn_device_set_name(vpn->device, name)) {
+					if(!chipvpn_device_set_name(&vpn->device, name)) {
 						return;
 					}
 
@@ -66,7 +66,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 						return;
 					}
 					network.prefix = prefix;
-					if(!chipvpn_device_set_address(vpn->device, &network)) {
+					if(!chipvpn_device_set_address(&vpn->device, &network)) {
 						return;
 					}
 
@@ -77,14 +77,14 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "private") == 0) {
 				char key[1024];
 				if(sscanf(value, "%1023s", key) == 1) {
-					chipvpn_device_set_private_key(vpn->device, key);
+					chipvpn_device_set_private_key(&vpn->device, key);
 				}
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "mtu") == 0) {
 				int mtu;
 				if(sscanf(value, "%i", &mtu) == 1) {
-					if(!chipvpn_device_set_mtu(vpn->device, mtu)) {
+					if(!chipvpn_device_set_mtu(&vpn->device, mtu)) {
 						return;
 					}
 					chipvpn_log_append("interface mtu [%u]\n", mtu);
@@ -94,7 +94,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "txqueuelen") == 0) {
 				int qlen;
 				if(sscanf(value, "%i", &qlen) == 1) {
-					if(!chipvpn_device_set_txqueuelen(vpn->device, qlen)) {
+					if(!chipvpn_device_set_txqueuelen(&vpn->device, qlen)) {
 						return;
 					}
 					chipvpn_log_append("interface txqueuelen [%u]\n", qlen);
@@ -111,7 +111,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 					}
 
 					bind.port = port;
-					if(!chipvpn_udp_bind(vpn->udp, &bind)) {
+					if(!chipvpn_udp_bind(&vpn->udp, &bind)) {
 						return;
 					}
 
@@ -122,7 +122,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "sendbuf") == 0) {
 				int sendbuf;
 				if(sscanf(value, "%i", &sendbuf) == 1) {
-					chipvpn_udp_set_sendbuf(vpn->udp, sendbuf);
+					chipvpn_udp_set_sendbuf(&vpn->udp, sendbuf);
 					chipvpn_log_append("interface sendbuf [%u] byte(s)\n", sendbuf);
 				}
 			}
@@ -130,7 +130,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "recvbuf") == 0) {
 				int recvbuf;
 				if(sscanf(value, "%i", &recvbuf) == 1) {
-					chipvpn_udp_set_recvbuf(vpn->udp, recvbuf);
+					chipvpn_udp_set_recvbuf(&vpn->udp, recvbuf);
 					chipvpn_log_append("interface recvbuf [%u] byte(s)\n", recvbuf);
 				}
 			}
@@ -138,28 +138,28 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "fwmark") == 0) {
 				int fwmark;
 				if(sscanf(value, "%i", &fwmark) == 1) {
-					chipvpn_udp_set_fwmark(vpn->udp, fwmark);
+					chipvpn_udp_set_fwmark(&vpn->udp, fwmark);
 					chipvpn_log_append("interface fwmark [%i]\n", fwmark);
 				}
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "postup") == 0) {
-				chipvpn_device_set_postup(vpn->device, value);
+				chipvpn_device_set_postup(&vpn->device, value);
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "postdown") == 0) {
-				chipvpn_device_set_postdown(vpn->device, value);
+				chipvpn_device_set_postdown(&vpn->device, value);
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "ifup") == 0) {
-				chipvpn_device_set_enabled(vpn->device);
+				chipvpn_device_set_enabled(&vpn->device);
 			}
 
 			if(section == COMMAND_DEVICE_SECTION && strcmp(key, "ifdown") == 0) {
-				chipvpn_device_set_disabled(vpn->device);
+				chipvpn_device_set_disabled(&vpn->device);
 			}
 
-			chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&vpn->device->peers);
+			chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_back(&vpn->device.peers);
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
 				peer->type = PEER_EPHEMERAL;
@@ -185,7 +185,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "public") == 0) {
 				char key[1024];
 				if(sscanf(value, "%1023s", key) == 1) {
-					chipvpn_peer_set_public_key(peer, vpn->device, key);
+					chipvpn_peer_set_public_key(peer, &vpn->device, key);
 				}
 			}
 
@@ -227,7 +227,7 @@ void chipvpn_config_command(chipvpn_t *vpn, char *command) {
 					if(b64_decode((uint8_t*)key, strlen(key), key32) != CURVE25519_KEY_SIZE) {
 						return;
 					}
-					chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_pubkey(vpn->device, key32);
+					chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_pubkey(&vpn->device, key32);
 					if(!peer) {
 						return;
 					}

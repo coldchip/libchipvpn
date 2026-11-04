@@ -10,7 +10,7 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 
-chipvpn_udp_t *chipvpn_udp_create(int fd) {
+bool chipvpn_udp_init(chipvpn_udp_t *udp, int fd) {
 	bool owned_fd = false;
 
 	if(fd < 0) {
@@ -28,32 +28,21 @@ chipvpn_udp_t *chipvpn_udp_create(int fd) {
 		if(fd < 0) {
 			fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
 			if(fd < 0) {
-				return NULL;
+				return false;
 			}
 		}
 	}
 
-	chipvpn_udp_t *udp = malloc(sizeof(chipvpn_udp_t));
-	if(!udp) {
+	if(!chipvpn_socket_init(&udp->socket, fd)) {
 		if(owned_fd) {
 			close(fd);
 		}
-		return NULL;
-	}
-
-	chipvpn_socket_t *sock = chipvpn_socket_create(fd);
-	if(!sock) {
-		if(owned_fd) {
-			close(fd);
-		}
-		free(udp);
-		return NULL;
+		return false;
 	}
 
 	udp->fd = fd;
-	udp->socket = sock;
 
-	return udp;
+	return true;
 }
 
 bool chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size) {
@@ -68,12 +57,12 @@ bool chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark) {
 	return setsockopt(sock->fd, SOL_SOCKET, SO_MARK, &fwmark, sizeof(fwmark)) == 0;
 }
 
-bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
+bool chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	struct sockaddr_storage ss;
 	memset(&ss, 0, sizeof(ss));
 	socklen_t len = 0;
 
-	if(sock->socket->mode == CHIPVPN_ADDRESS_IPV6) {
+	if(udp->socket.mode == CHIPVPN_ADDRESS_IPV6) {
 		struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)&ss;
 		sa6->sin6_family = AF_INET6;
 
@@ -87,7 +76,7 @@ bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
 		
 		sa6->sin6_port = htons(addr->port);
 		len = sizeof(struct sockaddr_in6);
-	} else if(sock->socket->mode == CHIPVPN_ADDRESS_IPV4) {
+	} else if(udp->socket.mode == CHIPVPN_ADDRESS_IPV4) {
 		struct sockaddr_in *sa4 = (struct sockaddr_in *)&ss;
 		sa4->sin_family = AF_INET;
 		sa4->sin_addr.s_addr = addr->ipv4;
@@ -97,11 +86,10 @@ bool chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *addr) {
 		return false;
 	}
 
-	return bind(sock->fd, (struct sockaddr *)&ss, len) == 0;
+	return bind(udp->fd, (struct sockaddr *)&ss, len) == 0;
 }
 
-void chipvpn_udp_free(chipvpn_udp_t *udp) {
-	chipvpn_socket_free(udp->socket);
+void chipvpn_udp_cleanup(chipvpn_udp_t *udp) {
+	chipvpn_socket_cleanup(&udp->socket);
 	close(udp->fd);
-	free(udp);
 }
