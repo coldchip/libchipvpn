@@ -20,6 +20,14 @@ extern "C" {
 	((uint32_t)((p)[2]) << 16) | \
 	((uint32_t)((p)[3]) << 24))
 
+#define UNPACK4_LE(p, v) \
+	do { \
+		(p)[0] = U8V((v)      ); \
+		(p)[1] = U8V((v) >>  8); \
+		(p)[2] = U8V((v) >> 16); \
+		(p)[3] = U8V((v) >> 24); \
+	} while(0)
+
 #define ROTL32(v, n) \
 	(U32V((v) << (n)) | ((v) >> (32 - (n))))
 
@@ -34,7 +42,7 @@ extern "C" {
 	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 7);
 
 typedef struct {
-	uint32_t keystream[16];
+	uint8_t keystream[64];
 	uint32_t state[16];
 	size_t position;
 } chacha20_t;
@@ -46,4 +54,4 @@ void chacha20_xcrypt(chacha20_t *ctx, uint8_t *bytes, size_t size);
 
 #ifdef __cplusplus 
 }
-#endif 
+#endif
