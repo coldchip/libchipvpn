@@ -19,9 +19,9 @@ chipvpn_peer_t *chipvpn_peer_create() {
 		return NULL;
 	}
 
-	peer->type = PEER_PERMANENT;
-
 	chipvpn_secure_zero(peer, sizeof(chipvpn_peer_t));
+
+	peer->type = PEER_PERMANENT;
 
 	if(!chipvpn_firewall_init(&peer->firewall_inbound)) {
 		chipvpn_peer_free(peer);
