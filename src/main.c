@@ -199,20 +199,23 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 	signal(SIGHUP, terminate);
 	signal(SIGQUIT, terminate);
 
-	chipvpn_t *vpn = chipvpn_create(-1, -1, fd);
-	if(!vpn) {
+	setbuf(stdout, 0);
+
+	chipvpn_t vpn;
+
+	if(!chipvpn_init(&vpn, -1, -1, fd)) {
 		chipvpn_log_append("unable to create vpn tunnel interface\n");
 		exit(1);
 	}
 
 	while(!quit) {
-		chipvpn_poll(vpn, 250);
-		chipvpn_service(vpn);
+		chipvpn_poll(&vpn, 250);
+		chipvpn_service(&vpn);
 	}
 
 	chipvpn_log_append("cleanup\n");
 
-	chipvpn_cleanup(vpn);
+	chipvpn_cleanup(&vpn);
 
 	chipvpn_log_append("shutting down\n"); 
 
