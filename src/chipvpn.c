@@ -19,31 +19,32 @@
 #include "util.h"
 #include "noise.h"
 
-chipvpn_t *chipvpn_create(int tun_fd, int udp_fd, int ipc_fd) {
-	chipvpn_t *vpn = malloc(sizeof(chipvpn_t));
-	if(!vpn) {
+bool chipvpn_init(chipvpn_t *vpn, int tun_fd, int udp_fd, int ipc_fd) {
+	vpn->ratelimit = malloc(sizeof(chipvpn_ratelimit_t));
+	if(!vpn->ratelimit) {
 		return NULL;
 	}
 
-	setbuf(stdout, 0);
+	/* clear ratelimit list */
+	chipvpn_ratelimit_clear(vpn->ratelimit);
 
 	/* create vpn device */
 	if(!chipvpn_device_init(&vpn->device, tun_fd)) {
+		free(vpn->ratelimit);
 		return NULL;
 	}
 
 	/* create vpn socket */
 	if(!chipvpn_udp_init(&vpn->udp, udp_fd)) {
+		free(vpn->ratelimit);
 		return NULL;
 	}
 
 	/* create control socket */
 	if(!chipvpn_ipc_init(&vpn->ipc, ipc_fd)) {
+		free(vpn->ratelimit);
 		return NULL;
 	}
-
-	/* clear ratelimit list */
-	chipvpn_ratelimit_clear(&vpn->ratelimit);
 
 	return vpn;
 }
@@ -197,7 +198,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, &addr)) {
+				if(!chipvpn_ratelimit_verify(vpn->ratelimit, &addr)) {
 					continue;
 				}
 
@@ -224,7 +225,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				if(!chipvpn_ratelimit_verify(&vpn->ratelimit, &addr)) {
+				if(!chipvpn_ratelimit_verify(vpn->ratelimit, &addr)) {
 					continue;
 				}
 
@@ -344,5 +345,5 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 	chipvpn_udp_cleanup(&vpn->udp);
 	chipvpn_ipc_cleanup(&vpn->ipc);
 
-	free(vpn);
+	free(vpn->ratelimit);
 }

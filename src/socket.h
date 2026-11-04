@@ -23,7 +23,6 @@ typedef enum {
 } chipvpn_socket_type_e;
 
 typedef struct {
-	bool is_used;
 	uint16_t size;
 	chipvpn_address_t addr;
 	uint8_t buffer[SOCKET_QUEUE_ENTRY_SIZE];
