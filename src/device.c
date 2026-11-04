@@ -104,6 +104,10 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_handshake(chipvpn_device_t *device
 }
 
 chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id) {
+	if(session_id == 0) {
+		return NULL;
+	}
+
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 

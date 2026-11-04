@@ -215,6 +215,15 @@ bool chipvpn_peer_add_allowed_address(chipvpn_peer_t *peer, const char *address,
 	if(!chipvpn_address_set_ip(&peer->config.allow[i], address)) {
 		return false;
 	}
+
+	if(peer->config.allow[i].type == CHIPVPN_ADDRESS_IPV4 && prefix > 32) {
+		return false;
+	}
+	
+	if(peer->config.allow[i].type == CHIPVPN_ADDRESS_IPV6 && prefix > 128) {
+		return false;
+	}
+
 	peer->config.allow[i].prefix = prefix;
 
 	peer->config.allow_size++;
