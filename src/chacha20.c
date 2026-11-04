@@ -1,9 +1,6 @@
 #include "chacha20.h"
 
 void chacha20_init(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]) {
-    chacha20_set_counter(ctx, 0);
-    ctx->position = 0;
-
     ctx->state[0]  = 0x61707865; /* expa */
     ctx->state[1]  = 0x3320646e; /* nd 3 */
     ctx->state[2]  = 0x79622d32; /* 2-by */
@@ -16,10 +13,12 @@ void chacha20_init(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]) {
     ctx->state[9]  = PACK4_LE(key + 5 * 4);
     ctx->state[10] = PACK4_LE(key + 6 * 4);
     ctx->state[11] = PACK4_LE(key + 7 * 4);
-    ctx->state[12] = 0;
+    ctx->state[12] = 0u;
     ctx->state[13] = PACK4_LE(nonce + 0 * 4);
     ctx->state[14] = PACK4_LE(nonce + 1 * 4);
     ctx->state[15] = PACK4_LE(nonce + 2 * 4);
+
+    ctx->position = 0;
 }
 
 void chacha20_set_counter(chacha20_t *ctx, uint32_t counter) {
