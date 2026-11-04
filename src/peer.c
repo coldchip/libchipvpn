@@ -203,6 +203,8 @@ void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
 
 	peer->tx = 0llu;
 	peer->rx = 0llu;
+	peer->last_ack = 0;
+	peer->ack_state = PEER_ACK_IDLE;
 
 	chipvpn_secure_zero(&peer->prev_session, sizeof(peer->prev_session));
 	chipvpn_secure_zero(&peer->session, sizeof(peer->session));
@@ -216,11 +218,10 @@ bool chipvpn_peer_add_allowed_address(chipvpn_peer_t *peer, const char *address,
 		return false;
 	}
 
-	if(peer->config.allow[i].type == CHIPVPN_ADDRESS_IPV4 && prefix > 32) {
-		return false;
-	}
-	
-	if(peer->config.allow[i].type == CHIPVPN_ADDRESS_IPV6 && prefix > 128) {
+	if(
+		(peer->config.allow[i].type == CHIPVPN_ADDRESS_IPV6 && prefix > 128) ||
+		(peer->config.allow[i].type == CHIPVPN_ADDRESS_IPV4 && prefix > 32)
+	) {
 		return false;
 	}
 

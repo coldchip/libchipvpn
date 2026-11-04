@@ -1,7 +1,6 @@
 #include "device.h"
 #include "peer.h"
 #include <stdint.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -12,7 +11,6 @@
 #include "util.h"
 #include "base64.h"
 #include "peer.h"
-#include "udp.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
@@ -20,14 +18,17 @@
 #include <linux/ipv6.h>
 
 bool chipvpn_device_init(chipvpn_device_t *device, int fd) {
+	bool owns_fd = false;
+
 	if(fd < 0) {
-		fd = open("/dev/net/tun", O_RDWR);
+		fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
 		if(fd < 0) {
 			return false;
 		}
 
-		struct ifreq ifr;
-		memset(&ifr, 0, sizeof(ifr));
+		owns_fd = true;
+
+		struct ifreq ifr = {0};
 		ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
 
 		if(ioctl(fd, TUNSETIFF, &ifr) < 0) {
@@ -35,17 +36,19 @@ bool chipvpn_device_init(chipvpn_device_t *device, int fd) {
 			return false;
 		}
 
-		strcpy(device->dev, ifr.ifr_name);
+		strncpy(device->dev, ifr.ifr_name, IFNAMSIZ);
 	}
 
 	if(!chipvpn_socket_init(&device->socket, fd, 32)) {
+		if(owns_fd) {
+			close(fd);
+		}
 		return false;
 	}
 
 	device->fd       = fd;
 	device->postup   = NULL;
 	device->postdown = NULL;
-
 	chipvpn_list_clear(&device->peers);
 
 	return true;
@@ -152,177 +155,167 @@ void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
 }
 
 bool chipvpn_device_set_postup(chipvpn_device_t *device, const char *command) {
+	if(device->postup) free(device->postup);
 	device->postup = chipvpn_strdup(command);
 	return true;
 }
 
 bool chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command) {
+	if(device->postdown) free(device->postdown);
 	device->postdown = chipvpn_strdup(command);
 	return true;
 }
 
 bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {
-	struct ifreq ifr;
+	struct ifreq ifr = {0};
 
-	strcpy(ifr.ifr_name, device->dev);
-	strcpy(ifr.ifr_newname, name);
+	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
+	strncpy(ifr.ifr_newname, name, IFNAMSIZ);
 
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if(fd < 0) {
-        return false;
-    }
-
-    int ret = ioctl(fd, SIOCSIFNAME, &ifr) != -1;
-
-	if(ret) {
-		strcpy(device->dev, name);
+		return false;
 	}
+
+	int result = ioctl(fd, SIOCSIFNAME, &ifr);
 
 	close(fd);
 
-	return ret;
+	if(result < 0) {
+		return false;
+	}
+
+	strncpy(device->dev, name, IFNAMSIZ);
+	return true;
 }
 
 bool chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network) {
-	bool success = true;
+	int domain;
 
-	if (network->type == CHIPVPN_ADDRESS_IPV4) {
-		struct ifreq ifr;
-		memset(&ifr, 0, sizeof(ifr));
-		ifr.ifr_addr.sa_family = AF_INET;
-		strcpy(ifr.ifr_name, device->dev);
-
-		int fd = socket(AF_INET, SOCK_DGRAM, 0);
-		if(fd < 0) {
+	switch(network->type) {
+		case CHIPVPN_ADDRESS_IPV4: {
+			if(network->prefix > 32) {
+				return false;
+			}
+			domain = AF_INET;
+		}
+		break;
+		case CHIPVPN_ADDRESS_IPV6: {
+			if(network->prefix > 128) {
+				return false;
+			}
+			domain = AF_INET6;
+		}
+		break;
+		default:
 			return false;
-		}
-
-		struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
-		addr->sin_addr.s_addr = network->ipv4; 
-
-		if(ioctl(fd, SIOCSIFADDR, &ifr) == -1) {
-			success = false;
-		}
-
-		if(network->prefix == 0) {
-			addr->sin_addr.s_addr = 0;
-		} else {
-			addr->sin_addr.s_addr = htonl((0xFFFFFFFFUL << (32 - network->prefix)) & 0xFFFFFFFFUL);
-		}
-
-		if(ioctl(fd, SIOCSIFNETMASK, &ifr) == -1) {
-			success = false;
-		}
-
-		close(fd);
-		return success;
-	} 
-	else if (network->type == CHIPVPN_ADDRESS_IPV6) {
-		int fd = socket(AF_INET6, SOCK_DGRAM, 0);
-		if(fd < 0) {
-			return false;
-		}
-
-		struct ifreq ifr;
-		memset(&ifr, 0, sizeof(ifr));
-		strcpy(ifr.ifr_name, device->dev);
-
-		if(ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
-			close(fd);
-			return false;
-		}
-
-		struct in6_ifreq ifr6;
-		memset(&ifr6, 0, sizeof(ifr6));
-		memcpy(&ifr6.ifr6_addr, network->ipv6, 16); /* Use network->ip.ipv6 if union is named */
-		ifr6.ifr6_prefixlen = network->prefix;
-		ifr6.ifr6_ifindex = ifr.ifr_ifindex;
-
-		if(ioctl(fd, SIOCSIFADDR, &ifr6) == -1) {
-			success = false;
-		}
-
-		close(fd);
-		return success;
 	}
 
-	return false;
+	struct ifreq ifr = {0};
+	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
+
+	int fd = socket(domain, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if(fd < 0) {
+		return false;
+	}
+
+	bool success = false;
+
+	if(network->type == CHIPVPN_ADDRESS_IPV4) {
+		struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
+
+		addr->sin_family = AF_INET;
+		addr->sin_addr.s_addr = network->ipv4;
+
+		if(ioctl(fd, SIOCSIFADDR, &ifr) == 0) {
+			uint32_t mask = network->prefix == 0 ? 0 : UINT32_MAX << (32U - network->prefix);
+
+			addr->sin_addr.s_addr = htonl(mask);
+			success = ioctl(fd, SIOCSIFNETMASK, &ifr) == 0;
+		}
+	} else {
+		if(ioctl(fd, SIOCGIFINDEX, &ifr) == 0) {
+			struct in6_ifreq ifr6 = {
+				.ifr6_prefixlen = network->prefix,
+				.ifr6_ifindex   = ifr.ifr_ifindex
+			};
+
+			memcpy(&ifr6.ifr6_addr, network->ipv6, sizeof(ifr6.ifr6_addr));
+
+			success = ioctl(fd, SIOCSIFADDR, &ifr6) == 0;
+		}
+	}
+
+	close(fd);
+	return success;
 }
 
+
 bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
-	bool success = true;
-
-	struct ifreq ifr;
-	ifr.ifr_addr.sa_family = AF_INET;
-
-	strcpy(ifr.ifr_name, device->dev);
-
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(fd < 0) {
-        return false;
-    }
-
+	struct ifreq ifr = {0};
+	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
 	ifr.ifr_mtu = mtu;
 
-	if(ioctl(fd, SIOCSIFMTU, &ifr) == -1) {
-		success = false;
+	int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if(fd < 0) {
+		return false;
 	}
 
+	bool success = ioctl(fd, SIOCSIFMTU, &ifr) == 0;
 	close(fd);
 
 	return success;
 }
 
+
 bool chipvpn_device_set_txqueuelen(chipvpn_device_t *device, int qlen) {
-	bool success = true;
+	struct ifreq ifr = {0};
+	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
+	ifr.ifr_qlen = qlen;
 
-	struct ifreq ifr;
-	memset(&ifr, 0, sizeof(ifr)); 
-	ifr.ifr_addr.sa_family = AF_INET;
-
-	strcpy(ifr.ifr_name, device->dev);
-
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if(fd < 0) {
 		return false;
 	}
 
-	ifr.ifr_qlen = qlen;
-
-	if(ioctl(fd, SIOCSIFTXQLEN, &ifr) == -1) {
-		success = false;
-	}
-
+	bool success = ioctl(fd, SIOCSIFTXQLEN, &ifr) == 0;
 	close(fd);
 
 	return success;
 }
 
 bool chipvpn_device_toggle(chipvpn_device_t *device, bool enable) {
-    struct ifreq ifr = {0};
-    strncpy(ifr.ifr_name, device->dev, IFNAMSIZ - 1);
+	struct ifreq ifr = {0};
+	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
 
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(fd < 0) {
-        return false;
-    }
+	int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if(fd < 0) {
+		return false;
+	}
 
-    if(ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
-        close(fd);
-        return false;
-    }
+	if(ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+		close(fd);
+		return false;
+	}
 
-    if(enable) {
-        ifr.ifr_flags |= IFF_UP;
-    } else {
-        ifr.ifr_flags &= ~IFF_UP;
-    }
+	bool is_enabled = (ifr.ifr_flags & IFF_UP) != 0;
+	if(is_enabled == enable) {
+		close(fd);
+		return true;
+	}
 
-    bool success = (ioctl(fd, SIOCSIFFLAGS, &ifr) == 0);
-    close(fd);
+	if(enable) {
+		ifr.ifr_flags |= IFF_UP;
+	} else {
+		ifr.ifr_flags &= (short)~IFF_UP;
+	}
 
-    return success;
+	bool success = ioctl(fd, SIOCSIFFLAGS, &ifr) == 0;
+	close(fd);
+
+	return success;
 }
+
 
 bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 	if(!chipvpn_device_toggle(device, true)) {
