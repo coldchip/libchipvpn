@@ -34,8 +34,8 @@ extern "C" {
 	x[c] = PLUS(x[c], x[d]); x[b] = ROTATE(XOR(x[b], x[c]), 7);
 
 typedef struct {
-	uint32_t keystream[16] __attribute__((aligned(32)));
-	uint32_t state[16] __attribute__((aligned(32)));
+	uint32_t keystream[16];
+	uint32_t state[16];
 	size_t position;
 } chacha20_t;
 
