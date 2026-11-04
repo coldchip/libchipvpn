@@ -1,6 +1,9 @@
 #include "chacha20.h"
 
-static void chacha20_init_block(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]) {
+void chacha20_init(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]) {
+    chacha20_set_counter(ctx, 0);
+    ctx->position = 0;
+
     ctx->state[0]  = 0x61707865; /* expa */
     ctx->state[1]  = 0x3320646e; /* nd 3 */
     ctx->state[2]  = 0x79622d32; /* 2-by */
@@ -19,11 +22,11 @@ static void chacha20_init_block(chacha20_t *ctx, uint8_t key[], uint8_t nonce[])
     ctx->state[15] = PACK4_LE(nonce + 2 * 4);
 }
 
-static void chacha20_block_set_counter(chacha20_t *ctx, uint32_t counter) {
+void chacha20_set_counter(chacha20_t *ctx, uint32_t counter) {
     ctx->state[12] = (uint32_t)counter;
 }
 
-static void chacha20_block_next(chacha20_t *ctx) {
+void chacha20_xcrypt_block(chacha20_t *ctx) {
     memcpy(ctx->keystream, ctx->state, 64);
 
     for(int i = 0; i < 10; i++) {
@@ -44,20 +47,13 @@ static void chacha20_block_next(chacha20_t *ctx) {
     ctx->state[12] = PLUS(ctx->state[12], 1);
 }
 
-void chacha20_init_context(chacha20_t *ctx, uint8_t *key, uint8_t *nonce, uint32_t counter) {
-    chacha20_init_block(ctx, key, nonce);
-    chacha20_block_set_counter(ctx, counter);
-
-    ctx->position = 0;
-}
-
-void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size) {
+void chacha20_xcrypt(chacha20_t *ctx, uint8_t *bytes, size_t size) {
     uint8_t *keystream = (uint8_t*)ctx->keystream;
 
     while(size > 0) {
         size_t offset = ctx->position & 63;
         if(offset == 0) {
-            chacha20_block_next(ctx);
+            chacha20_xcrypt_block(ctx);
         }
 
         size_t chunk = 64 - offset;
@@ -71,10 +67,4 @@ void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size) {
         size -= chunk;
         ctx->position += chunk;
     }
-}
-
-void chacha20_xcrypt(uint8_t *key, uint8_t *nonce, uint8_t *bytes, size_t size) {
-    chacha20_t chacha20_ctx;
-    chacha20_init_context(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce, 0);
-    chacha20_xor(&chacha20_ctx, bytes, size);
 }

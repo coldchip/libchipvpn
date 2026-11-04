@@ -39,9 +39,10 @@ typedef struct {
 	size_t position;
 } chacha20_t;
 
-void chacha20_init_context(chacha20_t *ctx, uint8_t *key, uint8_t *nonce, uint32_t counter);
-void chacha20_xor(chacha20_t *ctx, uint8_t *bytes, size_t size);
-void chacha20_xcrypt(uint8_t *key, uint8_t *nonce, uint8_t *bytes, size_t size);
+void chacha20_init(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]);
+void chacha20_set_counter(chacha20_t *ctx, uint32_t counter);
+void chacha20_xcrypt_block(chacha20_t *ctx);
+void chacha20_xcrypt(chacha20_t *ctx, uint8_t *bytes, size_t size);
 
 #ifdef __cplusplus 
 }
