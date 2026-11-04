@@ -19,9 +19,9 @@ extern "C"
 #define CHIPVPN_PROTOCOL_VERSION 205
 
 typedef struct {
-	chipvpn_device_t   *device;
-	chipvpn_udp_t      *udp;
-	chipvpn_ipc_t      *ipc;
+	chipvpn_device_t    device;
+	chipvpn_udp_t       udp;
+	chipvpn_ipc_t       ipc;
 	chipvpn_ratelimit_t ratelimit;
 } chipvpn_t;
 

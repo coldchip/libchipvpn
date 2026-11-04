@@ -5,11 +5,9 @@
 #include "firewall.h"
 #include "list.h"
 
-void chipvpn_firewall_reset(chipvpn_list_t *list) {
-	while(!chipvpn_list_empty(list)) {
-		chipvpn_firewall_entry_t *entry = (chipvpn_firewall_entry_t*)chipvpn_list_remove(chipvpn_list_begin(list));
-		free(entry);
-	}
+bool chipvpn_firewall_init(chipvpn_list_t *list) {
+	chipvpn_list_clear(list);
+	return true;
 }
 
 bool chipvpn_firewall_insert(chipvpn_list_t *list, chipvpn_address_t *net) {
@@ -43,4 +41,11 @@ bool chipvpn_firewall_execute(chipvpn_list_t *list, chipvpn_address_t *address) 
 	}
 
 	return false;
+}
+
+void chipvpn_firewall_cleanup(chipvpn_list_t *list) {
+	while(!chipvpn_list_empty(list)) {
+		chipvpn_firewall_entry_t *entry = (chipvpn_firewall_entry_t*)chipvpn_list_remove(chipvpn_list_begin(list));
+		free(entry);
+	}
 }

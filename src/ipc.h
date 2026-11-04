@@ -12,12 +12,12 @@ extern "C"
 #include "socket.h"
 
 typedef struct {
-    chipvpn_socket_t *socket;
+    chipvpn_socket_t socket;
 } chipvpn_ipc_t;
 
-chipvpn_ipc_t          *chipvpn_ipc_create(int fd);
+bool                    chipvpn_ipc_init(chipvpn_ipc_t *ipc, int fd);
 bool                    chipvpn_ipc_printf(chipvpn_ipc_t *ipc, const char* format, ...);
-void                    chipvpn_ipc_free(chipvpn_ipc_t *ipc);
+void                    chipvpn_ipc_cleanup(chipvpn_ipc_t *ipc);
 
 #ifdef __cplusplus
 }

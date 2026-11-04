@@ -19,16 +19,11 @@
 #include <netinet/in.h>
 #include <linux/ipv6.h>
 
-chipvpn_device_t *chipvpn_device_create(int fd) {
-	chipvpn_device_t *device = malloc(sizeof(chipvpn_device_t));
-	if(!device) {
-		return NULL;
-	}
-
+bool chipvpn_device_init(chipvpn_device_t *device, int fd) {
 	if(fd < 0) {
 		fd = open("/dev/net/tun", O_RDWR);
 		if(fd < 0) {
-			return NULL;
+			return false;
 		}
 
 		struct ifreq ifr;
@@ -37,25 +32,23 @@ chipvpn_device_t *chipvpn_device_create(int fd) {
 
 		if(ioctl(fd, TUNSETIFF, &ifr) < 0) {
 			close(fd);
-			return NULL;
+			return false;
 		}
 
 		strcpy(device->dev, ifr.ifr_name);
 	}
 
-	chipvpn_socket_t *sock = chipvpn_socket_create(fd);
-	if(!sock) {
-		return NULL;
+	if(!chipvpn_socket_init(&device->socket, fd)) {
+		return false;
 	}
 
 	device->fd       = fd;
-	device->socket   = sock;
 	device->postup   = NULL;
 	device->postdown = NULL;
 
 	chipvpn_list_clear(&device->peers);
 
-	return device;
+	return true;
 }
 
 uint32_t chipvpn_device_generate_index(chipvpn_device_t *device) {
@@ -363,13 +356,13 @@ bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 	return curve25519(device->public, device->private, basepoint);
 }
 
-void chipvpn_device_free(chipvpn_device_t *device) {
+void chipvpn_device_cleanup(chipvpn_device_t *device) {
 	while(!chipvpn_list_empty(&device->peers)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&device->peers));
 		chipvpn_peer_free(peer);
 	}
 
-	chipvpn_socket_free(device->socket);
+	chipvpn_socket_cleanup(&device->socket);
 
 	chipvpn_device_set_disabled(device);
 
@@ -382,6 +375,4 @@ void chipvpn_device_free(chipvpn_device_t *device) {
 	if(device->postdown) {
 		free(device->postdown);
 	}
-
-	free(device);
 }

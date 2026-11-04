@@ -15,9 +15,10 @@ typedef struct {
 	chipvpn_address_t net;
 } chipvpn_firewall_entry_t;
 
-void chipvpn_firewall_reset(chipvpn_list_t *list);
+bool chipvpn_firewall_init(chipvpn_list_t *list);
 bool chipvpn_firewall_insert(chipvpn_list_t *list, chipvpn_address_t *net);
 bool chipvpn_firewall_execute(chipvpn_list_t *list, chipvpn_address_t *address);
+void chipvpn_firewall_cleanup(chipvpn_list_t *list);
 
 #ifdef __cplusplus
 }

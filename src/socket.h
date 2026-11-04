@@ -43,13 +43,13 @@ typedef struct {
 
 typedef struct {
 	int fd;
-	chipvpn_socket_queue_t tx_queue;
-	chipvpn_socket_queue_t rx_queue;
+	chipvpn_socket_queue_t *tx_queue;
+	chipvpn_socket_queue_t *rx_queue;
 	chipvpn_address_type_e mode;
 	chipvpn_socket_type_e type;
 } chipvpn_socket_t;
 
-chipvpn_socket_t                *chipvpn_socket_create(int fd);
+bool                             chipvpn_socket_init(chipvpn_socket_t *sock, int fd);
 
 chipvpn_address_type_e           chipvpn_socket_get_mode(int fd);
 chipvpn_socket_type_e            chipvpn_socket_get_type(int fd);
@@ -82,7 +82,7 @@ size_t                           chipvpn_socket_write(chipvpn_socket_t *sock, vo
 size_t                           chipvpn_socket_read_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, size_t size, chipvpn_address_t *addr);
 size_t                           chipvpn_socket_write_vector(chipvpn_socket_t *sock, chipvpn_socket_vector_t *vector, size_t size, chipvpn_address_t *addr);
 
-void                             chipvpn_socket_free(chipvpn_socket_t *sock);
+void                             chipvpn_socket_cleanup(chipvpn_socket_t *sock);
 
 #ifdef __cplusplus
 }
