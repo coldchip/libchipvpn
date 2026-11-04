@@ -13,8 +13,13 @@
 #include "chipvpn.h"
 #include "util.h"
 
-bool chipvpn_socket_init(chipvpn_socket_t *sock, int fd) {
-	if(fd < 0) {
+bool chipvpn_socket_init(chipvpn_socket_t *sock, int fd, int queue_size) {
+	if(fd < 0 || fd >= FD_SETSIZE) {
+		return false;
+	}
+
+	/* queue_size must be the power of 2 */
+	if(queue_size == 0 || (queue_size & (queue_size - 1)) != 0) {
 		return false;
 	}
 
@@ -33,15 +38,18 @@ bool chipvpn_socket_init(chipvpn_socket_t *sock, int fd) {
 	sock->mode = chipvpn_socket_get_mode(fd);
 	sock->type = chipvpn_socket_get_type(fd);
 
-	sock->tx_queue.pool = malloc(SOCKET_QUEUE_SIZE * sizeof(chipvpn_socket_queue_entry_t));
+	sock->tx_queue.pool = malloc(queue_size * sizeof(chipvpn_socket_queue_entry_t));
 	if(!sock->tx_queue.pool) {
 		return false;
 	}
 
-	sock->rx_queue.pool = malloc(SOCKET_QUEUE_SIZE * sizeof(chipvpn_socket_queue_entry_t));
+	sock->rx_queue.pool = malloc(queue_size * sizeof(chipvpn_socket_queue_entry_t));
 	if(!sock->rx_queue.pool) {
 		return false;
 	}
+
+	sock->tx_queue.total_size = queue_size;
+	sock->rx_queue.total_size = queue_size;
 
 	chipvpn_socket_reset_queue(&sock->tx_queue);
 	chipvpn_socket_reset_queue(&sock->rx_queue);
@@ -249,14 +257,14 @@ void chipvpn_socket_reset_queue(chipvpn_socket_queue_t *queue) {
 }
 
 chipvpn_socket_queue_entry_t *chipvpn_socket_enqueue_acquire(chipvpn_socket_queue_t *queue) {
-    if(queue->size >= SOCKET_QUEUE_SIZE) {
+    if(queue->size >= queue->total_size) {
     	return NULL;
     }
     return &queue->pool[queue->tail];
 }
 
 void chipvpn_socket_enqueue_commit(chipvpn_socket_queue_t *queue, chipvpn_socket_queue_entry_t *entry) {
-    queue->tail = (queue->tail + 1) & (SOCKET_QUEUE_SIZE - 1);
+    queue->tail = (queue->tail + 1) & (queue->total_size - 1);
     queue->size++;
 }
 
@@ -268,12 +276,12 @@ chipvpn_socket_queue_entry_t *chipvpn_socket_dequeue_acquire(chipvpn_socket_queu
 }
 
 void chipvpn_socket_dequeue_commit(chipvpn_socket_queue_t *queue, chipvpn_socket_queue_entry_t *entry) {
-    queue->head = (queue->head + 1) & (SOCKET_QUEUE_SIZE - 1);
+    queue->head = (queue->head + 1) & (queue->total_size - 1);
     queue->size--;
 }
 
 bool chipvpn_socket_can_enqueue(chipvpn_socket_t *sock) {
-	return sock->rx_queue.size < SOCKET_QUEUE_SIZE;
+	return sock->rx_queue.size < sock->rx_queue.total_size;
 }
 
 bool chipvpn_socket_can_dequeue(chipvpn_socket_t *sock) {
@@ -285,7 +293,7 @@ bool chipvpn_socket_can_read(chipvpn_socket_t *sock) {
 }
 
 bool chipvpn_socket_can_write(chipvpn_socket_t *sock) {
-	return sock->tx_queue.size < SOCKET_QUEUE_SIZE;
+	return sock->tx_queue.size <  sock->tx_queue.total_size;
 }
 
 size_t chipvpn_socket_read(chipvpn_socket_t *sock, void *data, size_t size, chipvpn_address_t *addr) {

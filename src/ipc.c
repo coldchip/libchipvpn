@@ -12,7 +12,7 @@
 #include <sys/un.h>
 
 bool chipvpn_ipc_init(chipvpn_ipc_t *ipc, int fd) {
-	if(!chipvpn_socket_init(&ipc->socket, fd)) {
+	if(!chipvpn_socket_init(&ipc->socket, fd, 4)) {
 		return false;
 	}
 

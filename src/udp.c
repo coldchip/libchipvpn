@@ -33,7 +33,7 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp, int fd) {
 		}
 	}
 
-	if(!chipvpn_socket_init(&udp->socket, fd)) {
+	if(!chipvpn_socket_init(&udp->socket, fd, 32)) {
 		if(owned_fd) {
 			close(fd);
 		}
