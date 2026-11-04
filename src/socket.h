@@ -10,8 +10,8 @@ extern "C"
 #include <unistd.h>
 #include "address.h"
 
-#define SOCKET_QUEUE_SIZE 64
-#define SOCKET_QUEUE_ENTRY_SIZE 16384
+#define SOCKET_QUEUE_SIZE 128
+#define SOCKET_QUEUE_ENTRY_SIZE 8192
 
 _Static_assert((SOCKET_QUEUE_SIZE & (SOCKET_QUEUE_SIZE - 1)) == 0, 
                "SOCKET_QUEUE_SIZE must be a power of 2");
@@ -29,7 +29,7 @@ typedef struct {
 } chipvpn_socket_queue_entry_t;
 
 typedef struct {
-    chipvpn_socket_queue_entry_t pool[SOCKET_QUEUE_SIZE];
+    chipvpn_socket_queue_entry_t *pool;
     int head;
     int tail;
     int size;
@@ -42,8 +42,8 @@ typedef struct {
 
 typedef struct {
 	int fd;
-	chipvpn_socket_queue_t *tx_queue;
-	chipvpn_socket_queue_t *rx_queue;
+	chipvpn_socket_queue_t tx_queue;
+	chipvpn_socket_queue_t rx_queue;
 	chipvpn_address_type_e mode;
 	chipvpn_socket_type_e type;
 } chipvpn_socket_t;

@@ -30,19 +30,16 @@ bool chipvpn_init(chipvpn_t *vpn, int tun_fd, int udp_fd, int ipc_fd) {
 
 	/* create vpn device */
 	if(!chipvpn_device_init(&vpn->device, tun_fd)) {
-		free(vpn->ratelimit);
 		return NULL;
 	}
 
 	/* create vpn socket */
 	if(!chipvpn_udp_init(&vpn->udp, udp_fd)) {
-		free(vpn->ratelimit);
 		return NULL;
 	}
 
 	/* create control socket */
 	if(!chipvpn_ipc_init(&vpn->ipc, ipc_fd)) {
-		free(vpn->ratelimit);
 		return NULL;
 	}
 
@@ -73,16 +70,16 @@ void chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max) {
 	int device_max = 0, socket_max = 0, ipc_max = 0;
 
 	chipvpn_socket_preselect(&vpn->device.socket, rdset, wdset, &device_max);
-	chipvpn_socket_preselect(&vpn->udp.socket, rdset, wdset, &socket_max);
-	chipvpn_socket_preselect(&vpn->ipc.socket, rdset, wdset, &ipc_max);
+	chipvpn_socket_preselect(&vpn->udp.socket,    rdset, wdset, &socket_max);
+	chipvpn_socket_preselect(&vpn->ipc.socket,    rdset, wdset, &ipc_max);
 
 	*max = MAX(device_max, MAX(socket_max, ipc_max));
 }
 
 void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 	chipvpn_socket_postselect(&vpn->device.socket, rdset, wdset);
-	chipvpn_socket_postselect(&vpn->udp.socket, rdset, wdset);
-	chipvpn_socket_postselect(&vpn->ipc.socket, rdset, wdset);
+	chipvpn_socket_postselect(&vpn->udp.socket,    rdset, wdset);
+	chipvpn_socket_postselect(&vpn->ipc.socket,    rdset, wdset);
 }
 
 int chipvpn_service(chipvpn_t *vpn) {
@@ -93,7 +90,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 	/* ipc */
 	while(chipvpn_socket_can_read(&vpn->ipc.socket) && chipvpn_socket_can_write(&vpn->ipc.socket)) {
-		size_t x = chipvpn_socket_read(&vpn->ipc.socket, buffer, sizeof(buffer), NULL);
+		size_t x = chipvpn_socket_read(&vpn->ipc.socket, buffer, sizeof(buffer) - 1, NULL);
 		buffer[x] = '\0';
 
 		chipvpn_config_command(vpn, (char*)buffer);
@@ -113,12 +110,20 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 		switch(version) {
 			case 4: {
+				if(r < sizeof(ipv4_hdr_t)) {
+					continue;
+				}
+
 				ipv4_hdr_t *ipv4_hdr = (ipv4_hdr_t *)buffer;
 				dst.type = CHIPVPN_ADDRESS_IPV4;
 				dst.ipv4 = ipv4_hdr->dst_addr;
 			}
 			break;
 			case 6: {
+				if(r < sizeof(ipv6_hdr_t)) {
+					continue;
+				}
+
 				ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)buffer;
 				dst.type = CHIPVPN_ADDRESS_IPV6;
 				memcpy(dst.ipv6, ipv6_hdr->dst_addr, sizeof(ipv6_hdr->dst_addr));
@@ -305,12 +310,16 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				switch(version) {
 					case 4: {
+						if(data_size < sizeof(ipv4_hdr_t)) continue;
+
 						ipv4_hdr_t *ipv4_hdr = (ipv4_hdr_t *)data;
 						src.type = CHIPVPN_ADDRESS_IPV4;
 						src.ipv4 = ipv4_hdr->src_addr;
 					}
 					break;
 					case 6: {
+						if(data_size < sizeof(ipv6_hdr_t)) continue;
+
 						ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)data;
 						src.type = CHIPVPN_ADDRESS_IPV6;
 						memcpy(src.ipv6, ipv6_hdr->src_addr, sizeof(ipv6_hdr->src_addr));
