@@ -203,7 +203,7 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 
 	chipvpn_t vpn;
 
-	if(!chipvpn_init(&vpn, -1, -1, fd)) {
+	if(!chipvpn_init(&vpn, fd)) {
 		chipvpn_log_append("unable to create vpn tunnel interface\n");
 		exit(1);
 	}

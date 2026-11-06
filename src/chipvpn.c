@@ -19,7 +19,7 @@
 #include "noise.h"
 #include "queue.h"
 
-bool chipvpn_init(chipvpn_t *vpn, int tun_fd, int udp_fd, int ipc_fd) {
+bool chipvpn_init(chipvpn_t *vpn, int ipc_fd) {
 	vpn->ratelimit = malloc(sizeof(chipvpn_ratelimit_t));
 	if(!vpn->ratelimit) {
 		return NULL;
@@ -29,12 +29,12 @@ bool chipvpn_init(chipvpn_t *vpn, int tun_fd, int udp_fd, int ipc_fd) {
 	chipvpn_ratelimit_clear(vpn->ratelimit);
 
 	/* create vpn device */
-	if(!chipvpn_device_init(&vpn->device, tun_fd)) {
+	if(!chipvpn_device_init(&vpn->device)) {
 		return NULL;
 	}
 
 	/* create vpn socket */
-	if(!chipvpn_udp_init(&vpn->udp, udp_fd)) {
+	if(!chipvpn_udp_init(&vpn->udp)) {
 		return NULL;
 	}
 

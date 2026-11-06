@@ -48,7 +48,7 @@ typedef struct {
     char *postdown;
 } chipvpn_device_t;
 
-bool                    chipvpn_device_init(chipvpn_device_t *device, int fd);
+bool                    chipvpn_device_init(chipvpn_device_t *device);
 
 uint32_t                chipvpn_device_generate_index(chipvpn_device_t *device);
 
