@@ -18,14 +18,11 @@ typedef struct {
 	chipvpn_queue_t rx_queue;
 } chipvpn_udp_t;
 
-bool                    chipvpn_udp_init(chipvpn_udp_t *udp, int fd);
+bool                    chipvpn_udp_init(chipvpn_udp_t *udp);
 bool                    chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size);
 bool                    chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size);
 bool                    chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark);
 bool                    chipvpn_udp_bind(chipvpn_udp_t *sock, chipvpn_address_t *bind);
-
-bool                    chipvpn_udp_raw_read(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry);
-bool                    chipvpn_udp_raw_write(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry);
 
 void                    chipvpn_udp_preselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset, int *max);
 void                    chipvpn_udp_postselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset);

@@ -12,36 +12,25 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 
-bool chipvpn_udp_init(chipvpn_udp_t *udp, int fd) {
+bool chipvpn_udp_init(chipvpn_udp_t *udp) {
+	int fd = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
+	if(fd >= 0) {
+		int v6_only = 0;
+		if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &v6_only, sizeof(v6_only)) < 0) {
+			close(fd);
+			fd = -1;
+		}
+
+		udp->family = AF_INET6;
+	}
+
 	if(fd < 0) {
-		fd = socket(AF_INET6, SOCK_DGRAM | SOCK_NONBLOCK, 0);
-		if(fd >= 0) {
-			int v6_only = 0;
-			if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &v6_only, sizeof(v6_only)) < 0) {
-				close(fd);
-				fd = -1;
-			}
-
-			udp->family = AF_INET6;
-		}
-
+		fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
 		if(fd < 0) {
-			fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
-			if(fd < 0) {
-				return false;
-			}
-
-			udp->family = AF_INET;
+			return false;
 		}
-	}
 
-	int flags = fcntl(fd, F_GETFL, 0);
-	if(flags == -1) {
-		return false;
-	}
-
-	if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-		return false;
+		udp->family = AF_INET;
 	}
 
 	udp->fd = fd;
@@ -101,7 +90,7 @@ bool chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	return bind(udp->fd, (struct sockaddr *)&ss, len) == 0;
 }
 
-bool chipvpn_udp_raw_read(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
+static inline bool chipvpn_udp_raw_read(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 	ssize_t r = -1;
 
 	/* read socket */
@@ -129,6 +118,8 @@ bool chipvpn_udp_raw_read(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 			entry->addr.type = CHIPVPN_ADDRESS_IPV4;
 			entry->addr.ipv4 = sa4->sin_addr.s_addr;
 			entry->addr.port = ntohs(sa4->sin_port);
+		} else {
+			return false;
 		}
 	}
 		
@@ -143,7 +134,7 @@ bool chipvpn_udp_raw_read(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 	return true;
 }
 
-bool chipvpn_udp_raw_write(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
+static inline bool chipvpn_udp_raw_write(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 	ssize_t w = -1;
 
 	/* write socket */
@@ -171,13 +162,15 @@ bool chipvpn_udp_raw_write(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 		sa4->sin_addr.s_addr = entry->addr.ipv4;
 		sa4->sin_port = htons(entry->addr.port);
 		len = sizeof(struct sockaddr_in);
+	} else {
+		return false;
 	}
 
 	w = sendto(udp->fd, entry->buffer, entry->size, 0, (struct sockaddr *)&ss, len);
 
 	if(w <= 0) {
 		/* drop if network is down */
-		return !(errno == EAGAIN || errno == EWOULDBLOCK); 
+		return !(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR); 
 	}
 
 	entry->size = 0;
@@ -194,27 +187,16 @@ void chipvpn_udp_preselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset, int
 void chipvpn_udp_postselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset) {
 	if(FD_ISSET(udp->fd, rdset)) {
 		chipvpn_queue_entry_t *entry = chipvpn_queue_push_acquire(&udp->rx_queue);
-		if(!entry) {
-			return;
+		if(entry && chipvpn_udp_raw_read(udp, entry)) {
+			chipvpn_queue_push_commit(&udp->rx_queue, entry);
 		}
-
-		if(!chipvpn_udp_raw_read(udp, entry)) {
-			return;
-		}
-
-		chipvpn_queue_push_commit(&udp->rx_queue, entry);
 	}
+
 	if(FD_ISSET(udp->fd, wdset)) {
 		chipvpn_queue_entry_t *entry = chipvpn_queue_pop_acquire(&udp->tx_queue);
-		if(!entry) {
-			return;
+		if(entry && chipvpn_udp_raw_write(udp, entry)) {
+			chipvpn_queue_pop_commit(&udp->tx_queue, entry);
 		}
-
-		if(!chipvpn_udp_raw_write(udp, entry)) {
-			return;
-		}
-
-		chipvpn_queue_pop_commit(&udp->tx_queue, entry);
 	}
 }
 

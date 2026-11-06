@@ -57,28 +57,23 @@ void chipvpn_ipc_preselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset, int
 void chipvpn_ipc_postselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset) {
 	if(FD_ISSET(ipc->fd, rdset)) {
 		chipvpn_queue_entry_t *entry = chipvpn_queue_push_acquire(&ipc->rx_queue);
-		if(!entry) {
-			return;
-		}
-
-		ssize_t r = read(ipc->fd, entry->buffer, sizeof(entry->buffer));
-
-		if(r > 0) {
-			entry->size = (uint16_t)r;
-			chipvpn_queue_push_commit(&ipc->rx_queue, entry);
+		if(entry) {
+			ssize_t r = read(ipc->fd, entry->buffer, sizeof(entry->buffer));
+			if(r > 0) {
+				entry->size = (uint16_t)r;
+				chipvpn_queue_push_commit(&ipc->rx_queue, entry);
+			}
 		}
 	}
+	
 	if(FD_ISSET(ipc->fd, wdset)) {
 		chipvpn_queue_entry_t *entry = chipvpn_queue_pop_acquire(&ipc->tx_queue);
-		if(!entry) {
-			return;
-		}
-
-		ssize_t w = write(ipc->fd, entry->buffer, entry->size);
-
-		if(w > 0) {
-			entry->size = (uint16_t)0u;
-			chipvpn_queue_pop_commit(&ipc->tx_queue, entry);
+		if(entry) {
+			ssize_t w = write(ipc->fd, entry->buffer, entry->size);
+			if(w > 0) {
+				entry->size = (uint16_t)0u;
+				chipvpn_queue_pop_commit(&ipc->tx_queue, entry);
+			}
 		}
 	}
 }

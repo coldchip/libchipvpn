@@ -25,7 +25,7 @@ typedef struct {
 	chipvpn_ratelimit_t *ratelimit;
 } chipvpn_t;
 
-bool           chipvpn_init(chipvpn_t *vpn, int tun_fd, int udp_fd, int ipc_fd);
+bool           chipvpn_init(chipvpn_t *vpn, int ipc_fd);
 void           chipvpn_poll(chipvpn_t *vpn, uint64_t timeout);
 void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max);
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);
