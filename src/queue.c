@@ -3,16 +3,21 @@
 #include <stdlib.h>
 
 bool chipvpn_queue_init(chipvpn_queue_t *queue, int queue_size) {
+	if(queue_size == 0 || (queue_size & (queue_size - 1)) != 0) {
+		return false;
+	}
+
 	queue->head = 0;
 	queue->tail = 0;
 	queue->size = 0;
+	queue->total_size = queue_size;
 
 	queue->pool = malloc(queue_size * sizeof(chipvpn_queue_entry_t));
 	if(!queue->pool) {
 		return false;
 	}
 
-	queue->total_size = queue_size;
+	return true;
 }
 
 bool chipvpn_queue_can_enqueue(chipvpn_queue_t *queue) {
