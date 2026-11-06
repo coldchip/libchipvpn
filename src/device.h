@@ -50,12 +50,12 @@ typedef struct {
 
 bool                    chipvpn_device_init(chipvpn_device_t *device);
 
-uint32_t                chipvpn_device_generate_index(chipvpn_device_t *device);
+uint32_t                chipvpn_device_generate_index(const chipvpn_device_t *device);
 
-chipvpn_peer_t         *chipvpn_device_lookup_peer_by_pubkey(chipvpn_device_t *device, const uint8_t *public);
-chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(chipvpn_device_t *device, chipvpn_address_t *address);
-chipvpn_peer_t         *chipvpn_device_lookup_peer_by_handshake(chipvpn_device_t *device, uint32_t session_id);
-chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_pubkey(const chipvpn_device_t *device, const uint8_t *public);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(const chipvpn_device_t *device, const chipvpn_address_t *address);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_handshake(const chipvpn_device_t *device, uint32_t session_id);
+chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id);
 
 void                    chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp);
 
@@ -63,7 +63,7 @@ bool                    chipvpn_device_set_postup(chipvpn_device_t *device, cons
 bool                    chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command);
 
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
-bool                    chipvpn_device_set_address(chipvpn_device_t *device, chipvpn_address_t *network);
+bool                    chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_t *network);
 bool                    chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu);
 bool                    chipvpn_device_set_txqueuelen(chipvpn_device_t *device, int qlen);
 bool                    chipvpn_device_toggle(chipvpn_device_t *device, bool enable);

@@ -10,7 +10,7 @@ bool chipvpn_firewall_init(chipvpn_list_t *list) {
 	return true;
 }
 
-bool chipvpn_firewall_insert(chipvpn_list_t *list, chipvpn_address_t *net) {
+bool chipvpn_firewall_insert(chipvpn_list_t *list, const chipvpn_address_t *net) {
 	if(list == NULL || net == NULL) {
 		return false;
 	}
@@ -27,7 +27,7 @@ bool chipvpn_firewall_insert(chipvpn_list_t *list, chipvpn_address_t *net) {
 	return true;
 }
 
-bool chipvpn_firewall_execute(chipvpn_list_t *list, chipvpn_address_t *address) {
+bool chipvpn_firewall_execute(const chipvpn_list_t *list, const chipvpn_address_t *address) {
 	if(list == NULL || address == NULL) {
 		return false;
 	}

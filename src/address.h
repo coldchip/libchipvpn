@@ -27,8 +27,9 @@ typedef struct {
 } chipvpn_address_t;
 
 bool           chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip);
-bool           chipvpn_address_cidr_match(chipvpn_address_t *net, chipvpn_address_t *addr);
-char          *chipvpn_address_to_char(chipvpn_address_t *addr);     
+bool           chipvpn_address_cidr_match(const chipvpn_address_t *net, const chipvpn_address_t *addr);
+bool           chipvpn_address_equal(const chipvpn_address_t *left, const chipvpn_address_t *right);
+char          *chipvpn_address_to_char(const chipvpn_address_t *addr);     
 
 #ifdef __cplusplus
 }

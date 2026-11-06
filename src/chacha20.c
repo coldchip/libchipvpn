@@ -1,6 +1,6 @@
 #include "chacha20.h"
 
-void chacha20_init(chacha20_t *ctx, uint8_t key[], uint8_t nonce[]) {
+void chacha20_init(chacha20_t *ctx, const uint8_t *key, const uint8_t *nonce) {
 	ctx->state[0]  = 0x61707865; /* expa */
 	ctx->state[1]  = 0x3320646e; /* nd 3 */
 	ctx->state[2]  = 0x79622d32; /* 2-by */

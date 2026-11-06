@@ -18,7 +18,7 @@
 #include <time.h>
 #include <stdarg.h>
 
-void chipvpn_log_append(char* format, ...) {
+void chipvpn_log_append(const char* format, ...) {
 	char buffer[1024];
 
 	va_list args;
@@ -31,7 +31,7 @@ void chipvpn_log_append(char* format, ...) {
 	fflush(stdout);
 }
 
-void chipvpn_print_key(uint8_t *key) {
+void chipvpn_print_key(const uint8_t *key) {
 	for(int i = 0; i < 32; i++) {
 		printf("%02x", key[i] & 0xff);
 	}
