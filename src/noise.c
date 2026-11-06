@@ -146,7 +146,7 @@ void chipvpn_noise_kdf3(uint8_t *tau1, uint8_t *tau2, uint8_t *tau3, const uint8
     memcpy(tau3, output, BLAKE2S_HASH_SIZE);
 }
 
-bool chipvpn_noise_produce_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_auth_t *packet) {
+bool chipvpn_noise_produce_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_packet_auth_t *packet) {
 	chipvpn_secure_zero(packet, sizeof(chipvpn_packet_auth_t));
 
 	packet->type = CHIPVPN_PACKET_AUTH;
@@ -197,7 +197,7 @@ bool chipvpn_noise_produce_connect(chipvpn_peer_t *peer, chipvpn_device_t *devic
 	return true;
 }
 
-chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_packet_auth_t *packet) {
+chipvpn_peer_t *chipvpn_noise_consume_connect(const chipvpn_device_t *device, chipvpn_packet_auth_t *packet) {
 	/* init chain_key and hash_key as a working copy to prevent unauthorized changes to the real copy */
 	SECURE32 uint8_t chain_key[BLAKE2S_HASH_SIZE];
 	SECURE32 uint8_t hash_key[BLAKE2S_HASH_SIZE];
@@ -273,7 +273,7 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_
 	return peer;
 }
 
-bool chipvpn_noise_produce_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet) {
+bool chipvpn_noise_produce_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet) {
 	chipvpn_secure_zero(packet, sizeof(chipvpn_packet_auth_reply_t));
 	
 	packet->type = CHIPVPN_PACKET_AUTH_REPLY;
@@ -302,7 +302,7 @@ bool chipvpn_noise_produce_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	return true;
 }
 
-chipvpn_peer_t *chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet) {
+chipvpn_peer_t *chipvpn_noise_consume_reply(const chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet) {
 	/* init & copy chain_key and hash_key as a working copy to prevent unauthorized changes to the real copy */
 	SECURE32 uint8_t chain_key[BLAKE2S_HASH_SIZE];
 	SECURE32 uint8_t hash_key[BLAKE2S_HASH_SIZE];

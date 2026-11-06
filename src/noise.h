@@ -24,10 +24,10 @@ void               chipvpn_noise_kdf1(uint8_t *tau1, const uint8_t *chaining_key
 void               chipvpn_noise_kdf2(uint8_t *tau1, uint8_t *tau2, const uint8_t *chaining_key, const uint8_t *data, size_t data_len);
 void               chipvpn_noise_kdf3(uint8_t *tau1, uint8_t *tau2, uint8_t *tau3, const uint8_t *chaining_key, const uint8_t *data, size_t data_len);
 
-bool               chipvpn_noise_produce_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_auth_t *packet);
-chipvpn_peer_t    *chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_packet_auth_t *packet);
-bool               chipvpn_noise_produce_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet);
-chipvpn_peer_t    *chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet);
+bool               chipvpn_noise_produce_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_packet_auth_t *packet);
+chipvpn_peer_t    *chipvpn_noise_consume_connect(const chipvpn_device_t *device, chipvpn_packet_auth_t *packet);
+bool               chipvpn_noise_produce_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet);
+chipvpn_peer_t    *chipvpn_noise_consume_reply(const chipvpn_device_t *device, chipvpn_packet_auth_reply_t *packet);
 
 bool               chipvpn_noise_begin_session(chipvpn_peer_t *peer, bool is_initiator);
 

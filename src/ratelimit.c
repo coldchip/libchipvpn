@@ -6,7 +6,7 @@
 #include "address.h"
 #include "ratelimit.h"
 
-uint32_t chipvpn_ratelimit_hash_addr(chipvpn_address_t *addr) {
+uint32_t chipvpn_ratelimit_hash_addr(const chipvpn_address_t *addr) {
     uint64_t key = 0;
 
     if(addr->type == CHIPVPN_ADDRESS_IPV6) {
@@ -26,7 +26,7 @@ uint32_t chipvpn_ratelimit_hash_addr(chipvpn_address_t *addr) {
     return (uint32_t)key & (CHIPVPN_RATELIMIT_SIZE - 1);
 }
 
-static bool chipvpn_ratelimit_match(chipvpn_address_t *a, chipvpn_address_t *b) {
+static bool chipvpn_ratelimit_match(const chipvpn_address_t *a, const chipvpn_address_t *b) {
     if(a->type != b->type) {
         return false;
     }
@@ -43,7 +43,7 @@ void chipvpn_ratelimit_clear(chipvpn_ratelimit_t *ratelimit) {
     memset(ratelimit, 0, sizeof(chipvpn_ratelimit_t));
 }
 
-bool chipvpn_ratelimit_verify(chipvpn_ratelimit_t *ratelimit, chipvpn_address_t *addr) {
+bool chipvpn_ratelimit_verify(chipvpn_ratelimit_t *ratelimit, const chipvpn_address_t *addr) {
     uint64_t now = chipvpn_get_time();
 
     uint32_t idx = chipvpn_ratelimit_hash_addr(addr);

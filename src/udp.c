@@ -36,10 +36,13 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp) {
 	udp->fd = fd;
 
 	if(!chipvpn_queue_init(&udp->tx_queue, 32)) {
+		close(fd);
 		return false;
 	}
 	
 	if(!chipvpn_queue_init(&udp->rx_queue, 32)) {
+		chipvpn_queue_cleanup(&udp->tx_queue);
+		close(fd);
 		return false;
 	}
 
@@ -58,7 +61,7 @@ bool chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark) {
 	return setsockopt(sock->fd, SOL_SOCKET, SO_MARK, &fwmark, sizeof(fwmark)) == 0;
 }
 
-bool chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *addr) {
+bool chipvpn_udp_bind(chipvpn_udp_t *udp, const chipvpn_address_t *addr) {
 	struct sockaddr_storage ss;
 	memset(&ss, 0, sizeof(ss));
 	socklen_t len = 0;
@@ -179,8 +182,8 @@ static inline bool chipvpn_udp_raw_write(chipvpn_udp_t *udp, chipvpn_queue_entry
 }
 
 void chipvpn_udp_preselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset, int *max) {
-	if(chipvpn_queue_can_push(&udp->rx_queue)) FD_SET(udp->fd, rdset); else FD_CLR(udp->fd, rdset);
-	if(chipvpn_queue_can_pop (&udp->tx_queue)) FD_SET(udp->fd, wdset); else FD_CLR(udp->fd, wdset);
+	if(chipvpn_queue_push_acquire(&udp->rx_queue)) FD_SET(udp->fd, rdset); else FD_CLR(udp->fd, rdset);
+	if(chipvpn_queue_pop_acquire (&udp->tx_queue)) FD_SET(udp->fd, wdset); else FD_CLR(udp->fd, wdset);
 	*max = udp->fd;
 }
 

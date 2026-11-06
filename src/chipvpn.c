@@ -89,7 +89,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 	uint8_t buffer[QUEUE_ENTRY_SIZE];
 
 	/* ipc */
-	while(chipvpn_queue_can_pop(&vpn->ipc.rx_queue) && chipvpn_queue_can_push(&vpn->ipc.tx_queue)) {
+	while(chipvpn_queue_pop_acquire(&vpn->ipc.rx_queue) && chipvpn_queue_push_acquire(&vpn->ipc.tx_queue)) {
 		size_t x = chipvpn_queue_pop(&vpn->ipc.rx_queue, buffer, sizeof(buffer) - 1, NULL);
 		buffer[x] = '\0';
 
@@ -99,7 +99,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 	}
 
 	/* tunnel => socket */
-	while(chipvpn_queue_can_pop(&vpn->device.rx_queue) && chipvpn_queue_can_push(&vpn->udp.tx_queue)) {
+	while(chipvpn_queue_pop_acquire(&vpn->device.rx_queue) && chipvpn_queue_push_acquire(&vpn->udp.tx_queue)) {
 		size_t r = chipvpn_queue_pop(&vpn->device.rx_queue, buffer, sizeof(buffer), NULL);
 		if(r <= 0) {
 			continue;
@@ -188,7 +188,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 	}
 
 	/* socket => tunnel */
-	while(chipvpn_queue_can_pop(&vpn->udp.rx_queue) && chipvpn_queue_can_push(&vpn->device.tx_queue)) {
+	while(chipvpn_queue_pop_acquire(&vpn->udp.rx_queue) && chipvpn_queue_push_acquire(&vpn->device.tx_queue)) {
 		chipvpn_address_t addr;
 
 		size_t r = chipvpn_queue_pop(&vpn->udp.rx_queue, buffer, sizeof(buffer), &addr);
@@ -211,7 +211,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_noise_consume_connect(&vpn->device, packet);
 				if(!peer) {
-					if(chipvpn_queue_can_push(&vpn->ipc.tx_queue)) {
+					if(chipvpn_queue_push_acquire(&vpn->ipc.tx_queue)) {
 						char public_b64[64];
 
 						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
@@ -286,7 +286,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* authenticated */
-				if(peer->address.ipv4 != addr.ipv4 || peer->address.port != addr.port) {
+				if(!chipvpn_address_equal(&peer->address, &addr)) {
 					chipvpn_log_append("%p says: ip or port changed\n", peer);
 					peer->address = addr;
 				}

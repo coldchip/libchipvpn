@@ -13,7 +13,7 @@
 
 chipvpn_command_section_e section;
 
-void chipvpn_config_command(chipvpn_t *vpn, char *command) {
+void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 	char line[8192];
 	while(chipvpn_sgets(line, sizeof(line), (const char **)&command)) {
 		line[strcspn(line, "\n")] = 0;

@@ -54,7 +54,7 @@ unsigned int b64d_size(unsigned int in_size) {
 	return ((3*in_size)/4);
 }
 
-unsigned int b64_encode(uint8_t* in, unsigned int in_len, uint8_t* out) {
+unsigned int b64_encode(const uint8_t* in, unsigned int in_len, uint8_t* out) {
 
 	unsigned int i=0, j=0, k=0, s[3];
 	
@@ -87,7 +87,7 @@ unsigned int b64_encode(uint8_t* in, unsigned int in_len, uint8_t* out) {
 	return k + 1;
 }
 
-unsigned int b64_decode(uint8_t* in, unsigned int in_len, uint8_t* out) {
+unsigned int b64_decode(const uint8_t* in, unsigned int in_len, uint8_t* out) {
 
 	unsigned int i=0, j=0, k=0, s[4];
 	

@@ -172,15 +172,15 @@ typedef struct chipvpn_peer {
 
 chipvpn_peer_t         *chipvpn_peer_create();
 
-int                     chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr);
-int                     chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr);
-int                     chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *addr);
-int                     chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr);
+int                     chipvpn_peer_send_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *addr);
+int                     chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *socket, const chipvpn_packet_auth_t *packet, const chipvpn_address_t *addr);
+int                     chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *addr);
+int                     chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_packet_auth_reply_t *packet, const chipvpn_address_t *addr);
 
-int                     chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
+int                     chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_udp_t *socket);
 int                     chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_is_allowed_address(chipvpn_peer_t *peer, chipvpn_address_t *address);
+bool                    chipvpn_peer_is_allowed_address(const chipvpn_peer_t *peer, const chipvpn_address_t *address);
 
 void                    chipvpn_peer_reset_handshake(chipvpn_peer_t *peer);
 void                    chipvpn_peer_reset_session(chipvpn_peer_t *peer);
@@ -191,7 +191,7 @@ bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvp
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *socket);
+bool                    chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *socket);
 
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);
 
