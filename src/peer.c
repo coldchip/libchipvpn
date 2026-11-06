@@ -50,7 +50,7 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	/* any outbound packet is considered sending a keepalive packet */
 	peer->last_transmission = chipvpn_get_time();
 
-	return chipvpn_queue_write(&udp->tx_queue, &packet, sizeof(packet), addr);
+	return chipvpn_queue_push(&udp->tx_queue, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
@@ -97,7 +97,7 @@ int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	/* any outbound packet is considered sending a keepalive packet */
 	peer->last_transmission = chipvpn_get_time();
 
-	return chipvpn_queue_write(&udp->tx_queue, &packet, sizeof(packet), addr);
+	return chipvpn_queue_push(&udp->tx_queue, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr) {
@@ -170,7 +170,7 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 		{ .data = mac, .size = sizeof(mac) }
 	};
 
-	return chipvpn_queue_write_vector(&udp->tx_queue, vector, 2, &peer->address);
+	return chipvpn_queue_push_vector(&udp->tx_queue, vector, 2, &peer->address);
 }
 
 int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {

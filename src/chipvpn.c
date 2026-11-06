@@ -89,18 +89,18 @@ int chipvpn_service(chipvpn_t *vpn) {
 	uint8_t buffer[QUEUE_ENTRY_SIZE];
 
 	/* ipc */
-	while(chipvpn_queue_can_dequeue(&vpn->ipc.rx_queue) && chipvpn_queue_can_enqueue(&vpn->ipc.tx_queue)) {
-		size_t x = chipvpn_queue_read(&vpn->ipc.rx_queue, buffer, sizeof(buffer) - 1, NULL);
+	while(chipvpn_queue_can_pop(&vpn->ipc.rx_queue) && chipvpn_queue_can_push(&vpn->ipc.tx_queue)) {
+		size_t x = chipvpn_queue_pop(&vpn->ipc.rx_queue, buffer, sizeof(buffer) - 1, NULL);
 		buffer[x] = '\0';
 
 		chipvpn_config_command(vpn, (char*)buffer);
 
-		chipvpn_queue_write(&vpn->ipc.tx_queue, "OK\n", 3, NULL);
+		chipvpn_queue_push(&vpn->ipc.tx_queue, "OK\n", 3, NULL);
 	}
 
 	/* tunnel => socket */
-	while(chipvpn_queue_can_dequeue(&vpn->device.rx_queue) && chipvpn_queue_can_enqueue(&vpn->udp.tx_queue)) {
-		size_t r = chipvpn_queue_read(&vpn->device.rx_queue, buffer, sizeof(buffer), NULL);
+	while(chipvpn_queue_can_pop(&vpn->device.rx_queue) && chipvpn_queue_can_push(&vpn->udp.tx_queue)) {
+		size_t r = chipvpn_queue_pop(&vpn->device.rx_queue, buffer, sizeof(buffer), NULL);
 		if(r <= 0) {
 			continue;
 		}
@@ -184,14 +184,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 			{ .data = mac, .size = sizeof(mac) }
 		};
 
-		chipvpn_queue_write_vector(&vpn->udp.tx_queue, vector, 3, &peer->address);
+		chipvpn_queue_push_vector(&vpn->udp.tx_queue, vector, 3, &peer->address);
 	}
 
 	/* socket => tunnel */
-	while(chipvpn_queue_can_dequeue(&vpn->udp.rx_queue) && chipvpn_queue_can_enqueue(&vpn->device.tx_queue)) {
+	while(chipvpn_queue_can_pop(&vpn->udp.rx_queue) && chipvpn_queue_can_push(&vpn->device.tx_queue)) {
 		chipvpn_address_t addr;
 
-		size_t r = chipvpn_queue_read(&vpn->udp.rx_queue, buffer, sizeof(buffer), &addr);
+		size_t r = chipvpn_queue_pop(&vpn->udp.rx_queue, buffer, sizeof(buffer), &addr);
 		if(r < sizeof(uint8_t)) {
 			continue;
 		}
@@ -211,7 +211,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_t *peer = chipvpn_noise_consume_connect(&vpn->device, packet);
 				if(!peer) {
-					if(chipvpn_queue_can_enqueue(&vpn->ipc.tx_queue)) {
+					if(chipvpn_queue_can_push(&vpn->ipc.tx_queue)) {
 						char public_b64[64];
 
 						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
@@ -341,7 +341,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				peer->rx += data_size;
 
-				chipvpn_queue_write(&vpn->device.tx_queue, data, data_size, NULL);
+				chipvpn_queue_push(&vpn->device.tx_queue, data, data_size, NULL);
 			}
 			break;
 		}

@@ -46,8 +46,13 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp, int fd) {
 
 	udp->fd = fd;
 
-	chipvpn_queue_init(&udp->tx_queue, 32);
-	chipvpn_queue_init(&udp->rx_queue, 32);
+	if(!chipvpn_queue_init(&udp->tx_queue, 32)) {
+		return false;
+	}
+	
+	if(!chipvpn_queue_init(&udp->rx_queue, 32)) {
+		return false;
+	}
 
 	return true;
 }
@@ -181,14 +186,14 @@ bool chipvpn_udp_raw_write(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 }
 
 void chipvpn_udp_preselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset, int *max) {
-	if(chipvpn_queue_can_enqueue(&udp->rx_queue)) FD_SET(udp->fd, rdset); else FD_CLR(udp->fd, rdset);
-	if(chipvpn_queue_can_dequeue(&udp->tx_queue)) FD_SET(udp->fd, wdset); else FD_CLR(udp->fd, wdset);
+	if(chipvpn_queue_can_push(&udp->rx_queue)) FD_SET(udp->fd, rdset); else FD_CLR(udp->fd, rdset);
+	if(chipvpn_queue_can_pop (&udp->tx_queue)) FD_SET(udp->fd, wdset); else FD_CLR(udp->fd, wdset);
 	*max = udp->fd;
 }
 
 void chipvpn_udp_postselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset) {
 	if(FD_ISSET(udp->fd, rdset)) {
-		chipvpn_queue_entry_t *entry = chipvpn_queue_enqueue_acquire(&udp->rx_queue);
+		chipvpn_queue_entry_t *entry = chipvpn_queue_push_acquire(&udp->rx_queue);
 		if(!entry) {
 			return;
 		}
@@ -197,10 +202,10 @@ void chipvpn_udp_postselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset) {
 			return;
 		}
 
-		chipvpn_queue_enqueue_commit(&udp->rx_queue, entry);
+		chipvpn_queue_push_commit(&udp->rx_queue, entry);
 	}
 	if(FD_ISSET(udp->fd, wdset)) {
-		chipvpn_queue_entry_t *entry = chipvpn_queue_dequeue_acquire(&udp->tx_queue);
+		chipvpn_queue_entry_t *entry = chipvpn_queue_pop_acquire(&udp->tx_queue);
 		if(!entry) {
 			return;
 		}
@@ -209,7 +214,7 @@ void chipvpn_udp_postselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset) {
 			return;
 		}
 
-		chipvpn_queue_dequeue_commit(&udp->tx_queue, entry);
+		chipvpn_queue_pop_commit(&udp->tx_queue, entry);
 	}
 }
 
