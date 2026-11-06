@@ -23,6 +23,8 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp, int fd) {
 				close(fd);
 				fd = -1;
 			}
+
+			udp->family = AF_INET6;
 		}
 
 		if(fd < 0) {
@@ -30,17 +32,22 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp, int fd) {
 			if(fd < 0) {
 				return false;
 			}
+
+			udp->family = AF_INET;
 		}
 	}
 
-	if(!chipvpn_socket_init(&udp->socket, fd, 32)) {
-		if(owned_fd) {
-			close(fd);
-		}
-		return false;
-	}
+	// if(!chipvpn_socket_init(&udp->socket, fd, 32)) {
+	// 	if(owned_fd) {
+	// 		close(fd);
+	// 	}
+	// 	return false;
+	// }
 
 	udp->fd = fd;
+
+	chipvpn_queue_init(&udp->tx_queue, 32);
+	chipvpn_queue_init(&udp->rx_queue, 32);
 
 	return true;
 }
@@ -62,7 +69,7 @@ bool chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	memset(&ss, 0, sizeof(ss));
 	socklen_t len = 0;
 
-	if(udp->socket.mode == CHIPVPN_ADDRESS_IPV6) {
+	if(udp->family == AF_INET6) {
 		struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)&ss;
 		sa6->sin6_family = AF_INET6;
 
@@ -76,7 +83,7 @@ bool chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 		
 		sa6->sin6_port = htons(addr->port);
 		len = sizeof(struct sockaddr_in6);
-	} else if(udp->socket.mode == CHIPVPN_ADDRESS_IPV4) {
+	} else if(udp->family == AF_INET) {
 		struct sockaddr_in *sa4 = (struct sockaddr_in *)&ss;
 		sa4->sin_family = AF_INET;
 		sa4->sin_addr.s_addr = addr->ipv4;
@@ -89,7 +96,65 @@ bool chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *addr) {
 	return bind(udp->fd, (struct sockaddr *)&ss, len) == 0;
 }
 
+void chipvpn_udp_preselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset, int *max) {
+	if(chipvpn_queue_can_enqueue(&udp->rx_queue)) FD_SET(udp->fd, rdset); else FD_CLR(udp->fd, rdset);
+	if(chipvpn_queue_can_dequeue(&udp->tx_queue)) FD_SET(udp->fd, wdset); else FD_CLR(udp->fd, wdset);
+	*max = udp->fd;
+}
+
+void chipvpn_udp_postselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset) {
+	if(FD_ISSET(udp->fd, rdset)) {
+		chipvpn_queue_entry_t *entry = chipvpn_queue_enqueue_acquire(&udp->rx_queue);
+		if(!entry) {
+			return;
+		}
+
+		struct sockaddr_storage ss;
+		memset(&ss, 0, sizeof(ss));
+		socklen_t len = sizeof(ss);
+
+		ssize_t r = recvfrom(udp->fd, entry->buffer, sizeof(entry->buffer), MSG_DONTWAIT, (struct sockaddr *)&ss, &len);
+
+		struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)&ss;
+
+		entry->addr.type = CHIPVPN_ADDRESS_IPV4;
+		memcpy(&entry->addr.ipv4, &sa6->sin6_addr.s6_addr[12], sizeof(entry->addr.ipv4));
+		entry->addr.port = ntohs(sa6->sin6_port);
+
+		entry->size = r;
+
+		chipvpn_queue_enqueue_commit(&udp->rx_queue, entry);
+	}
+	if(FD_ISSET(udp->fd, wdset)) {
+		chipvpn_queue_entry_t *entry = chipvpn_queue_dequeue_acquire(&udp->tx_queue);
+		if(!entry) {
+			return;
+		}
+
+		struct sockaddr_storage ss;
+		memset(&ss, 0, sizeof(ss));
+		socklen_t len = 0;
+
+		struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)&ss;
+		sa6->sin6_family = AF_INET6;
+
+		memset(&sa6->sin6_addr.s6_addr[0], 0, 10);
+		memset(&sa6->sin6_addr.s6_addr[10], 0xff, 2);
+		memcpy(&sa6->sin6_addr.s6_addr[12], &entry->addr.ipv4, sizeof(entry->addr.ipv4));
+
+		sa6->sin6_port = htons(entry->addr.port);
+		len = sizeof(struct sockaddr_in6);
+
+		ssize_t w = sendto(udp->fd, entry->buffer, entry->size, 0, (struct sockaddr *)&ss, len);
+		chipvpn_queue_dequeue_commit(&udp->tx_queue, entry);
+	}
+}
+
 void chipvpn_udp_cleanup(chipvpn_udp_t *udp) {
-	chipvpn_socket_cleanup(&udp->socket);
+	// chipvpn_socket_cleanup(&udp->socket);
+
+	chipvpn_queue_cleanup(&udp->tx_queue);
+	chipvpn_queue_cleanup(&udp->rx_queue);
+
 	close(udp->fd);
 }

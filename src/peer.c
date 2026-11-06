@@ -12,6 +12,7 @@
 #include "firewall.h"
 #include "util.h"
 #include "noise.h"
+#include "queue.h"
 
 chipvpn_peer_t *chipvpn_peer_create() {
 	chipvpn_peer_t *peer = malloc(sizeof(chipvpn_peer_t));
@@ -49,7 +50,7 @@ int chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, ch
 	/* any outbound packet is considered sending a keepalive packet */
 	peer->last_transmission = chipvpn_get_time();
 
-	return chipvpn_socket_write(&udp->socket, &packet, sizeof(packet), addr);
+	return chipvpn_queue_write(&udp->tx_queue, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_t *packet, chipvpn_address_t *addr) {
@@ -96,7 +97,7 @@ int chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device,
 	/* any outbound packet is considered sending a keepalive packet */
 	peer->last_transmission = chipvpn_get_time();
 
-	return chipvpn_socket_write(&udp->socket, &packet, sizeof(packet), addr);
+	return chipvpn_queue_write(&udp->tx_queue, &packet, sizeof(packet), addr);
 }
 
 int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_packet_auth_reply_t *packet, chipvpn_address_t *addr) {
@@ -164,12 +165,12 @@ int chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_device_t *device, 
 	/* any outbound packet is considered sending a keepalive packet */
 	peer->last_transmission = chipvpn_get_time();
 
-	chipvpn_socket_vector_t vector[] = {
+	chipvpn_queue_vector_t vector[] = {
 		{ .data = &header, .size = sizeof(header) }, 
 		{ .data = mac, .size = sizeof(mac) }
 	};
 
-	return chipvpn_socket_write_vector(&udp->socket, vector, 2, &peer->address);
+	return chipvpn_queue_write_vector(&udp->tx_queue, vector, 2, &peer->address);
 }
 
 int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
@@ -274,7 +275,16 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvp
 			chipvpn_log_append("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 		} else {
 			/* clear peer's session while in disconnected state */
-			chipvpn_peer_reset_session(peer);
+			if(
+				peer->prev_session.inbound.id != 0 ||
+				peer->prev_session.outbound.id != 0 ||
+				peer->session.inbound.id != 0 ||
+				peer->session.outbound.id != 0 ||
+				peer->next_session.inbound.id != 0 ||
+				peer->next_session.outbound.id != 0
+			) {
+				chipvpn_peer_reset_session(peer);
+			}
 		}
 
 		/* whenever peer requires a rekey */
