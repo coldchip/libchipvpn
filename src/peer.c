@@ -242,11 +242,11 @@ bool chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16
 }
 
 bool chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key) {
-	return b64_decode((uint8_t*)key, strlen(key), peer->config.public) == CURVE25519_KEY_SIZE;
+	return b64_decode((const uint8_t*)key, strlen(key), peer->config.public) == CURVE25519_KEY_SIZE;
 }
 
 bool chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key) {
-	return b64_decode((uint8_t*)key, strlen(key), peer->config.psk) == BLAKE2S_HASH_SIZE;
+	return b64_decode((const uint8_t*)key, strlen(key), peer->config.psk) == BLAKE2S_HASH_SIZE;
 }
 
 void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {

@@ -21,7 +21,7 @@ bool chipvpn_crypto_chacha20_poly1305_encrypt(const uint8_t *key, uint8_t *data,
 	}
 
 	// Initialize chacha20 from key and nonce
-	chacha20_init(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce);
+	chacha20_init(&chacha20_ctx, key, nonce);
 
 	// Generate poly1305 key from key and nonce, internal counter = 0
 	memset(block0, 0, sizeof(block0));
@@ -68,7 +68,7 @@ bool chipvpn_crypto_chacha20_poly1305_decrypt(const uint8_t *key, uint8_t *data,
 	}
 
 	// Initialize chacha20 from key and nonce
-	chacha20_init(&chacha20_ctx, (uint8_t*)key, (uint8_t*)nonce);
+	chacha20_init(&chacha20_ctx, key, nonce);
 
 	// Generate poly1305 key from key and nonce, internal counter = 0
 	memset(block0, 0, sizeof(block0));

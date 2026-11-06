@@ -75,7 +75,7 @@ bool chipvpn_address_equal(const chipvpn_address_t *left, const chipvpn_address_
 	}
 }
 
-char *chipvpn_address_to_char(const chipvpn_address_t *addr) {
+const char *chipvpn_address_to_char(const chipvpn_address_t *addr) {
 	static char result[INET6_ADDRSTRLEN];
 
 	if (addr->type == CHIPVPN_ADDRESS_IPV4) {

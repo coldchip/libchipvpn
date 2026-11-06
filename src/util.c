@@ -87,7 +87,7 @@ char *chipvpn_sgets(char *buf, int n, const char **str) {
 }
 
 char *chipvpn_format_bytes(uint64_t bytes) {
-	char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
+	static const char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
 	char length = sizeof(suffix) / sizeof(suffix[0]);
 
 	int i = 0;

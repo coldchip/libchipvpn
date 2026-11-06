@@ -224,7 +224,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				char key[1024];
 				if(sscanf(value, "%1023s", key) == 1) {
 					uint8_t key32[CURVE25519_KEY_SIZE];
-					if(b64_decode((uint8_t*)key, strlen(key), key32) != CURVE25519_KEY_SIZE) {
+					if(b64_decode((const uint8_t*)key, strlen(key), key32) != CURVE25519_KEY_SIZE) {
 						return;
 					}
 					chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_pubkey(&vpn->device, key32);
