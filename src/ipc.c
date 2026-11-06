@@ -6,12 +6,22 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <fcntl.h>
 #include "chipvpn.h"
 #include "util.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 
 bool chipvpn_ipc_init(chipvpn_ipc_t *ipc, int fd) {
+	int flags = fcntl(fd, F_GETFL, 0);
+	if(flags == -1) {
+		return false;
+	}
+
+	if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		return false;
+	}
+
 	ipc->fd = fd;
 
 	chipvpn_queue_init(&ipc->tx_queue, 4);
@@ -48,9 +58,10 @@ void chipvpn_ipc_postselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset) {
 
 		ssize_t r = read(ipc->fd, entry->buffer, sizeof(entry->buffer));
 
-		entry->size = r;
-
-		chipvpn_queue_enqueue_commit(&ipc->rx_queue, entry);
+		if(r > 0) {
+			entry->size = (uint16_t)r;
+			chipvpn_queue_enqueue_commit(&ipc->rx_queue, entry);
+		}
 	}
 	if(FD_ISSET(ipc->fd, wdset)) {
 		chipvpn_queue_entry_t *entry = chipvpn_queue_dequeue_acquire(&ipc->tx_queue);
@@ -60,7 +71,10 @@ void chipvpn_ipc_postselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset) {
 
 		ssize_t w = write(ipc->fd, entry->buffer, entry->size);
 
-		chipvpn_queue_dequeue_commit(&ipc->tx_queue, entry);
+		if(w > 0) {
+			entry->size = (uint16_t)0u;
+			chipvpn_queue_dequeue_commit(&ipc->tx_queue, entry);
+		}
 	}
 }
 

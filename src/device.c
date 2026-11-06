@@ -35,6 +35,15 @@ bool chipvpn_device_init(chipvpn_device_t *device, int fd) {
 		strncpy(device->dev, ifr.ifr_name, IFNAMSIZ);
 	}
 
+	int flags = fcntl(fd, F_GETFL, 0);
+	if(flags == -1) {
+		return false;
+	}
+
+	if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		return false;
+	}
+
 	device->fd       = fd;
 	device->postup   = NULL;
 	device->postdown = NULL;
@@ -360,9 +369,10 @@ void chipvpn_device_postselect(chipvpn_device_t *device, fd_set *rdset, fd_set *
 
 		ssize_t r = read(device->fd, entry->buffer, sizeof(entry->buffer));
 
-		entry->size = r;
-
-		chipvpn_queue_enqueue_commit(&device->rx_queue, entry);
+		if(r > 0) {
+			entry->size = (uint16_t)r;
+			chipvpn_queue_enqueue_commit(&device->rx_queue, entry);
+		}
 	}
 	if(FD_ISSET(device->fd, wdset)) {
 		chipvpn_queue_entry_t *entry = chipvpn_queue_dequeue_acquire(&device->tx_queue);
@@ -372,7 +382,10 @@ void chipvpn_device_postselect(chipvpn_device_t *device, fd_set *rdset, fd_set *
 
 		ssize_t w = write(device->fd, entry->buffer, entry->size);
 
-		chipvpn_queue_dequeue_commit(&device->tx_queue, entry);
+		if(w > 0) {
+			entry->size = (uint16_t)0u;
+			chipvpn_queue_dequeue_commit(&device->tx_queue, entry);
+		}
 	}
 }
 
