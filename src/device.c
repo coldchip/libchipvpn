@@ -18,15 +18,11 @@
 #include <linux/ipv6.h>
 
 bool chipvpn_device_init(chipvpn_device_t *device, int fd) {
-	bool owns_fd = false;
-
 	if(fd < 0) {
 		fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
 		if(fd < 0) {
 			return false;
 		}
-
-		owns_fd = true;
 
 		struct ifreq ifr = {0};
 		ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
@@ -39,17 +35,13 @@ bool chipvpn_device_init(chipvpn_device_t *device, int fd) {
 		strncpy(device->dev, ifr.ifr_name, IFNAMSIZ);
 	}
 
-	if(!chipvpn_socket_init(&device->socket, fd, 32)) {
-		if(owns_fd) {
-			close(fd);
-		}
-		return false;
-	}
-
 	device->fd       = fd;
 	device->postup   = NULL;
 	device->postdown = NULL;
 	chipvpn_list_clear(&device->peers);
+
+	chipvpn_queue_init(&device->tx_queue, 32);
+	chipvpn_queue_init(&device->rx_queue, 32);
 
 	return true;
 }
@@ -353,13 +345,42 @@ bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 	return curve25519(device->public, device->private, basepoint);
 }
 
+void chipvpn_device_preselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset, int *max) {
+	if(chipvpn_queue_can_enqueue(&device->rx_queue)) FD_SET(device->fd, rdset); else FD_CLR(device->fd, rdset);
+	if(chipvpn_queue_can_dequeue(&device->tx_queue)) FD_SET(device->fd, wdset); else FD_CLR(device->fd, wdset);
+	*max = device->fd;
+}
+
+void chipvpn_device_postselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset) {
+	if(FD_ISSET(device->fd, rdset)) {
+		chipvpn_queue_entry_t *entry = chipvpn_queue_enqueue_acquire(&device->rx_queue);
+		if(!entry) {
+			return;
+		}
+
+		ssize_t r = read(device->fd, entry->buffer, sizeof(entry->buffer));
+
+		entry->size = r;
+
+		chipvpn_queue_enqueue_commit(&device->rx_queue, entry);
+	}
+	if(FD_ISSET(device->fd, wdset)) {
+		chipvpn_queue_entry_t *entry = chipvpn_queue_dequeue_acquire(&device->tx_queue);
+		if(!entry) {
+			return;
+		}
+
+		ssize_t w = write(device->fd, entry->buffer, entry->size);
+
+		chipvpn_queue_dequeue_commit(&device->tx_queue, entry);
+	}
+}
+
 void chipvpn_device_cleanup(chipvpn_device_t *device) {
 	while(!chipvpn_list_empty(&device->peers)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&device->peers));
 		chipvpn_peer_free(peer);
 	}
-
-	chipvpn_socket_cleanup(&device->socket);
 
 	chipvpn_device_set_disabled(device);
 
@@ -372,4 +393,7 @@ void chipvpn_device_cleanup(chipvpn_device_t *device) {
 	if(device->postdown) {
 		free(device->postdown);
 	}
+
+	chipvpn_queue_cleanup(&device->tx_queue);
+	chipvpn_queue_cleanup(&device->rx_queue);
 }

@@ -10,13 +10,13 @@ extern "C"
 #include <stdbool.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
-#include "socket.h"
 #include "address.h"
 #include "list.h"
 #include "udp.h"
 #include "curve25519.h"
 #include <netinet/in.h>
 #include <net/if.h>
+#include "queue.h"
 
 #ifdef __linux__
 #define IFF_TUN 0x0001
@@ -38,9 +38,11 @@ typedef struct {
 	int fd;
 	char dev[IF_NAMESIZE + 1];
     chipvpn_list_t peers;
-    chipvpn_socket_t socket;
     uint8_t public[CURVE25519_KEY_SIZE];
     uint8_t private[CURVE25519_KEY_SIZE];
+
+    chipvpn_queue_t tx_queue;
+    chipvpn_queue_t rx_queue;
 
     char *postup;
     char *postdown;
@@ -68,6 +70,10 @@ bool                    chipvpn_device_toggle(chipvpn_device_t *device, bool ena
 bool                    chipvpn_device_set_enabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_disabled(chipvpn_device_t *device);
 bool                    chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key);
+
+void                    chipvpn_device_preselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset, int *max);
+void                    chipvpn_device_postselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset);
+
 void                    chipvpn_device_cleanup(chipvpn_device_t *device);
 
 #ifdef __cplusplus

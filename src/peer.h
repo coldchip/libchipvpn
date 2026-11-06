@@ -9,7 +9,6 @@ extern "C"
 #include <stdint.h>
 #include <stddef.h>
 #include "chacha20poly1305.h"
-#include "socket.h"
 #include "address.h"
 #include "bitmap.h"
 #include "list.h"
