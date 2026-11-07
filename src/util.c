@@ -136,22 +136,23 @@ void chipvpn_run_command(const char *command) {
 }
 
 uint64_t chipvpn_get_time() {
-	static uint64_t last_real = 0ul;
-	static uint64_t last_mono = 0ul;
+	struct timespec ts;
 
-	struct timespec ts_mono;
-	clock_gettime(CLOCK_MONOTONIC, &ts_mono);
-	uint64_t current_mono = (uint64_t)ts_mono.tv_sec * 1000ULL + (uint64_t)ts_mono.tv_nsec / 1000000ULL;
-
-	if(current_mono > last_mono + 1000 || last_mono == 0) {
-		struct timespec ts_real;
-		clock_gettime(CLOCK_REALTIME, &ts_real);
-		last_real = (uint64_t)ts_real.tv_sec * 1000ULL + (uint64_t)ts_real.tv_nsec / 1000000ULL;
-
-		last_mono = current_mono;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
+		return 0;
 	}
 
-	return last_real + (current_mono - last_mono);
+	return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+}
+
+uint64_t chipvpn_get_realtime() {
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
+		return 0;
+	}
+
+	return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
 }
 
 int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {
@@ -181,7 +182,7 @@ void chipvpn_tai64n(uint8_t *output) {
 	// Get timestamp. Note that the timestamp must be synced by NTP, 
 	//  or at least preserved in NVS, not to go back after reset.
 	// Otherwise, the WireGuard remote peer rejects handshake.
-	uint64_t millis = chipvpn_get_time();
+	uint64_t millis = chipvpn_get_realtime();
 
 	// Split into seconds offset + nanos
 	uint64_t seconds = 0x400000000000000aULL + (millis / 1000);
