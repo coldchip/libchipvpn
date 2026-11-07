@@ -86,7 +86,7 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_ip(const chipvpn_device_t *device,
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_peer_is_allowed_address(peer, address)) {
+		if(chipvpn_peer_allowip_match(peer, address)) {
 			return peer;
 		}
 	}

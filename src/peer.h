@@ -180,12 +180,12 @@ int                     chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const
 int                     chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_udp_t *socket);
 int                     chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_is_allowed_address(const chipvpn_peer_t *peer, const chipvpn_address_t *address);
+bool                    chipvpn_peer_allowip_match(const chipvpn_peer_t *peer, const chipvpn_address_t *address);
 
 void                    chipvpn_peer_reset_handshake(chipvpn_peer_t *peer);
 void                    chipvpn_peer_reset_session(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_add_allowed_address(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
+bool                    chipvpn_peer_add_allowip(chipvpn_peer_t *peer, const char *address, uint8_t prefix);
 bool                    chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16_t port);
 bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key);
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
