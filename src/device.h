@@ -62,7 +62,7 @@ chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(const chipvpn_devi
 
 bool                    chipvpn_device_add_peer(chipvpn_device_t *device, chipvpn_peer_t *peer);
 void                    chipvpn_device_remove_peer(chipvpn_device_t *device, chipvpn_peer_t *peer);
-bool                    chipvpn_device_schedule_peer(chipvpn_device_t *device, chipvpn_peer_t *peer, uint64_t deadline);
+bool                    chipvpn_device_update_peer_timer(chipvpn_device_t *device, chipvpn_peer_t *peer, uint64_t now);
 void                    chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp);
 
 bool                    chipvpn_device_set_postup(chipvpn_device_t *device, const char *command);

@@ -166,7 +166,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				peer->last_created = chipvpn_get_time();
 
 				/* let the peer timer pick up the expiry */
-				chipvpn_device_schedule_peer(&vpn->device, peer, chipvpn_get_time());
+				chipvpn_device_update_peer_timer(&vpn->device, peer, chipvpn_get_time());
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
@@ -176,7 +176,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 					chipvpn_peer_set_endpoint(peer, address, port);
 
 					/* the peer is now an initiator, let the peer timer start the handshake */
-					chipvpn_device_schedule_peer(&vpn->device, peer, chipvpn_get_time());
+					chipvpn_device_update_peer_timer(&vpn->device, peer, chipvpn_get_time());
 				}
 			}
 

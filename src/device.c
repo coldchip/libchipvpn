@@ -140,8 +140,8 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *de
 bool chipvpn_device_add_peer(chipvpn_device_t *device, chipvpn_peer_t *peer) {
 	chipvpn_list_insert(chipvpn_list_end(&device->peers), peer);
 
-	/* service the new peer right away, e.g. an initiator starts its handshake */
-	return chipvpn_device_schedule_peer(device, peer, chipvpn_get_time());
+	/* every peer has a timer in the heap, it fires once the config gives the peer something to do */
+	return chipvpn_device_update_peer_timer(device, peer, chipvpn_get_time());
 }
 
 void chipvpn_device_remove_peer(chipvpn_device_t *device, chipvpn_peer_t *peer) {
@@ -150,9 +150,11 @@ void chipvpn_device_remove_peer(chipvpn_device_t *device, chipvpn_peer_t *peer) 
 	chipvpn_peer_free(peer);
 }
 
-bool chipvpn_device_schedule_peer(chipvpn_device_t *device, chipvpn_peer_t *peer, uint64_t deadline) {
-	/* make sure the peer is serviced no later than deadline, call this whenever its timer state changes */
-	/* a timer that already fires earlier is left alone, the service will recompute the deadline anyway */
+bool chipvpn_device_update_peer_timer(chipvpn_device_t *device, chipvpn_peer_t *peer, uint64_t now) {
+	/* call whenever a peer's timer rules may have moved a deadline earlier (handshake, data, config) */
+	/* a timer that already fires earlier is left alone, waking up early is harmless */
+	uint64_t deadline = chipvpn_peer_next_deadline(peer, now);
+
 	if(chipvpn_timer_pending(&peer->timer) && peer->timer.expiry <= deadline) {
 		return true;
 	}
@@ -175,9 +177,9 @@ void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
 			continue;
 		}
 
-		/* sleep until the peer needs attention again, always after now so this loop ends */
+		/* sleep until the peer needs attention again, at least 1ms ahead so this loop ends */
 		/* this can't fail, popping the timer just freed its slot in the heap */
-		chipvpn_timer_schedule(&device->timers, &peer->timer, chipvpn_peer_next_deadline(peer, now));
+		chipvpn_timer_schedule(&device->timers, &peer->timer, MAX(chipvpn_peer_next_deadline(peer, now), now + 1));
 	}
 }
 

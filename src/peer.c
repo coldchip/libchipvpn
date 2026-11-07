@@ -284,65 +284,57 @@ static bool chipvpn_peer_has_session(const chipvpn_peer_t *peer) {
 	);
 }
 
-/* the single definition of the peer timer rules: when an event is due, CHIPVPN_TIMER_NEVER if it isn't pending */
-/* chipvpn_peer_service runs the events whose deadline has passed and chipvpn_peer_next_deadline wakes the peer for the earliest one */
-/* PEER_ACTIVE and PEER_FRESH only end with time (a handshake restarts them and reschedules the peer), */
-/* so a deadline that falls after its window just causes a wakeup that does nothing */
-static uint64_t chipvpn_peer_event_deadline(const chipvpn_peer_t *peer, chipvpn_peer_event_e event, uint64_t now) {
-	switch(event) {
-		case PEER_EVENT_STATUS: {
-			return PEER_ACTIVE(peer, now) ? PEER_NEXT_STATUS(peer) : CHIPVPN_TIMER_NEVER;
-		}
-		case PEER_EVENT_RESET: {
-			return chipvpn_peer_has_session(peer) ? PEER_NEXT_INACTIVE(peer) : CHIPVPN_TIMER_NEVER;
-		}
-		case PEER_EVENT_REKEY: {
-			uint64_t deadline = CHIPVPN_TIMER_NEVER;
-
-			/* the initiator rekeys once the session gets old */
-			if(PEER_INITIATOR(peer)) {
-				deadline = MIN(deadline, PEER_NEXT_REKEY(peer));
-			}
-
-			/* either side rekeys when the data it sent is not acknowledged in time */
-			if(PEER_FRESH(peer, now) && peer->ack_state == PEER_ACK_OWE_TX) {
-				deadline = MIN(deadline, PEER_NEXT_OVERDUE_TX(peer));
-			}
-
-			/* retry at most once per CHIPVPN_REKEY_RETRY until a handshake completes */
-			return MAX(deadline, PEER_NEXT_RETRY(peer));
-		}
-		case PEER_EVENT_KEEPALIVE: {
-			if(!PEER_FRESH(peer, now)) {
-				return CHIPVPN_TIMER_NEVER;
-			}
-
-			/* persistent keepalive */
-			uint64_t deadline = PEER_NEXT_KEEPALIVE(peer);
-
-			/* keepalive to acknowledge the data we received */
-			if(peer->ack_state == PEER_ACK_OWE_RX) {
-				deadline = MIN(deadline, PEER_NEXT_OVERDUE_RX(peer));
-			}
-
-			return deadline;
-		}
-		case PEER_EVENT_EXPIRE: {
-			/* an ephemeral peer expires once it is both old enough and inactive */
-			return peer->type == PEER_EPHEMERAL ? MAX(PEER_NEXT_EXPIRY(peer), PEER_NEXT_INACTIVE(peer)) : CHIPVPN_TIMER_NEVER;
-		}
-		default: {
-			return CHIPVPN_TIMER_NEVER;
-		}
+/* one timer rule: `event` is due `interval` ms after `since`, but not before `not_before`, while `armed` is true */
+/* an event with several rules is due at the earliest of them */
+static void chipvpn_peer_rule(uint64_t *deadline, chipvpn_peer_event_e event, bool armed, uint64_t since, uint64_t interval, uint64_t not_before) {
+	if(armed) {
+		uint64_t due = MAX(since + interval, not_before);
+		deadline[event] = MIN(deadline[event], due);
 	}
 }
 
+/* the peer timer rules, the only place they are defined */
+/* fills deadline[] with the time each event is due (in the past if it is due now), CHIPVPN_TIMER_NEVER if it isn't pending */
+/* `armed` may only switch on through a state change that calls chipvpn_device_update_peer_timer (handshake, data, config). */
+/* it may switch off as time passes (the fresh and active windows close), which only leaves a wakeup that does nothing. */
+/* a condition that switches on as time passes goes in `not_before` instead */
+static void chipvpn_peer_deadlines(const chipvpn_peer_t *peer, uint64_t now, uint64_t *deadline) {
+	bool active      = chipvpn_peer_is_active(peer, now);
+	bool fresh       = chipvpn_peer_is_fresh(peer, now);
+	bool has_session = chipvpn_peer_has_session(peer);
+	bool initiator   = chipvpn_peer_is_initiator(peer);
+	bool ephemeral   = peer->type == PEER_EPHEMERAL;
+	bool owe_tx      = peer->ack_state == PEER_ACK_OWE_TX;  /* we sent data and wait for a reply */
+	bool owe_rx      = peer->ack_state == PEER_ACK_OWE_RX;  /* we received data and owe a reply */
+
+	/* handshake retries are paced, and an ephemeral peer only expires once its session has */
+	uint64_t next_retry  = peer->last_initiation + CHIPVPN_REKEY_RETRY;
+	uint64_t session_end = peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME;
+
+	for(int event = 0; event < PEER_EVENT_COUNT; event++) {
+		deadline[event] = CHIPVPN_TIMER_NEVER;
+	}
+
+	/*                          event                 armed while      since                    interval                                           not before */
+	chipvpn_peer_rule(deadline, PEER_EVENT_STATUS,    active,          peer->last_status,       CHIPVPN_STATUS_INTERVAL,                           0);
+	chipvpn_peer_rule(deadline, PEER_EVENT_RESET,     has_session,     peer->last_handshake,    CHIPVPN_REJECT_AFTER_TIME,                         0);
+	chipvpn_peer_rule(deadline, PEER_EVENT_REKEY,     initiator,       peer->last_handshake,    CHIPVPN_REKEY_AFTER_TIME,                          next_retry);
+	chipvpn_peer_rule(deadline, PEER_EVENT_REKEY,     fresh && owe_tx, peer->last_ack,          CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT, next_retry);
+	chipvpn_peer_rule(deadline, PEER_EVENT_KEEPALIVE, fresh,           peer->last_transmission, CHIPVPN_PERSISTENT_KEEPALIVE,                      0);
+	chipvpn_peer_rule(deadline, PEER_EVENT_KEEPALIVE, fresh && owe_rx, peer->last_ack,          CHIPVPN_KEEPALIVE_TIMEOUT,                         0);
+	chipvpn_peer_rule(deadline, PEER_EVENT_EXPIRE,    ephemeral,       peer->last_created,      CHIPVPN_EPHEMERAL_EXPIRY,                          session_end);
+}
+
 static bool chipvpn_peer_event_due(const chipvpn_peer_t *peer, chipvpn_peer_event_e event, uint64_t now) {
-	return GTEQ(now, chipvpn_peer_event_deadline(peer, event, now));
+	uint64_t deadline[PEER_EVENT_COUNT];
+	chipvpn_peer_deadlines(peer, now, deadline);
+
+	return now >= deadline[event];
 }
 
 bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, uint64_t now) {
 	/* peer lifecycle service, runs when the peer's timer fires and handles every event that is due */
+	/* each check reads the rules again, an earlier event can change a later one (a handshake counts as a keepalive) */
 
 	/* periodic status report */
 	if(chipvpn_peer_event_due(peer, PEER_EVENT_STATUS, now)) {
@@ -370,7 +362,7 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, 
 			peer, 
 			device, 
 			udp, 
-			PEER_INITIATOR(peer) ? &peer->config.endpoint : &peer->address
+			chipvpn_peer_is_initiator(peer) ? &peer->config.endpoint : &peer->address
 		);
 	}
 
@@ -389,15 +381,17 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, 
 }
 
 uint64_t chipvpn_peer_next_deadline(const chipvpn_peer_t *peer, uint64_t now) {
-	/* the peer's timer fires at the earliest deadline among its events */
+	/* the earliest deadline among the peer's events, in the past if one is due already */
+	uint64_t deadline[PEER_EVENT_COUNT];
+	chipvpn_peer_deadlines(peer, now, deadline);
+
 	uint64_t next = CHIPVPN_TIMER_NEVER;
 
-	for(chipvpn_peer_event_e event = 0; event < PEER_EVENT_COUNT; event++) {
-		next = MIN(next, chipvpn_peer_event_deadline(peer, event, now));
+	for(int event = 0; event < PEER_EVENT_COUNT; event++) {
+		next = MIN(next, deadline[event]);
 	}
 
-	/* never ask to run again in the same millisecond, the service loop would spin */
-	return MAX(next, now + 1);
+	return next;
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {

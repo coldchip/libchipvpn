@@ -33,28 +33,7 @@ extern "C"
 #define CHIPVPN_REKEY_RETRY 2000
 #define CHIPVPN_STATUS_INTERVAL 2000
 
-/* timer logic */
-#define PEER_NEXT_REKEY(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
-#define PEER_NEXT_INACTIVE(peer)   (peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)
-#define PEER_NEXT_OVERDUE_TX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT)
-#define PEER_NEXT_OVERDUE_RX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT)
-#define PEER_NEXT_KEEPALIVE(peer)  (peer->last_transmission + CHIPVPN_PERSISTENT_KEEPALIVE)
-#define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
-#define PEER_NEXT_RETRY(peer)      (peer->last_initiation + CHIPVPN_REKEY_RETRY)
-#define PEER_NEXT_STATUS(peer)     (peer->last_status + CHIPVPN_STATUS_INTERVAL)
-
-#define PEER_INITIATOR(peer) (peer->config.endpoint.port > 0)
-
-#define PEER_ACTIVE(peer, now) ( \
-	GTEQ(now, peer->last_handshake) && \
-	LT(now, PEER_NEXT_INACTIVE(peer)) \
-)
-#define PEER_FRESH(peer, now) ( \
-	GTEQ(now, peer->last_handshake) && \
-	LT(now, PEER_NEXT_REKEY(peer)) \
-)
-
-/* when each keepalive, rekey, session reset and expiry is due: see chipvpn_peer_event_deadline() in peer.c */
+/* when each status report, keepalive, rekey, session reset and expiry happens: see chipvpn_peer_deadlines() in peer.c */
 
 typedef enum {
 	PEER_ACK_IDLE,
@@ -145,6 +124,21 @@ typedef struct chipvpn_peer {
 	/* keepalive timeout state that dictates the next timeout action */
 	chipvpn_peer_ack_e ack_state;
 } chipvpn_peer_t;
+
+/* the session is fresh until CHIPVPN_REKEY_AFTER_TIME after the handshake, then it is time to rekey */
+static inline bool chipvpn_peer_is_fresh(const chipvpn_peer_t *peer, uint64_t now) {
+	return now >= peer->last_handshake && now < peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME;
+}
+
+/* the session carries traffic until CHIPVPN_REJECT_AFTER_TIME after the handshake */
+static inline bool chipvpn_peer_is_active(const chipvpn_peer_t *peer, uint64_t now) {
+	return now >= peer->last_handshake && now < peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME;
+}
+
+/* a peer with an endpoint starts the handshakes, the other side answers them */
+static inline bool chipvpn_peer_is_initiator(const chipvpn_peer_t *peer) {
+	return peer->config.endpoint.port > 0;
+}
 
 chipvpn_peer_t         *chipvpn_peer_create();
 
