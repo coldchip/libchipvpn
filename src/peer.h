@@ -54,43 +54,7 @@ extern "C"
 	LT(now, PEER_NEXT_REKEY(peer)) \
 )
 
-#define PEER_OVERDUE_TX(peer, now) ( \
-	PEER_FRESH(peer, now) && \
-	peer->ack_state == PEER_ACK_OWE_TX && \
-	GTEQ(now, PEER_NEXT_OVERDUE_TX(peer)) \
-)
-
-#define PEER_OVERDUE_RX(peer, now) ( \
-	PEER_FRESH(peer, now) && \
-	peer->ack_state == PEER_ACK_OWE_RX && \
-	GTEQ(now, PEER_NEXT_OVERDUE_RX(peer)) \
-)
-
-#define PEER_PERIODIC_REKEY(peer, now) ( \
-	!PEER_FRESH(peer, now) && \
-	PEER_INITIATOR(peer) \
-)
-
-#define PEER_PERIODIC_KEEPALIVE(peer, now) ( \
-	PEER_FRESH(peer, now) && \
-	GTEQ(now, PEER_NEXT_KEEPALIVE(peer)) \
-)
-
-#define PEER_REKEY(peer, now) ( \
-	PEER_PERIODIC_REKEY(peer, now) || \
-	PEER_OVERDUE_TX(peer, now) \
-)
-
-#define PEER_KEEPALIVE(peer, now)  ( \
-	PEER_PERIODIC_KEEPALIVE(peer, now) || \
-	PEER_OVERDUE_RX(peer, now) \
-)
-
-#define PEER_EXPIRE(peer, now) ( \
-	!PEER_ACTIVE(peer, now) && \
-	peer->type == PEER_EPHEMERAL && \
-	GTEQ(now, PEER_NEXT_EXPIRY(peer)) \
-)
+/* when each keepalive, rekey, session reset and expiry is due: see chipvpn_peer_event_deadline() in peer.c */
 
 typedef enum {
 	PEER_ACK_IDLE,
