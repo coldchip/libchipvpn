@@ -39,8 +39,6 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp) {
 		return false;
 	}
 
-	udp->fd = fd;
-
 	if(!chipvpn_queue_init(&udp->tx_queue, 32)) {
 		close(fd);
 		return false;
@@ -51,6 +49,8 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp) {
 		close(fd);
 		return false;
 	}
+
+	udp->fd = fd;
 
 	return true;
 }

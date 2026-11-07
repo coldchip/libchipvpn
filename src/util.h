@@ -63,6 +63,7 @@ char        *chipvpn_format_bytes(uint64_t bytes);
 bool         chipvpn_secure_random(uint8_t *buf, int size);
 void         chipvpn_run_command(const char *command);
 uint64_t     chipvpn_get_time();
+uint64_t     chipvpn_get_realtime();
 int          chipvpn_secure_memcmp(const void *a, const void *b, size_t size);
 void         chipvpn_secure_zero(void *v, size_t n);
 void         chipvpn_tai64n(uint8_t *output);
