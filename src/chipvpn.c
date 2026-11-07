@@ -105,6 +105,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
+		/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 		chipvpn_address_t dst = {0};
 		uint8_t version = ((uint8_t *)buffer)[0] >> 4;
 
@@ -134,11 +135,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 			}
 		}
 
+		/* lookup peer by the packet address (authentication) */
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(&vpn->device, &dst);
 		if(!peer || !PEER_ACTIVE(peer, chipvpn_get_time())) {
 			continue;
 		}
 
+		/* if the packet's destination is part of peer's outbound firewall (authorisation) */
 		if(!chipvpn_firewall_execute(&peer->firewall_outbound, &dst)) {
 			continue;
 		}
@@ -151,6 +154,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			.counter = htole64(peer->session.counter)
 		};
 
+		/* attempt to encrypt packet */
 		uint8_t mac[POLY1305_MAC_SIZE];
 
 		bool success = chipvpn_crypto_chacha20_poly1305_encrypt(
@@ -168,6 +172,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
+		/* remote peer owe us a keepalive or a packet */
 		if(peer->ack_state != PEER_ACK_OWE_TX) {
 			peer->ack_state = PEER_ACK_OWE_TX;
 			peer->last_ack = chipvpn_get_time();
@@ -203,12 +208,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
+				/* check if it is a spam */
 				if(!chipvpn_ratelimit_verify(vpn->ratelimit, &addr)) {
 					continue;
 				}
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
+				/* process auth packet */
 				chipvpn_peer_t *peer = chipvpn_noise_consume_connect(&vpn->device, packet);
 				if(!peer) {
 					if(chipvpn_queue_push_acquire(&vpn->ipc.tx_queue)) {
@@ -230,12 +237,14 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
+				/* check if it is a spam */
 				if(!chipvpn_ratelimit_verify(vpn->ratelimit, &addr)) {
 					continue;
 				}
 
 				chipvpn_packet_auth_reply_t *packet = (chipvpn_packet_auth_reply_t*)buffer;
 
+				/* process auth reply packet */
 				chipvpn_peer_t *peer = chipvpn_noise_consume_reply(&vpn->device, packet);
 				if(!peer) {
 					chipvpn_log_append("noise handshake failed\n");
@@ -259,11 +268,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_peer_session_t *session = NULL;
 
+				/* lookup peer by its index */
 				chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_session(&vpn->device, &session, session_id);
 				if(!peer || !session || !PEER_ACTIVE(peer, chipvpn_get_time())) {
 					continue;
 				}
 
+				/* attempt to decrypt packet */
 				bool success = chipvpn_crypto_chacha20_poly1305_decrypt(
 					session->inbound.key, 
 					data, 
@@ -285,26 +296,32 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				/* authenticated */
-				if(!chipvpn_address_equal(&peer->address, &addr)) {
+				/* --- authenticated zone --- */
+
+				/* update address if it doesn't match */
+				if(!chipvpn_address_endpoint_match(&peer->address, &addr)) {
 					chipvpn_log_append("%p says: ip or port changed\n", peer);
 					peer->address = addr;
 				}
 
+				/* promote session if remote peer uses new session */
 				if(session == &peer->next_session) {
 					chipvpn_peer_session_promote(peer);
 				}
 
+				/* keepalive packet, update timers */
 				if(data_size == 0) {
 					chipvpn_peer_recv_keepalive(peer);
 					continue;
 				}
 
+				/* we owe remote a keepalive packet */
 				if(peer->ack_state != PEER_ACK_OWE_RX) {
 					peer->ack_state = PEER_ACK_OWE_RX;
 					peer->last_ack = chipvpn_get_time();
 				}
 
+				/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 				chipvpn_address_t src = {0};
 				uint8_t version = ((uint8_t *)data)[0] >> 4;
 
@@ -330,11 +347,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 					}
 				}
 
-				if(!chipvpn_peer_is_allowed_address(peer, &src)) {
+				/* if the packet's source is part of peer's allowedip (authentication) */
+				if(!chipvpn_peer_allowip_match(peer, &src)) {
 					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					continue;
 				}
 
+				/* if the packet's source is part of peer's inbound firewall (authorisation) */
 				if(!chipvpn_firewall_execute(&peer->firewall_inbound, &src)) {
 					continue;
 				}

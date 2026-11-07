@@ -204,12 +204,12 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 	chipvpn_t vpn;
 
 	if(!chipvpn_init(&vpn, fd)) {
-		chipvpn_log_append("unable to create vpn tunnel interface\n");
+		chipvpn_log_append("unable to create initialise chipvpn\n");
 		exit(1);
 	}
 
 	while(!quit) {
-		chipvpn_poll(&vpn, 250);
+		chipvpn_poll(&vpn, 200);
 		chipvpn_service(&vpn);
 	}
 

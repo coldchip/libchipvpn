@@ -21,7 +21,7 @@ bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
 	return false;
 }
 
-bool chipvpn_address_cidr_match(const chipvpn_address_t *net, const chipvpn_address_t *addr) {
+bool chipvpn_address_network_match(const chipvpn_address_t *net, const chipvpn_address_t *addr) {
 	if(net->type != addr->type) {
 		return false;
 	}
@@ -55,35 +55,33 @@ bool chipvpn_address_cidr_match(const chipvpn_address_t *net, const chipvpn_addr
 	return false;
 }
 
-bool chipvpn_address_equal(const chipvpn_address_t *left, const chipvpn_address_t *right) {
+bool chipvpn_address_endpoint_match(const chipvpn_address_t *left, const chipvpn_address_t *right) {
 	if(left->type != right->type || left->port != right->port) {
 		return false;
 	}
 
-	switch(left->type) {
-		case CHIPVPN_ADDRESS_IPV4: {
-			return left->ipv4 == right->ipv4;
-		}
-		break;
-		case CHIPVPN_ADDRESS_IPV6: {
-			return memcmp(left->ipv6, right->ipv6, sizeof(left->ipv6)) == 0;
-		}
-		break;
-		default: {
-			return false;
-		}
+	if(left->type == CHIPVPN_ADDRESS_IPV4) {
+		return left->ipv4 == right->ipv4;
 	}
+
+	if(left->type == CHIPVPN_ADDRESS_IPV6) {
+		return memcmp(left->ipv6, right->ipv6, sizeof(left->ipv6)) == 0;
+	}
+
+	return false;
 }
 
 const char *chipvpn_address_to_char(const chipvpn_address_t *addr) {
 	static char result[INET6_ADDRSTRLEN];
 
-	if (addr->type == CHIPVPN_ADDRESS_IPV4) {
-		if (inet_ntop(AF_INET, &addr->ipv4, result, sizeof(result)) != NULL) {
+	if(addr->type == CHIPVPN_ADDRESS_IPV4) {
+		if(inet_ntop(AF_INET, &addr->ipv4, result, sizeof(result)) != NULL) {
 			return result;
 		}
-	} else if (addr->type == CHIPVPN_ADDRESS_IPV6) {
-		if (inet_ntop(AF_INET6, addr->ipv6, result, sizeof(result)) != NULL) {
+	}
+
+	if(addr->type == CHIPVPN_ADDRESS_IPV6) {
+		if(inet_ntop(AF_INET6, addr->ipv6, result, sizeof(result)) != NULL) {
 			return result;
 		}
 	}

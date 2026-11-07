@@ -183,9 +183,9 @@ int chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
 	return 0;
 }
 
-bool chipvpn_peer_is_allowed_address(const chipvpn_peer_t *peer, const chipvpn_address_t *address) {
+bool chipvpn_peer_allowip_match(const chipvpn_peer_t *peer, const chipvpn_address_t *address) {
 	for(size_t i = 0; i < peer->config.allow_size; i++) {
-		if(chipvpn_address_cidr_match(&peer->config.allow[i], address)) {
+		if(chipvpn_address_network_match(&peer->config.allow[i], address)) {
 			return true;
 		}
 	}
@@ -212,7 +212,7 @@ void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
 	chipvpn_secure_zero(&peer->next_session, sizeof(peer->next_session));
 }
 
-bool chipvpn_peer_add_allowed_address(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
+bool chipvpn_peer_add_allowip(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
 	size_t i = peer->config.allow_size;
 
 	if(!chipvpn_address_set_ip(&peer->config.allow[i], address)) {

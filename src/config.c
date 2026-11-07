@@ -178,7 +178,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				char address[128];
 				int prefix;
 				if(sscanf(value, "[%45[^]]]/%i", address, &prefix) == 2 || sscanf(value, "%100[^/]/%i", address, &prefix) == 2) {
-					chipvpn_peer_add_allowed_address(peer, address, prefix);
+					chipvpn_peer_add_allowip(peer, address, prefix);
 				}
 			}
 

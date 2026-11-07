@@ -35,7 +35,7 @@ bool chipvpn_firewall_execute(const chipvpn_list_t *list, const chipvpn_address_
 	for(chipvpn_list_node_t *it = chipvpn_list_begin(list); it != chipvpn_list_end(list); it = chipvpn_list_next(it)) {
 		chipvpn_firewall_entry_t *entry = (chipvpn_firewall_entry_t*)it;
 
-		if(chipvpn_address_cidr_match(&entry->net, address)) {
+		if(chipvpn_address_network_match(&entry->net, address)) {
 			return true;
 		}
 	}
