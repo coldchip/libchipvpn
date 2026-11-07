@@ -33,6 +33,12 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp) {
 		udp->family = AF_INET;
 	}
 
+	int reuse = 1;
+	if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+		close(fd);
+		return false;
+	}
+
 	udp->fd = fd;
 
 	if(!chipvpn_queue_init(&udp->tx_queue, 32)) {
