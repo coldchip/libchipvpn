@@ -25,7 +25,7 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp) {
 	}
 
 	if(fd < 0) {
-		fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+		fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
 		if(fd < 0) {
 			return false;
 		}
