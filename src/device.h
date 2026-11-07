@@ -17,6 +17,7 @@ extern "C"
 #include <netinet/in.h>
 #include <net/if.h>
 #include "queue.h"
+#include "timer.h"
 
 #ifdef __linux__
 #define IFF_TUN 0x0001
@@ -38,6 +39,8 @@ typedef struct {
 	int fd;
 	char dev[IF_NAMESIZE + 1];
     chipvpn_list_t peers;
+    /* one timer per peer, the earliest one tells which peer needs servicing next */
+    chipvpn_timer_heap_t timers;
     uint8_t public[CURVE25519_KEY_SIZE];
     uint8_t private[CURVE25519_KEY_SIZE];
 
@@ -57,6 +60,9 @@ chipvpn_peer_t         *chipvpn_device_lookup_peer_by_ip(const chipvpn_device_t 
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_handshake(const chipvpn_device_t *device, uint32_t session_id);
 chipvpn_peer_t         *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *device, chipvpn_peer_session_t **session, uint32_t session_id);
 
+bool                    chipvpn_device_add_peer(chipvpn_device_t *device, chipvpn_peer_t *peer);
+void                    chipvpn_device_remove_peer(chipvpn_device_t *device, chipvpn_peer_t *peer);
+bool                    chipvpn_device_schedule_peer(chipvpn_device_t *device, chipvpn_peer_t *peer, uint64_t deadline);
 void                    chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp);
 
 bool                    chipvpn_device_set_postup(chipvpn_device_t *device, const char *command);

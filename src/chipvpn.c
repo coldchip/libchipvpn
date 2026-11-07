@@ -47,6 +47,10 @@ bool chipvpn_init(chipvpn_t *vpn, int ipc_fd) {
 }
 
 void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
+	/* don't sleep past the earliest peer timer */
+	uint64_t timer_timeout = chipvpn_timer_timeout(&vpn->device.timers, chipvpn_get_time());
+	timeout = MIN(timeout, timer_timeout);
+
 	struct timeval tv;
 	tv.tv_sec  = (time_t)(timeout / 1000);
 	tv.tv_usec = (suseconds_t)((timeout % 1000) * 1000);
@@ -176,6 +180,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 		if(peer->ack_state != PEER_ACK_OWE_TX) {
 			peer->ack_state = PEER_ACK_OWE_TX;
 			peer->last_ack = chipvpn_get_time();
+
+			/* wake the peer in time to rekey if the remote never answers */
+			chipvpn_device_schedule_peer(&vpn->device, peer, PEER_NEXT_OVERDUE_TX(peer));
 		}
 
 		/* any outbound packet is considered sending a keepalive packet */
@@ -230,6 +237,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_peer_recv_connect(peer, &vpn->device, &vpn->udp, packet, &addr);
+
+				/* the handshake reset the peer's timers, service it right away */
+				chipvpn_device_schedule_peer(&vpn->device, peer, chipvpn_get_time());
 			}
 			break;
 			case CHIPVPN_PACKET_AUTH_REPLY: {
@@ -252,6 +262,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				chipvpn_peer_recv_auth_reply(peer, &vpn->device, &vpn->udp, packet, &addr);
+
+				/* the handshake reset the peer's timers, service it right away (it owes a keepalive) */
+				chipvpn_device_schedule_peer(&vpn->device, peer, chipvpn_get_time());
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -319,6 +332,9 @@ int chipvpn_service(chipvpn_t *vpn) {
 				if(peer->ack_state != PEER_ACK_OWE_RX) {
 					peer->ack_state = PEER_ACK_OWE_RX;
 					peer->last_ack = chipvpn_get_time();
+
+					/* wake the peer in time to send that keepalive if we have nothing else to send */
+					chipvpn_device_schedule_peer(&vpn->device, peer, PEER_NEXT_OVERDUE_RX(peer));
 				}
 
 				/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */

@@ -18,6 +18,7 @@ extern "C"
 #include "curve25519.h"
 #include "blake2s.h"
 #include "util.h"
+#include "timer.h"
 
 /* timers (wireguard compliant) */
 #define CHIPVPN_REKEY_AFTER_TIME 120000
@@ -27,6 +28,11 @@ extern "C"
 #define CHIPVPN_PERSISTENT_KEEPALIVE 20000
 #define CHIPVPN_EPHEMERAL_EXPIRY 60000
 
+/* pacing of work that repeats while it is needed: handshake retries and status reports.
+   both used to be paced by the fixed 2s peer polling loop and keep its interval */
+#define CHIPVPN_REKEY_RETRY 2000
+#define CHIPVPN_STATUS_INTERVAL 2000
+
 /* timer logic */
 #define PEER_NEXT_REKEY(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
 #define PEER_NEXT_INACTIVE(peer)   (peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)
@@ -34,6 +40,8 @@ extern "C"
 #define PEER_NEXT_OVERDUE_RX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT)
 #define PEER_NEXT_KEEPALIVE(peer)  (peer->last_transmission + CHIPVPN_PERSISTENT_KEEPALIVE)
 #define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
+#define PEER_NEXT_RETRY(peer)      (peer->last_initiation + CHIPVPN_REKEY_RETRY)
+#define PEER_NEXT_STATUS(peer)     (peer->last_status + CHIPVPN_STATUS_INTERVAL)
 
 #define PEER_INITIATOR(peer) (peer->config.endpoint.port > 0)
 
@@ -148,6 +156,8 @@ typedef struct chipvpn_peer {
 	chipvpn_list_t firewall_outbound;
 
 	/* states and timers */
+	/* fires when the peer next needs servicing, see chipvpn_peer_next_deadline() */
+	chipvpn_timer_t timer;
 	/* peer type, permanent or ephemeral */
 	chipvpn_peer_type_e type;
 	/* packets sent in the inner tunnel */
@@ -158,8 +168,10 @@ typedef struct chipvpn_peer {
 	uint8_t timestamp[TAI64N_SIZE];
 	/* last created, used for removing expired ephemeral peers */
 	uint64_t last_created;
-	/* last service loop */
-	uint64_t last_check;
+	/* last status report, repeated every CHIPVPN_STATUS_INTERVAL while the peer is active */
+	uint64_t last_status;
+	/* last handshake initiation sent, retries are paced by CHIPVPN_REKEY_RETRY */
+	uint64_t last_initiation;
 	/* last successful handshake with peer */
 	uint64_t last_handshake;
 	/* last packet sent, used for NAT traversal & persistent keepalive, updated when there is any tx packet */
@@ -191,7 +203,8 @@ bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvp
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *socket);
+bool                    chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *socket, uint64_t now);
+uint64_t                chipvpn_peer_next_deadline(const chipvpn_peer_t *peer, uint64_t now);
 
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);
 

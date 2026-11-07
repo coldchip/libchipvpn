@@ -29,7 +29,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				section = COMMAND_PEER_SECTION;
 
 				chipvpn_peer_t *peer = chipvpn_peer_create();
-				chipvpn_list_insert(chipvpn_list_end(&vpn->device.peers), peer);
+				chipvpn_device_add_peer(&vpn->device, peer);
 				continue;
 			}
 
@@ -164,6 +164,9 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
 				peer->type = PEER_EPHEMERAL;
 				peer->last_created = chipvpn_get_time();
+
+				/* let the peer timer pick up the expiry */
+				chipvpn_device_schedule_peer(&vpn->device, peer, chipvpn_get_time());
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {
@@ -171,6 +174,9 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				int port;
 				if(sscanf(value, "[%45[^]]]:%i", address, &port) == 2 || sscanf(value, "%45[^:]:%i", address, &port) == 2) {
 					chipvpn_peer_set_endpoint(peer, address, port);
+
+					/* the peer is now an initiator, let the peer timer start the handshake */
+					chipvpn_device_schedule_peer(&vpn->device, peer, chipvpn_get_time());
 				}
 			}
 
@@ -232,8 +238,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 						return;
 					}
 
-					chipvpn_list_remove(&peer->node);
-					chipvpn_peer_free(peer);
+					chipvpn_device_remove_peer(&vpn->device, peer);
 				}
 			}
 		}

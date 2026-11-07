@@ -37,6 +37,7 @@ bool chipvpn_device_init(chipvpn_device_t *device) {
 	device->postup   = NULL;
 	device->postdown = NULL;
 	chipvpn_list_clear(&device->peers);
+	chipvpn_timer_heap_init(&device->timers);
 
 	if(!chipvpn_queue_init(&device->tx_queue, 4)) {
 		close(fd);
@@ -136,19 +137,47 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *de
 	return NULL;
 }
 
+bool chipvpn_device_add_peer(chipvpn_device_t *device, chipvpn_peer_t *peer) {
+	chipvpn_list_insert(chipvpn_list_end(&device->peers), peer);
+
+	/* service the new peer right away, e.g. an initiator starts its handshake */
+	return chipvpn_device_schedule_peer(device, peer, chipvpn_get_time());
+}
+
+void chipvpn_device_remove_peer(chipvpn_device_t *device, chipvpn_peer_t *peer) {
+	chipvpn_timer_cancel(&device->timers, &peer->timer);
+	chipvpn_list_remove(&peer->node);
+	chipvpn_peer_free(peer);
+}
+
+bool chipvpn_device_schedule_peer(chipvpn_device_t *device, chipvpn_peer_t *peer, uint64_t deadline) {
+	/* make sure the peer is serviced no later than deadline, call this whenever its timer state changes */
+	/* a timer that already fires earlier is left alone, the service will recompute the deadline anyway */
+	if(chipvpn_timer_pending(&peer->timer) && peer->timer.expiry <= deadline) {
+		return true;
+	}
+
+	return chipvpn_timer_schedule(&device->timers, &peer->timer, deadline);
+}
+
 void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
-	chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers);
+	uint64_t now = chipvpn_get_time();
 
-	while(p != chipvpn_list_end(&device->peers)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+	/* only visit the peers whose timer has expired, earliest first, instead of every peer */
+	chipvpn_timer_t *timer;
 
-		p = chipvpn_list_next(p);
+	while((timer = chipvpn_timer_pop_expired(&device->timers, now)) != NULL) {
+		chipvpn_peer_t *peer = chipvpn_timer_entry(timer, chipvpn_peer_t, timer);
 
-		if(!chipvpn_peer_service(peer, device, udp)) {
+		if(!chipvpn_peer_service(peer, device, udp, now)) {
 			/* peer has expired */
-			chipvpn_list_remove(&peer->node);
-			chipvpn_peer_free(peer);
+			chipvpn_device_remove_peer(device, peer);
+			continue;
 		}
+
+		/* sleep until the peer needs attention again, always after now so this loop ends */
+		/* this can't fail, popping the timer just freed its slot in the heap */
+		chipvpn_timer_schedule(&device->timers, &peer->timer, chipvpn_peer_next_deadline(peer, now));
 	}
 }
 
@@ -382,9 +411,10 @@ void chipvpn_device_postselect(chipvpn_device_t *device, fd_set *rdset, fd_set *
 
 void chipvpn_device_cleanup(chipvpn_device_t *device) {
 	while(!chipvpn_list_empty(&device->peers)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)chipvpn_list_remove(chipvpn_list_begin(&device->peers));
-		chipvpn_peer_free(peer);
+		chipvpn_device_remove_peer(device, (chipvpn_peer_t*)chipvpn_list_begin(&device->peers));
 	}
+
+	chipvpn_timer_heap_cleanup(&device->timers);
 
 	chipvpn_device_set_disabled(device);
 
