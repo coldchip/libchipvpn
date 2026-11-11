@@ -20,21 +20,23 @@ extern "C"
 #include "util.h"
 
 /* timers (wireguard compliant) */
-#define CHIPVPN_REKEY_AFTER_TIME 120000
-#define CHIPVPN_REJECT_AFTER_TIME 180000
-#define CHIPVPN_KEEPALIVE_TIMEOUT 10000
-#define CHIPVPN_REKEY_TIMEOUT 5000
-#define CHIPVPN_PERSISTENT_KEEPALIVE 20000
-#define CHIPVPN_EPHEMERAL_EXPIRY 60000
+#define CHIPVPN_REKEY_AFTER_TIME 120000ULL
+#define CHIPVPN_REJECT_AFTER_TIME 180000ULL
+#define CHIPVPN_KEEPALIVE_TIMEOUT 10000ULL
+#define CHIPVPN_REKEY_TIMEOUT 5000ULL
+#define CHIPVPN_PERSISTENT_KEEPALIVE 20000ULL
+#define CHIPVPN_EPHEMERAL_EXPIRY 60000ULL
 
 /* timer logic */
-#define PEER_NEXT_REKEY(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
+#define PEER_NEXT_STALE(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
 #define PEER_NEXT_INACTIVE(peer)   (peer->last_handshake + CHIPVPN_REJECT_AFTER_TIME)
 #define PEER_NEXT_OVERDUE_TX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT + CHIPVPN_REKEY_TIMEOUT)
 #define PEER_NEXT_OVERDUE_RX(peer) (peer->last_ack + CHIPVPN_KEEPALIVE_TIMEOUT)
+#define PEER_NEXT_RETRY(peer)      (peer->last_initiation + CHIPVPN_REKEY_TIMEOUT)
 #define PEER_NEXT_KEEPALIVE(peer)  (peer->last_transmission + CHIPVPN_PERSISTENT_KEEPALIVE)
 #define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
 
+/* base state predicates */
 #define PEER_INITIATOR(peer) (peer->config.endpoint.port > 0)
 
 #define PEER_ACTIVE(peer, now) ( \
@@ -43,9 +45,10 @@ extern "C"
 )
 #define PEER_FRESH(peer, now) ( \
 	GTEQ(now, peer->last_handshake) && \
-	LT(now, PEER_NEXT_REKEY(peer)) \
+	LT(now, PEER_NEXT_STALE(peer)) \
 )
 
+/* sub-trigger predicates */
 #define PEER_OVERDUE_TX(peer, now) ( \
 	PEER_FRESH(peer, now) && \
 	peer->ack_state == PEER_ACK_OWE_TX && \
@@ -68,9 +71,13 @@ extern "C"
 	GTEQ(now, PEER_NEXT_KEEPALIVE(peer)) \
 )
 
+/* top-level predicates */
 #define PEER_REKEY(peer, now) ( \
-	PEER_PERIODIC_REKEY(peer, now) || \
-	PEER_OVERDUE_TX(peer, now) \
+	GTEQ(now, PEER_NEXT_RETRY(peer)) && \
+	( \
+		PEER_PERIODIC_REKEY(peer, now) || \
+		PEER_OVERDUE_TX(peer, now) \
+	) \
 )
 
 #define PEER_KEEPALIVE(peer, now)  ( \
@@ -160,6 +167,8 @@ typedef struct chipvpn_peer {
 	uint64_t last_created;
 	/* last service loop */
 	uint64_t last_check;
+	/* last handshake initiation sent, retries are paced by CHIPVPN_REKEY_RETRY */
+	uint64_t last_initiation;
 	/* last successful handshake with peer */
 	uint64_t last_handshake;
 	/* last packet sent, used for NAT traversal & persistent keepalive, updated when there is any tx packet */
@@ -191,7 +200,7 @@ bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvp
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *socket);
+bool                    chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, uint64_t now);
 
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);
 
