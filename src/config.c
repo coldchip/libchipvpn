@@ -30,6 +30,9 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 
 				chipvpn_peer_t *peer = chipvpn_peer_create();
 				chipvpn_list_insert(chipvpn_list_end(&vpn->device.peers), peer);
+
+				peer->last_created = chipvpn_get_time();
+				
 				continue;
 			}
 
@@ -163,7 +166,6 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "ephemeral") == 0) {
 				peer->type = PEER_EPHEMERAL;
-				peer->last_created = chipvpn_get_time();
 			}
 
 			if(section == COMMAND_PEER_SECTION && strcmp(key, "address") == 0) {

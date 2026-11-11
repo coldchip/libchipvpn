@@ -51,7 +51,7 @@ bool chipvpn_ipc_printf(chipvpn_ipc_t *ipc, const char* format, ...) {
 
 void chipvpn_ipc_preselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset, int *max) {
 	if(chipvpn_queue_push_acquire(&ipc->rx_queue)) FD_SET(ipc->fd, rdset); else FD_CLR(ipc->fd, rdset);
-	if(chipvpn_queue_pop_acquire (&ipc->tx_queue)) FD_SET(ipc->fd, wdset); else FD_CLR(ipc->fd, wdset);
+	if(chipvpn_queue_pop_acquire(&ipc->tx_queue))  FD_SET(ipc->fd, wdset); else FD_CLR(ipc->fd, wdset);
 	*max = ipc->fd;
 }
 
