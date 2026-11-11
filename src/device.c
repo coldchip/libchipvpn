@@ -148,6 +148,7 @@ void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
 			/* peer has expired */
 			chipvpn_list_remove(&peer->node);
 			chipvpn_peer_free(peer);
+			continue;
 		}
 	}
 }
@@ -353,7 +354,7 @@ bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 
 void chipvpn_device_preselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset, int *max) {
 	if(chipvpn_queue_push_acquire(&device->rx_queue)) FD_SET(device->fd, rdset); else FD_CLR(device->fd, rdset);
-	if(chipvpn_queue_pop_acquire (&device->tx_queue)) FD_SET(device->fd, wdset); else FD_CLR(device->fd, wdset);
+	if(chipvpn_queue_pop_acquire(&device->tx_queue))  FD_SET(device->fd, wdset); else FD_CLR(device->fd, wdset);
 	*max = device->fd;
 }
 
