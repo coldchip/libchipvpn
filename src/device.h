@@ -37,7 +37,9 @@ typedef struct {
     chipvpn_list_node_t node;
 	int fd;
 	char dev[IF_NAMESIZE + 1];
+    
     chipvpn_list_t peers;
+
     uint8_t public[CURVE25519_KEY_SIZE];
     uint8_t private[CURVE25519_KEY_SIZE];
 

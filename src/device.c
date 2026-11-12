@@ -146,17 +146,14 @@ void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
 
 		p = chipvpn_list_next(p);
 
-		if(now < peer->last_check + 1000) {
-			continue;
-		}
+		if(now > peer->last_check + 500) {
+			peer->last_check = now;
 
-		peer->last_check = now;
-
-		if(!chipvpn_peer_service(peer, device, udp, now)) {
-			/* peer has expired */
-			chipvpn_list_remove(&peer->node);
-			chipvpn_peer_free(peer);
-			continue;
+			if(!chipvpn_peer_service(peer, device, udp, now)) {
+				chipvpn_list_remove(&peer->node);
+				chipvpn_peer_free(peer);
+				continue;
+			}
 		}
 	}
 }
@@ -242,11 +239,9 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_
 		}
 	} else {
 		if(ioctl(fd, SIOCGIFINDEX, &ifr) == 0) {
-			struct in6_ifreq ifr6 = {
-				.ifr6_prefixlen = network->prefix,
-				.ifr6_ifindex   = ifr.ifr_ifindex
-			};
-
+			struct in6_ifreq ifr6 = {0};
+			ifr6.ifr6_prefixlen = network->prefix;
+			ifr6.ifr6_ifindex   = ifr.ifr_ifindex;
 			memcpy(&ifr6.ifr6_addr, network->ipv6, sizeof(ifr6.ifr6_addr));
 
 			success = ioctl(fd, SIOCSIFADDR, &ifr6) == 0;
