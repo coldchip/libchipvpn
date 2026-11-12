@@ -73,7 +73,6 @@ int chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *devi
 	peer->ack_state = PEER_ACK_OWE_TX;
 	peer->last_ack = chipvpn_get_time();
 
-	peer->last_check = 0llu;
 	peer->last_handshake = chipvpn_get_time();
 
 	chipvpn_log_append("%p says: hello\n", peer);
@@ -113,9 +112,8 @@ int chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *d
 
 	/* responder expects a keepalive packet (immediately) */
 	peer->ack_state = PEER_ACK_OWE_RX;
-	peer->last_ack = 0llu;
+	peer->last_ack = 0ULL;
 
-	peer->last_check = 0llu;
 	peer->last_handshake = chipvpn_get_time();
 
 	/* promote peer session immediately from next_session to session */
@@ -204,9 +202,9 @@ void chipvpn_peer_reset_handshake(chipvpn_peer_t *peer) {
 void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
 	chipvpn_log_append("%p says: clearing session data\n", peer);
 
-	peer->tx = 0llu;
-	peer->rx = 0llu;
-	peer->last_ack = 0;
+	peer->tx = 0ULL;
+	peer->rx = 0ULL;
+	peer->last_ack = 0ULL;
 	peer->ack_state = PEER_ACK_IDLE;
 
 	chipvpn_secure_zero(&peer->prev_session, sizeof(peer->prev_session));

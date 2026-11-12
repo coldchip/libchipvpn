@@ -139,15 +139,17 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *de
 void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
 	uint64_t now = chipvpn_get_time();
 
-	chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers);
+	static uint64_t last_service = 0ULL;
 
-	while(p != chipvpn_list_end(&device->peers)) {
-		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+	if(now > last_service + 500) {
+		last_service = now;
 
-		p = chipvpn_list_next(p);
+		chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers);
 
-		if(now > peer->last_check + 500) {
-			peer->last_check = now;
+		while(p != chipvpn_list_end(&device->peers)) {
+			chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
+
+			p = chipvpn_list_next(p);
 
 			if(!chipvpn_peer_service(peer, device, udp, now)) {
 				chipvpn_list_remove(&peer->node);

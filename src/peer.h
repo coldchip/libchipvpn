@@ -165,8 +165,6 @@ typedef struct chipvpn_peer {
 	uint8_t timestamp[TAI64N_SIZE];
 	/* last created, used for removing expired ephemeral peers */
 	uint64_t last_created;
-	/* last service loop */
-	uint64_t last_check;
 	/* last handshake initiation sent, retries are paced by CHIPVPN_REKEY_RETRY */
 	uint64_t last_initiation;
 	/* last successful handshake with peer */
