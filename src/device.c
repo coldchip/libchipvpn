@@ -254,7 +254,6 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_
 	return success;
 }
 
-
 bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 	struct ifreq ifr = {0};
 	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
