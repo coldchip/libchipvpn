@@ -8,12 +8,13 @@ extern "C"
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/socket.h>
 #include <sys/un.h>
 
 typedef enum {
-	CHIPVPN_ADDRESS_NONE,
-	CHIPVPN_ADDRESS_IPV4,
-	CHIPVPN_ADDRESS_IPV6
+	CHIPVPN_ADDRESS_NONE = 0,
+	CHIPVPN_ADDRESS_IPV4 = 4,
+	CHIPVPN_ADDRESS_IPV6 = 6
 } chipvpn_address_type_e;
 
 typedef struct {

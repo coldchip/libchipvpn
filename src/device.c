@@ -255,6 +255,10 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_
 }
 
 bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
+	if(CHACHA20_POLY1305_ENC_LEN(mtu) + sizeof(chipvpn_packet_data_t) > QUEUE_ENTRY_SIZE) {
+		return false;
+	}
+
 	struct ifreq ifr = {0};
 	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
 	ifr.ifr_mtu = mtu;
