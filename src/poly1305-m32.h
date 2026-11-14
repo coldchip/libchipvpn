@@ -27,26 +27,23 @@ typedef struct poly1305_state_internal_t {
 } poly1305_state_internal_t;
 
 /* interpret four 8 bit unsigned integers as a 32 bit unsigned integer in little endian */
-static unsigned long
-U8TO32(const unsigned char *p) {
+static unsigned long U8TO32(const unsigned char *p) {
 	return
 		(((unsigned long)(p[0] & 0xff)      ) |
-	     ((unsigned long)(p[1] & 0xff) <<  8) |
-         ((unsigned long)(p[2] & 0xff) << 16) |
-         ((unsigned long)(p[3] & 0xff) << 24));
+		 ((unsigned long)(p[1] & 0xff) <<  8) |
+		 ((unsigned long)(p[2] & 0xff) << 16) |
+		 ((unsigned long)(p[3] & 0xff) << 24));
 }
 
 /* store a 32 bit unsigned integer as four 8 bit unsigned integers in little endian */
-static void
-U32TO8(unsigned char *p, unsigned long v) {
+static void U32TO8(unsigned char *p, unsigned long v) {
 	p[0] = (v      ) & 0xff;
 	p[1] = (v >>  8) & 0xff;
 	p[2] = (v >> 16) & 0xff;
 	p[3] = (v >> 24) & 0xff;
 }
 
-void
-poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
+void poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
 	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
 
 	/* r &= 0xffffffc0ffffffc0ffffffc0fffffff */
@@ -73,8 +70,7 @@ poly1305_init(poly1305_context *ctx, const unsigned char key[32]) {
 	st->final = 0;
 }
 
-static void
-poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t bytes) {
+static void poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t bytes) {
 	const unsigned long hibit = (st->final) ? 0 : (1UL << 24); /* 1 << 128 */
 	unsigned long r0,r1,r2,r3,r4;
 	unsigned long s1,s2,s3,s4;
@@ -99,7 +95,7 @@ poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t by
 	h3 = st->h[3];
 	h4 = st->h[4];
 
-	while (bytes >= poly1305_block_size) {
+	while(bytes >= poly1305_block_size) {
 		/* h += m[i] */
 		h0 += (U8TO32(m+ 0)     ) & 0x3ffffff;
 		h1 += (U8TO32(m+ 3) >> 2) & 0x3ffffff;
@@ -115,7 +111,7 @@ poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t by
 		d4 = ((unsigned long long)h0 * r4) + ((unsigned long long)h1 * r3) + ((unsigned long long)h2 * r2) + ((unsigned long long)h3 * r1) + ((unsigned long long)h4 * r0);
 
 		/* (partial) h %= p */
-		              c = (unsigned long)(d0 >> 26); h0 = (unsigned long)d0 & 0x3ffffff;
+					  c = (unsigned long)(d0 >> 26); h0 = (unsigned long)d0 & 0x3ffffff;
 		d1 += c;      c = (unsigned long)(d1 >> 26); h1 = (unsigned long)d1 & 0x3ffffff;
 		d2 += c;      c = (unsigned long)(d2 >> 26); h2 = (unsigned long)d2 & 0x3ffffff;
 		d3 += c;      c = (unsigned long)(d3 >> 26); h3 = (unsigned long)d3 & 0x3ffffff;
@@ -134,8 +130,7 @@ poly1305_blocks(poly1305_state_internal_t *st, const unsigned char *m, size_t by
 	st->h[4] = h4;
 }
 
-POLY1305_NOINLINE void
-poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
+POLY1305_NOINLINE void poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
 	poly1305_state_internal_t *st = (poly1305_state_internal_t *)ctx;
 	unsigned long h0,h1,h2,h3,h4,c;
 	unsigned long g0,g1,g2,g3,g4;
@@ -143,11 +138,12 @@ poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
 	unsigned long mask;
 
 	/* process the remaining block */
-	if (st->leftover) {
+	if(st->leftover) {
 		size_t i = st->leftover;
 		st->buffer[i++] = 1;
-		for (; i < poly1305_block_size; i++)
+		for(; i < poly1305_block_size; i++) {
 			st->buffer[i] = 0;
+		}
 		st->final = 1;
 		poly1305_blocks(st, st->buffer, poly1305_block_size);
 	}
@@ -159,7 +155,7 @@ poly1305_finish(poly1305_context *ctx, unsigned char mac[16]) {
 	h3 = st->h[3];
 	h4 = st->h[4];
 
-	             c = h1 >> 26; h1 = h1 & 0x3ffffff;
+				 c = h1 >> 26; h1 = h1 & 0x3ffffff;
 	h2 +=     c; c = h2 >> 26; h2 = h2 & 0x3ffffff;
 	h3 +=     c; c = h3 >> 26; h3 = h3 & 0x3ffffff;
 	h4 +=     c; c = h4 >> 26; h4 = h4 & 0x3ffffff;

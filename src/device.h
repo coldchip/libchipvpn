@@ -29,25 +29,25 @@ typedef struct chipvpn_peer chipvpn_peer_t;
 typedef struct chipvpn_peer_session chipvpn_peer_session_t;
 
 typedef enum {
-    COMMAND_DEVICE_SECTION,
-    COMMAND_PEER_SECTION
+	COMMAND_DEVICE_SECTION,
+	COMMAND_PEER_SECTION
 } chipvpn_command_section_e;
 
 typedef struct {
-    chipvpn_list_node_t node;
+	chipvpn_list_node_t node;
 	int fd;
 	char dev[IF_NAMESIZE + 1];
-    
-    chipvpn_list_t peers;
+	
+	chipvpn_list_t peers;
 
-    uint8_t public[CURVE25519_KEY_SIZE];
-    uint8_t private[CURVE25519_KEY_SIZE];
+	uint8_t public[CURVE25519_KEY_SIZE];
+	uint8_t private[CURVE25519_KEY_SIZE];
 
-    chipvpn_queue_t tx_queue;
-    chipvpn_queue_t rx_queue;
+	chipvpn_queue_t tx_queue;
+	chipvpn_queue_t rx_queue;
 
-    char *postup;
-    char *postdown;
+	char *postup;
+	char *postdown;
 } chipvpn_device_t;
 
 bool                    chipvpn_device_init(chipvpn_device_t *device);
