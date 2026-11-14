@@ -28,11 +28,10 @@ typedef struct poly1305_state_internal_t {
 
 /* interpret four 8 bit unsigned integers as a 32 bit unsigned integer in little endian */
 static unsigned long U8TO32(const unsigned char *p) {
-	return
-		(((unsigned long)(p[0] & 0xff)      ) |
-		 ((unsigned long)(p[1] & 0xff) <<  8) |
-		 ((unsigned long)(p[2] & 0xff) << 16) |
-		 ((unsigned long)(p[3] & 0xff) << 24));
+	return (((unsigned long)(p[0] & 0xff)      ) |
+			((unsigned long)(p[1] & 0xff) <<  8) |
+			((unsigned long)(p[2] & 0xff) << 16) |
+			((unsigned long)(p[3] & 0xff) << 24));
 }
 
 /* store a 32 bit unsigned integer as four 8 bit unsigned integers in little endian */

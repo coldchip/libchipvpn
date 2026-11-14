@@ -107,7 +107,7 @@ void blake2s_update(blake2s_ctx *ctx, const void *in, size_t inlen) {
 			blake2s_compress(ctx, 0);   // compress (not last)
 			ctx->c = 0;                 // counter to zero
 		}
-		ctx->b[ctx->c++] = ((const uint8_t *) in)[i];
+		ctx->b[ctx->c++] = ((const uint8_t *)in)[i];
 	}
 }
 
