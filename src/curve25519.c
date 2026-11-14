@@ -608,12 +608,12 @@ static void fcontract(u8 *output, limb *input_limbs) {
  * On entry and exit, the absolute value of the limbs of all inputs and outputs
  * are < 2^26. */
 static void fmonty(limb *x2, limb *z2,  /* output 2Q */
-                   limb *x3, limb *z3,  /* output Q + Q' */
-                   limb *x, limb *z,    /* input Q */
-                   limb *xprime, limb *zprime,  /* input Q' */
-                   const limb *qmqp /* input Q - Q' */) {
+				   limb *x3, limb *z3,  /* output Q + Q' */
+				   limb *x, limb *z,    /* input Q */
+				   limb *xprime, limb *zprime,  /* input Q' */
+				   const limb *qmqp /* input Q - Q' */) {
 	limb origx[10], origxprime[10], zzz[19], xx[19], zz[19], xxprime[19],
-	    zzprime[19], zzzprime[19], xxxprime[19];
+		zzprime[19], zzzprime[19], xxxprime[19];
 
 	memcpy(origx, x, 10 * sizeof(limb));
 	fsum(x, z);

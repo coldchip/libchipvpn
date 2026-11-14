@@ -12,9 +12,9 @@ extern "C"
 #include "queue.h"
 
 typedef struct {
-    int fd;
-    chipvpn_queue_t tx_queue;
-    chipvpn_queue_t rx_queue;
+	int fd;
+	chipvpn_queue_t tx_queue;
+	chipvpn_queue_t rx_queue;
 } chipvpn_ipc_t;
 
 bool                    chipvpn_ipc_init(chipvpn_ipc_t *ipc, int fd);

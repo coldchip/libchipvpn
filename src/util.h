@@ -36,22 +36,22 @@ extern "C"
 
 #define U64TO8_BIG(p, v) \
 do { \
-    (p)[7] = _U8V((v)      ); \
-    (p)[6] = _U8V((v) >>  8); \
-    (p)[5] = _U8V((v) >> 16); \
-    (p)[4] = _U8V((v) >> 24); \
-    (p)[3] = _U8V((v) >> 32); \
-    (p)[2] = _U8V((v) >> 40); \
-    (p)[1] = _U8V((v) >> 48); \
-    (p)[0] = _U8V((v) >> 56); \
+	(p)[7] = _U8V((v)      ); \
+	(p)[6] = _U8V((v) >>  8); \
+	(p)[5] = _U8V((v) >> 16); \
+	(p)[4] = _U8V((v) >> 24); \
+	(p)[3] = _U8V((v) >> 32); \
+	(p)[2] = _U8V((v) >> 40); \
+	(p)[1] = _U8V((v) >> 48); \
+	(p)[0] = _U8V((v) >> 56); \
 } while (0)
 
 #define U32TO8_BIG(p, v) \
 do { \
-    (p)[3] = _U8V((v)      ); \
-    (p)[2] = _U8V((v) >>  8); \
-    (p)[1] = _U8V((v) >> 16); \
-    (p)[0] = _U8V((v) >> 24); \
+	(p)[3] = _U8V((v)      ); \
+	(p)[2] = _U8V((v) >>  8); \
+	(p)[1] = _U8V((v) >> 16); \
+	(p)[0] = _U8V((v) >> 24); \
 } while (0)
 
 void         chipvpn_log_append(const char* format, ...);
@@ -69,7 +69,7 @@ void         chipvpn_secure_zero(void *v, size_t n);
 void         chipvpn_tai64n(uint8_t *output);
 
 static inline void chipvpn_wipe_mem_32(uint8_t (*key)[32]) {
-    chipvpn_secure_zero(key, 32);
+	chipvpn_secure_zero(key, 32);
 }
 
 #ifdef __cplusplus

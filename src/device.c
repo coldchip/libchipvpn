@@ -322,8 +322,8 @@ bool chipvpn_device_toggle(chipvpn_device_t *device, bool enable) {
 
 bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 	if(!chipvpn_device_toggle(device, true)) {
-        return false;
-    }
+		return false;
+	}
 
 	if(device->postup) {
 		chipvpn_run_command(device->postup);
@@ -338,8 +338,8 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 	}
 
 	if(!chipvpn_device_toggle(device, false)) {
-        return false;
-    }
+		return false;
+	}
 
 	return true;
 }

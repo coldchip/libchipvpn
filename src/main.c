@@ -27,52 +27,52 @@ void terminate(int type) {
 }
 
 int socket_connect(const char *host, int port) {
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    
-    if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
-        chipvpn_log_append("invalid host IP address: %s\n", host);
-        return -1;
-    }
+	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	
+	if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
+		chipvpn_log_append("invalid host IP address: %s\n", host);
+		return -1;
+	}
 
-    while (1) {
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        if(sock < 0) {
-            chipvpn_log_append("failed to create tcp socket: %s\n", strerror(errno));
-            sleep(1);
-            continue;
-        }
+	while (1) {
+		int sock = socket(AF_INET, SOCK_STREAM, 0);
+		if(sock < 0) {
+			chipvpn_log_append("failed to create tcp socket: %s\n", strerror(errno));
+			sleep(1);
+			continue;
+		}
 
-        int flags = fcntl(sock, F_GETFL, 0);
-        if(flags < 0) flags = 0; 
-        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+		int flags = fcntl(sock, F_GETFL, 0);
+		if(flags < 0) flags = 0; 
+		fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
-        int res = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
-        
-        if(res == 0) {
-            return sock;
-        } 
-        
-        if(res < 0 && errno == EINPROGRESS) {
-            struct pollfd pfd = { .fd = sock, .events = POLLOUT };
-            
-            if (poll(&pfd, 1, 1000) > 0) {
-                int so_error = 0;
-                socklen_t len = sizeof(so_error);
-                
-                if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len) == 0 && so_error == 0) {
-                    return sock;
-                }
-            }
-        }
+		int res = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+		
+		if(res == 0) {
+			return sock;
+		} 
+		
+		if(res < 0 && errno == EINPROGRESS) {
+			struct pollfd pfd = { .fd = sock, .events = POLLOUT };
+			
+			if (poll(&pfd, 1, 1000) > 0) {
+				int so_error = 0;
+				socklen_t len = sizeof(so_error);
+				
+				if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len) == 0 && so_error == 0) {
+					return sock;
+				}
+			}
+		}
 
-        close(sock);
-        chipvpn_log_append("retry to connect to socket: %s:%u\n", host, port);
-        sleep(1); 
-    }
+		close(sock);
+		chipvpn_log_append("retry to connect to socket: %s:%u\n", host, port);
+		sleep(1); 
+	}
 }
 
 int chipvpn_auth_main(int argc, char const *argv[], int fd) {

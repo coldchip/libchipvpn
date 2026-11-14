@@ -16,8 +16,8 @@ extern "C" {
 #define REJECT_AFTER_MESSAGES ((uint64_t)~0ULL) - COUNTER_WINDOW_SIZE - 1
 
 typedef struct {
-    uint64_t counter;
-    uint64_t bitmap[COUNTER_BITS_TOTAL / U64_SIZE];
+	uint64_t counter;
+	uint64_t bitmap[COUNTER_BITS_TOTAL / U64_SIZE];
 } chipvpn_bitmap_t;
 
 void      chipvpn_bitmap_reset(chipvpn_bitmap_t *window);
