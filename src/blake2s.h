@@ -1,6 +1,3 @@
-// blake2s.h
-// BLAKE2s Hashing Context and API Prototypes
-
 #ifndef BLAKE2S_H
 #define BLAKE2S_H
 
@@ -12,8 +9,8 @@ extern "C"
 #include <stdint.h>
 #include <stddef.h>
 
-#define BLAKE2S_BLOCK_SIZE 64
-#define BLAKE2S_HASH_SIZE 32
+#define BLAKE2S_BLOCK_SIZE 64U
+#define BLAKE2S_HASH_SIZE  32U
 
 // Cyclic right rotation.
 

@@ -232,7 +232,7 @@ int main(int argc, char const *argv[]) {
 	chipvpn_log_append(" ╚═════╝╚═╝  ╚═╝╚═╝╚═╝       ╚═══╝  ╚═╝     ╚═╝  ╚═══╝\n");
 	chipvpn_log_append("\n");
 
-	chipvpn_log_append("chipvpn v%i protocol %i\n", CHIPVPN_VERSION, CHIPVPN_PROTOCOL_VERSION);
+	chipvpn_log_append("chipvpn v%llu\n", CHIPVPN_VERSION);
 	chipvpn_log_append("compiled on %s %s\n", __DATE__, __TIME__);
 
 	if(!(argc > 1 && argv[1] != NULL)) {

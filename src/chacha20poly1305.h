@@ -10,8 +10,6 @@ extern "C"
 #include <stdbool.h>
 #include <stddef.h>
 
-#define CHACHA20_KEY_SIZE 32
-#define CHACHA20_NONCE_SIZE 12
 #define CHACHA20_POLY1305_ENC_LEN(plain_len) ((plain_len) + POLY1305_MAC_SIZE)
 #define CHACHA20_POLY1305_DEC_LEN(plain_len) ((plain_len) - POLY1305_MAC_SIZE)
 

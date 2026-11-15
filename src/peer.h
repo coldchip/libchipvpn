@@ -8,6 +8,7 @@ extern "C"
 
 #include <stdint.h>
 #include <stddef.h>
+#include "chacha20.h"
 #include "chacha20poly1305.h"
 #include "address.h"
 #include "bitmap.h"
@@ -20,12 +21,12 @@ extern "C"
 #include "util.h"
 
 /* timers (wireguard compliant) */
-#define CHIPVPN_REKEY_AFTER_TIME 120000ULL
-#define CHIPVPN_REJECT_AFTER_TIME 180000ULL
-#define CHIPVPN_KEEPALIVE_TIMEOUT 10000ULL
-#define CHIPVPN_REKEY_TIMEOUT 5000ULL
+#define CHIPVPN_REKEY_AFTER_TIME     120000ULL
+#define CHIPVPN_REJECT_AFTER_TIME    180000ULL
+#define CHIPVPN_KEEPALIVE_TIMEOUT    10000ULL
+#define CHIPVPN_REKEY_TIMEOUT        5000ULL
 #define CHIPVPN_PERSISTENT_KEEPALIVE 20000ULL
-#define CHIPVPN_EPHEMERAL_EXPIRY 60000ULL
+#define CHIPVPN_EPHEMERAL_EXPIRY     60000ULL
 
 /* timer logic */
 #define PEER_NEXT_STALE(peer)      (peer->last_handshake + CHIPVPN_REKEY_AFTER_TIME)
@@ -37,7 +38,7 @@ extern "C"
 #define PEER_NEXT_EXPIRY(peer)     (peer->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
 
 /* base state predicates */
-#define PEER_INITIATOR(peer) (peer->config.endpoint.port > 0)
+#define PEER_INITIATOR(peer) (peer->config.endpoint.port > 0U)
 
 #define PEER_ACTIVE(peer, now) ( \
 	GTEQ(now, peer->last_handshake) && \
