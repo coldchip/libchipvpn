@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CHACHA20_H
+#define CHACHA20_H
 
 #ifdef __cplusplus 
 extern "C" {
@@ -57,4 +58,6 @@ void       chacha20_xcrypt(chacha20_t *ctx, uint8_t *bytes, size_t size);
 
 #ifdef __cplusplus 
 }
+#endif
+
 #endif
