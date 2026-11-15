@@ -29,7 +29,7 @@ extern "C"
 # define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 #endif
 
-#define TAI64N_SIZE 12
+#define TAI64N_SIZE 12U
 
 #define _U8C(v) (v##U)
 #define _U8V(v) ((uint8_t)(v) & _U8C(0xFF))

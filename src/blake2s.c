@@ -1,6 +1,3 @@
-// blake2s.c
-// A simple blake2s Reference Implementation.
-
 #include "blake2s.h"
 #include <string.h>
 

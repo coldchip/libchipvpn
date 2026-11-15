@@ -9,6 +9,9 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
+#define CHACHA20_KEY_SIZE   32U
+#define CHACHA20_NONCE_SIZE 12U
+
 #define U8V(v) ((uint8_t)(v) & (0xFF))
 #define U16V(v) ((uint16_t)(v) & (0xFFFF))
 #define U32V(v) ((uint32_t)(v) & (0xFFFFFFFF))

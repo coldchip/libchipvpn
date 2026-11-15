@@ -3,7 +3,7 @@
 
 #include "address.h"
 
-#define QUEUE_ENTRY_SIZE 8192
+#define QUEUE_ENTRY_SIZE 8192U
 
 typedef struct {
 	uint8_t buffer[QUEUE_ENTRY_SIZE];

@@ -38,7 +38,7 @@ extern "C"
 	#define POLY1305_NOINLINE __attribute__((noinline))
 #endif
 
-#define poly1305_block_size 16
+#define poly1305_block_size 16U
 
 /* 17 + sizeof(size_t) + 8*sizeof(unsigned long long) */
 typedef struct poly1305_state_internal_t {

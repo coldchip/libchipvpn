@@ -17,7 +17,7 @@ typedef uint8_t u8;
 typedef int32_t s32;
 typedef int64_t limb;
 
-#define CURVE25519_KEY_SIZE 32
+#define CURVE25519_KEY_SIZE 32U
 
 bool curve25519(u8 *mypublic, const u8 *secret, const u8 *basepoint);
 

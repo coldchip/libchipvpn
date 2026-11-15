@@ -9,9 +9,9 @@ extern "C"
 #include <stdint.h>
 #include "address.h"
 
-#define CHIPVPN_RATELIMIT_SIZE 16384
-#define CHIPVPN_RATELIMIT_MAX_TOKENS 3
-#define CHIPVPN_RATELIMIT_REFILL_MS 500
+#define CHIPVPN_RATELIMIT_SIZE       16384U
+#define CHIPVPN_RATELIMIT_MAX_TOKENS 3U
+#define CHIPVPN_RATELIMIT_REFILL_MS  500U
 
 typedef struct {
 	chipvpn_address_t addr;
