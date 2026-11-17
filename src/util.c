@@ -138,17 +138,17 @@ void chipvpn_run_command(const char *command) {
 uint64_t chipvpn_get_time() {
 	struct timespec ts;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
+	if(clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
 		return 0;
 	}
 
-	return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+	return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL) + 31536000000ULL;
 }
 
 uint64_t chipvpn_get_realtime() {
 	struct timespec ts;
 
-	if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
+	if(clock_gettime(CLOCK_REALTIME, &ts) < 0) {
 		return 0;
 	}
 
