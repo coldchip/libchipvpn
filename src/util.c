@@ -1,4 +1,5 @@
 #include "util.h"
+#include "log.h"
 #include "base64.h"
 #include "curve25519.h"
 #include "chacha20poly1305.h"
@@ -18,19 +19,6 @@
 #include <time.h>
 #include <stdarg.h>
 
-void chipvpn_log_append(const char* format, ...) {
-	char buffer[1024];
-
-	va_list args;
-	va_start(args, format);
-	vsprintf(buffer, format, args);
-	va_end(args);
-
-	fprintf(stdout, "\033[1;33m[%lu]\033[0m \033[32m%s\033[0m", (chipvpn_get_time() / 1000), buffer);
-
-	fflush(stdout);
-}
-
 void chipvpn_print_key(const uint8_t *key) {
 	for(int i = 0; i < 32; i++) {
 		printf("%02x", key[i] & 0xff);
@@ -40,7 +28,7 @@ void chipvpn_print_key(const uint8_t *key) {
 	char b64_key[45] = {0};
 	memset(b64_key, 0, sizeof(b64_key));
 	b64_encode(key, CURVE25519_KEY_SIZE, (uint8_t *)b64_key);
-	chipvpn_log_append("key: %s\n", b64_key);
+	LOG_INFO("key: %s\n", b64_key);
 }
 
 char *chipvpn_strdup(const char *s) {
@@ -131,7 +119,7 @@ bool chipvpn_secure_random(uint8_t *buf, int size) {
 
 void chipvpn_run_command(const char *command) {
 	if(system(command) == 0) {
-		chipvpn_log_append("[bash] %s\n", command);
+		LOG_INFO("[bash] %s\n", command);
 	}
 }
 

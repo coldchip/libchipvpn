@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "chipvpn.h"
 #include "udp.h"
+#include "log.h"
 #include "device.h"
 #include "ipc.h"
 #include "config.h"
@@ -13,21 +14,12 @@
 #include "peer.h"
 #include "bitmap.h"
 #include "base64.h"
-#include "ratelimit.h"
 #include "firewall.h"
 #include "util.h"
 #include "noise.h"
 #include "queue.h"
 
 bool chipvpn_init(chipvpn_t *vpn, int ipc_fd) {
-	vpn->ratelimit = malloc(sizeof(chipvpn_ratelimit_t));
-	if(!vpn->ratelimit) {
-		return NULL;
-	}
-
-	/* clear ratelimit list */
-	chipvpn_ratelimit_clear(vpn->ratelimit);
-
 	/* create vpn device */
 	if(!chipvpn_device_init(&vpn->device)) {
 		return NULL;
@@ -142,7 +134,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		/* if the packet's destination is part of peer's outbound firewall (authorisation) */
-		if(!chipvpn_firewall_execute(&peer->firewall_outbound, &dst)) {
+		if(!chipvpn_firewall_match(&peer->firewall_outbound, &dst)) {
 			continue;
 		}
 
@@ -168,7 +160,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 		);
 
 		if(!success) {
-			chipvpn_log_append("%p says: unable to encrypt payload\n", peer);
+			LOG_ERR("%p says: unable to encrypt payload\n", peer);
 			continue;
 		}
 
@@ -208,11 +200,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				/* check if it is a spam */
-				if(!chipvpn_ratelimit_verify(vpn->ratelimit, &addr)) {
-					continue;
-				}
-
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
 				/* process auth packet */
@@ -225,7 +212,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 						chipvpn_ipc_printf(&vpn->ipc, "REJECT %s\n", public_b64);
 					}
-					chipvpn_log_append("noise handshake failed\n");
+					LOG_ERR("noise handshake failed\n");
 					continue;
 				}
 
@@ -237,17 +224,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				/* check if it is a spam */
-				if(!chipvpn_ratelimit_verify(vpn->ratelimit, &addr)) {
-					continue;
-				}
-
 				chipvpn_packet_auth_reply_t *packet = (chipvpn_packet_auth_reply_t*)buffer;
 
 				/* process auth reply packet */
 				chipvpn_peer_t *peer = chipvpn_noise_consume_reply(&vpn->device, packet);
 				if(!peer) {
-					chipvpn_log_append("noise handshake failed\n");
+					LOG_ERR("noise handshake failed\n");
 					continue;
 				}
 
@@ -286,13 +268,13 @@ int chipvpn_service(chipvpn_t *vpn) {
 				);
 
 				if(!success) {
-					chipvpn_log_append("%p says: packet has invalid mac\n", peer);
+					LOG_ERR("%p says: packet has invalid mac\n", peer);
 					continue;
 				}
 
 				/* must be after decrypt */
 				if(!chipvpn_bitmap_validate(&session->bitmap, counter)) {
-					chipvpn_log_append("%p says: rejected replayed packet\n", peer);
+					LOG_ERR("%p says: rejected replayed packet\n", peer);
 					continue;
 				}
 
@@ -300,7 +282,7 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				/* update address if it doesn't match */
 				if(!chipvpn_address_endpoint_match(&peer->address, &addr)) {
-					chipvpn_log_append("%p says: ip or port changed\n", peer);
+					LOG_INFO("%p says: ip or port changed\n", peer);
 					peer->address = addr;
 				}
 
@@ -349,12 +331,12 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				/* if the packet's source is part of peer's allowedip (authentication) */
 				if(!chipvpn_peer_allowip_match(peer, &src)) {
-					chipvpn_log_append("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
+					LOG_ERR("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					continue;
 				}
 
 				/* if the packet's source is part of peer's inbound firewall (authorisation) */
-				if(!chipvpn_firewall_execute(&peer->firewall_inbound, &src)) {
+				if(!chipvpn_firewall_match(&peer->firewall_inbound, &src)) {
 					continue;
 				}
 
@@ -372,6 +354,4 @@ void chipvpn_cleanup(chipvpn_t *vpn) {
 	chipvpn_device_cleanup(&vpn->device);
 	chipvpn_udp_cleanup(&vpn->udp);
 	chipvpn_ipc_cleanup(&vpn->ipc);
-
-	free(vpn->ratelimit);
 }

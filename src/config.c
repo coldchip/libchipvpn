@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sched.h>
 #include <stdlib.h>
+#include "log.h"
 #include "peer.h"
 #include "firewall.h"
 #include "device.h"
@@ -56,7 +57,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 						return;
 					}
 
-					chipvpn_log_append("interface name [%s]\n", name);
+					LOG_INFO("interface name [%s]\n", name);
 				}
 			}
 
@@ -73,7 +74,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 						return;
 					}
 
-					chipvpn_log_append("interface address: [%s]/%i\n", chipvpn_address_to_char(&network), network.prefix);
+					LOG_INFO("interface address: [%s]/%i\n", chipvpn_address_to_char(&network), network.prefix);
 				}
 			}
 
@@ -90,7 +91,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 					if(!chipvpn_device_set_mtu(&vpn->device, mtu)) {
 						return;
 					}
-					chipvpn_log_append("interface mtu [%u]\n", mtu);
+					LOG_INFO("interface mtu [%u]\n", mtu);
 				}
 			}
 
@@ -100,7 +101,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 					if(!chipvpn_device_set_txqueuelen(&vpn->device, qlen)) {
 						return;
 					}
-					chipvpn_log_append("interface txqueuelen [%u]\n", qlen);
+					LOG_INFO("interface txqueuelen [%u]\n", qlen);
 				}
 			}
 
@@ -118,7 +119,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 						return;
 					}
 
-					chipvpn_log_append("binding to [%s]:%i\n", chipvpn_address_to_char(&bind), bind.port);
+					LOG_INFO("binding to [%s]:%i\n", chipvpn_address_to_char(&bind), bind.port);
 				}
 			}
 
@@ -126,7 +127,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				int sendbuf;
 				if(sscanf(value, "%i", &sendbuf) == 1) {
 					chipvpn_udp_set_sendbuf(&vpn->udp, sendbuf);
-					chipvpn_log_append("interface sendbuf [%u] byte(s)\n", sendbuf);
+					LOG_INFO("interface sendbuf [%u] byte(s)\n", sendbuf);
 				}
 			}
 
@@ -134,7 +135,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				int recvbuf;
 				if(sscanf(value, "%i", &recvbuf) == 1) {
 					chipvpn_udp_set_recvbuf(&vpn->udp, recvbuf);
-					chipvpn_log_append("interface recvbuf [%u] byte(s)\n", recvbuf);
+					LOG_INFO("interface recvbuf [%u] byte(s)\n", recvbuf);
 				}
 			}
 
@@ -142,7 +143,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				int fwmark;
 				if(sscanf(value, "%i", &fwmark) == 1) {
 					chipvpn_udp_set_fwmark(&vpn->udp, fwmark);
-					chipvpn_log_append("interface fwmark [%i]\n", fwmark);
+					LOG_INFO("interface fwmark [%i]\n", fwmark);
 				}
 			}
 

@@ -52,10 +52,14 @@ void chacha20_xcrypt_block(chacha20_t *ctx) {
 void chacha20_xcrypt(chacha20_t *ctx, uint8_t *bytes, size_t size) {
 	while(size > 0) {
 		size_t offset = ctx->position & 63;
-		if(offset == 0) chacha20_xcrypt_block(ctx);
+		if(offset == 0) {
+			chacha20_xcrypt_block(ctx);
+		}
 
 		size_t chunk = 64 - offset;
-		if(chunk > size) chunk = size;
+		if(chunk > size) {
+			chunk = size;
+		}
 
 		for(size_t i = 0; i < chunk; i++) {
 			bytes[i] ^= ctx->keystream[offset + i];

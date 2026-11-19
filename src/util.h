@@ -54,7 +54,6 @@ do { \
 	(p)[0] = _U8V((v) >> 24); \
 } while (0)
 
-void         chipvpn_log_append(const char* format, ...);
 void         chipvpn_print_key(const uint8_t *key);
 char        *chipvpn_strdup(const char *s);
 char        *chipvpn_read_file(const char *file);
