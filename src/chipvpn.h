@@ -13,15 +13,13 @@ extern "C"
 #include "device.h"
 #include "udp.h"
 #include "ipc.h"
-#include "ratelimit.h"
 
-#define CHIPVPN_VERSION 300071ULL
+#define CHIPVPN_VERSION 300072ULL
 
 typedef struct {
-	chipvpn_device_t     device;
-	chipvpn_udp_t        udp;
-	chipvpn_ipc_t        ipc;
-	chipvpn_ratelimit_t *ratelimit;
+	chipvpn_device_t device;
+	chipvpn_udp_t    udp;
+	chipvpn_ipc_t    ipc;
 } chipvpn_t;
 
 bool           chipvpn_init(chipvpn_t *vpn, int ipc_fd);

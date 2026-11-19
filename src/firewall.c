@@ -27,7 +27,7 @@ bool chipvpn_firewall_insert(chipvpn_list_t *list, const chipvpn_address_t *net)
 	return true;
 }
 
-bool chipvpn_firewall_execute(const chipvpn_list_t *list, const chipvpn_address_t *address) {
+bool chipvpn_firewall_match(const chipvpn_list_t *list, const chipvpn_address_t *address) {
 	if(list == NULL || address == NULL) {
 		return false;
 	}

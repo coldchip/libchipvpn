@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include "util.h"
+#include "log.h"
 #include "config.h"
 #include "chipvpn.h"
 #include <arpa/inet.h>
@@ -22,7 +23,7 @@ volatile sig_atomic_t quit = 0;
 void terminate(int type) {
 	(void)type;
 
-	chipvpn_log_append("interrupt received\n");
+	LOG_INFO("interrupt received\n");
 	quit = 1;
 }
 
@@ -34,14 +35,14 @@ int socket_connect(const char *host, int port) {
 	addr.sin_port = htons(port);
 	
 	if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
-		chipvpn_log_append("invalid host IP address: %s\n", host);
+		LOG_ERR("invalid host IP address: %s\n", host);
 		return -1;
 	}
 
 	while (1) {
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		if(sock < 0) {
-			chipvpn_log_append("failed to create tcp socket: %s\n", strerror(errno));
+			LOG_ERR("failed to create tcp socket: %s\n", strerror(errno));
 			sleep(1);
 			continue;
 		}
@@ -70,7 +71,7 @@ int socket_connect(const char *host, int port) {
 		}
 
 		close(sock);
-		chipvpn_log_append("retry to connect to socket: %s:%u\n", host, port);
+		LOG_ERR("retry to connect to socket: %s:%u\n", host, port);
 		sleep(1); 
 	}
 }
@@ -87,14 +88,14 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 		struct stat path_stat;
 
 		if(stat(path, &path_stat) != 0) {
-			chipvpn_log_append("file: unable to open %s\n", path);
+			LOG_ERR("file: unable to open %s\n", path);
 			continue;
 		}
 
 		if(S_ISREG(path_stat.st_mode)) {
 			char *file = chipvpn_read_file(path);
 			if(!file) {
-				chipvpn_log_append("unable to open config %s\n", path);
+				LOG_ERR("unable to open config %s\n", path);
 				continue;
 			}
 
@@ -123,7 +124,7 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 					continue;
 				}
 
-				chipvpn_log_append("connected to: %s\n", path);
+				LOG_INFO("connected to: %s\n", path);
 
 				int optval = 1;
 				setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval));
@@ -180,7 +181,7 @@ int chipvpn_auth_main(int argc, char const *argv[], int fd) {
 				proxy_done:
 
 				close(sock);
-				chipvpn_log_append("socket proxy disconnected\n");
+				LOG_INFO("socket proxy disconnected\n");
 			}
 		}
 	}
@@ -204,7 +205,7 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 	chipvpn_t vpn;
 
 	if(!chipvpn_init(&vpn, fd)) {
-		chipvpn_log_append("unable to create initialise chipvpn\n");
+		LOG_ERR("unable to create initialise chipvpn\n");
 		exit(1);
 	}
 
@@ -213,30 +214,30 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 		chipvpn_service(&vpn);
 	}
 
-	chipvpn_log_append("cleanup\n");
+	LOG_INFO("cleanup\n");
 
 	chipvpn_cleanup(&vpn);
 
-	chipvpn_log_append("shutting down\n"); 
+	LOG_INFO("shutting down\n"); 
 
 	return 0;
 }
 
 int main(int argc, char const *argv[]) {
-	chipvpn_log_append("\n");
-	chipvpn_log_append(" ██████╗██╗  ██╗██╗██████╗ ██╗   ██╗██████╗ ███╗   ██╗\n");
-	chipvpn_log_append("██╔════╝██║  ██║██║██╔══██╗██║   ██║██╔══██╗████╗  ██║\n");
-	chipvpn_log_append("██║     ███████║██║██████╔╝██║   ██║██████╔╝██╔██╗ ██║\n");
-	chipvpn_log_append("██║     ██╔══██║██║██╔═══╝ ╚██╗ ██╔╝██╔═══╝ ██║╚██╗██║\n");
-	chipvpn_log_append("╚██████╗██║  ██║██║██║      ╚████╔╝ ██║     ██║ ╚████║\n");
-	chipvpn_log_append(" ╚═════╝╚═╝  ╚═╝╚═╝╚═╝       ╚═══╝  ╚═╝     ╚═╝  ╚═══╝\n");
-	chipvpn_log_append("\n");
+	LOG_INFO("\n");
+	LOG_INFO(" ██████╗██╗  ██╗██╗██████╗ ██╗   ██╗██████╗ ███╗   ██╗\n");
+	LOG_INFO("██╔════╝██║  ██║██║██╔══██╗██║   ██║██╔══██╗████╗  ██║\n");
+	LOG_INFO("██║     ███████║██║██████╔╝██║   ██║██████╔╝██╔██╗ ██║\n");
+	LOG_INFO("██║     ██╔══██║██║██╔═══╝ ╚██╗ ██╔╝██╔═══╝ ██║╚██╗██║\n");
+	LOG_INFO("╚██████╗██║  ██║██║██║      ╚████╔╝ ██║     ██║ ╚████║\n");
+	LOG_INFO(" ╚═════╝╚═╝  ╚═╝╚═╝╚═╝       ╚═══╝  ╚═╝     ╚═╝  ╚═══╝\n");
+	LOG_INFO("\n");
 
-	chipvpn_log_append("chipvpn v%llu\n", CHIPVPN_VERSION);
-	chipvpn_log_append("compiled on %s %s\n", __DATE__, __TIME__);
+	LOG_INFO("chipvpn v%llu\n", CHIPVPN_VERSION);
+	LOG_INFO("compiled on %s %s\n", __DATE__, __TIME__);
 
 	if(!(argc > 1 && argv[1] != NULL)) {
-		chipvpn_log_append("config path required\n");
+		LOG_ERR("config path required\n");
 		exit(1);
 	}
 
