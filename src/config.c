@@ -13,7 +13,6 @@
 #include "util.h"
 
 chipvpn_command_section_e section;
-static bool unknown_section = false;
 
 void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 	char line[8192];
@@ -33,13 +32,11 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 		if(strcmp(key, "section") == 0) {
 			if(strcmp(value, "device") == 0) {
 				section = COMMAND_DEVICE_SECTION;
-				unknown_section = false;
 				continue;
 			}
 
 			if(strcmp(value, "peer") == 0) {
 				section = COMMAND_PEER_SECTION;
-				unknown_section = false;
 
 				chipvpn_peer_t *peer = chipvpn_peer_create();
 				if(!peer) {
@@ -53,7 +50,6 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 			}
 
 			LOG_WARN("unknown section [%s], ignoring", value);
-			unknown_section = true;
 			continue;
 		}
 
@@ -78,11 +74,6 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 
 			chipvpn_list_remove(&peer->node);
 			chipvpn_peer_free(peer);
-			continue;
-		}
-
-		if(unknown_section) {
-			LOG_WARN("ignoring config key [%s] in unknown section", key);
 			continue;
 		}
 
