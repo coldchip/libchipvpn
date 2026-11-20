@@ -359,6 +359,10 @@ bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 }
 
 bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
+	if(strlen(key) != 44) {
+		return false;
+	}
+	
 	if(b64_decode((const uint8_t*)key, strlen(key), device->private) != CURVE25519_KEY_SIZE) {
 		return false;
 	}
