@@ -237,22 +237,35 @@ bool chipvpn_peer_set_endpoint(chipvpn_peer_t *peer, const char *address, uint16
 	if(!chipvpn_address_set_ip(&peer->config.endpoint, address)) {
 		return false;
 	}
+
 	peer->config.endpoint.port = port;
 	return true;
 }
 
 bool chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvpn_device_t *device, const char *key) {
+	if(strlen(key) != 44) {
+		return false;
+	}
+
 	return b64_decode((const uint8_t*)key, strlen(key), peer->config.public) == CURVE25519_KEY_SIZE;
 }
 
 bool chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key) {
+	if(strlen(key) != 44) {
+		return false;
+	}
+	
 	return b64_decode((const uint8_t*)key, strlen(key), peer->config.psk) == BLAKE2S_HASH_SIZE;
 }
 
 void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
-	memcpy(&peer->prev_session, &peer->session, sizeof(peer->session));
-	chipvpn_secure_zero(&peer->session, sizeof(peer->session));
-	memcpy(&peer->session, &peer->next_session, sizeof(peer->next_session));
+	if(!peer->next_session.active) {
+		return;
+	}
+
+	peer->prev_session = peer->session;
+	peer->session      = peer->next_session;
+
 	chipvpn_secure_zero(&peer->next_session, sizeof(peer->next_session));
 }
 
