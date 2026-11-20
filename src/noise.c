@@ -328,7 +328,7 @@ chipvpn_peer_t *chipvpn_noise_consume_reply(const chipvpn_device_t *device, chip
 	return peer;
 }
 
-bool chipvpn_noise_begin_session(chipvpn_peer_t *peer, bool is_initiator) {
+void chipvpn_noise_begin_session(chipvpn_peer_t *peer, bool is_initiator) {
 	uint8_t dummy[1] = {0};
 	chipvpn_noise_kdf2(
 		is_initiator ? peer->next_session.outbound.key : peer->next_session.inbound.key, 
@@ -342,6 +342,4 @@ bool chipvpn_noise_begin_session(chipvpn_peer_t *peer, bool is_initiator) {
 	peer->next_session.inbound.id = peer->handshake.inbound_id;
 	peer->next_session.outbound.id = peer->handshake.outbound_id;
 	chipvpn_bitmap_reset(&peer->next_session.bitmap);
-
-	return true;
 }
