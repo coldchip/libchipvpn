@@ -105,6 +105,7 @@ typedef enum {
 
 typedef struct chipvpn_peer_session {
 	chipvpn_list_node_t node;
+	bool active;
 	
 	struct inbound {
 		uint32_t id;

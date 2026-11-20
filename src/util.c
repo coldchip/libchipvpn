@@ -109,12 +109,12 @@ bool chipvpn_secure_random(uint8_t *buf, int size) {
 }
 
 bool chipvpn_run_command(const char *command) {
-	if (!command) {
+	if(!command) {
 		return false;
 	}
 
 	int status = system(command);
-	if (status == -1) {
+	if(status == -1) {
 		return false;
 	}
 

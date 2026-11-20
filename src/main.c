@@ -28,8 +28,7 @@ void terminate(int type) {
 }
 
 int socket_connect(const char *host, int port) {
-	struct sockaddr_in addr;
-	memset(&addr, 0, sizeof(addr));
+	struct sockaddr_in addr = {0};
 	
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);

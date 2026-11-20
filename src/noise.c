@@ -203,7 +203,7 @@ chipvpn_peer_t *chipvpn_noise_consume_connect(const chipvpn_device_t *device, ch
 		return NULL;
 	}
 
-	uint8_t key1[BLAKE2S_HASH_SIZE] = {0};
+	SECURE32 uint8_t key1[BLAKE2S_HASH_SIZE] = {0};
 	chipvpn_noise_kdf2(chain_key, key1, chain_key, dh_ss, sizeof(dh_ss));
 
 	if(!chipvpn_noise_decrypt_and_mix(hash_key, key1, packet->timestamp, sizeof(packet->timestamp), packet->timestamp_mac)) {
@@ -338,6 +338,7 @@ void chipvpn_noise_begin_session(chipvpn_peer_t *peer, bool is_initiator) {
 		0
 	);
 
+	peer->next_session.active = true;
 	peer->next_session.counter = 0ULL;
 	peer->next_session.inbound.id = peer->handshake.inbound_id;
 	peer->next_session.outbound.id = peer->handshake.outbound_id;
