@@ -132,7 +132,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 		/* lookup peer by the packet address (authentication) */
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(&vpn->device, &dst);
-		if(!peer || !PEER_ACTIVE(peer, chipvpn_get_time())) {
+		if(!peer || !PEER_ACTIVE(peer, chipvpn_get_time()) || !peer->session.active) {
 			continue;
 		}
 
@@ -208,7 +208,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 				chipvpn_peer_t *peer = chipvpn_noise_consume_connect(&vpn->device, packet);
 				if(!peer) {
 					if(chipvpn_queue_push_acquire(&vpn->ipc.tx_queue)) {
-						char public_b64[64];
+						char public_b64[128] = {0};
 
 						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
 
@@ -252,7 +252,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 				/* lookup peer by its index */
 				chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_session(&vpn->device, &session, session_id);
-				if(!peer || !session || !PEER_ACTIVE(peer, chipvpn_get_time())) {
+				if(!peer || !session || !session->active || !PEER_ACTIVE(peer, chipvpn_get_time())) {
 					continue;
 				}
 

@@ -38,6 +38,10 @@ chipvpn_peer_t *chipvpn_peer_create() {
 }
 
 bool chipvpn_peer_send_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *addr) {
+	if(!chipvpn_queue_push_acquire(&udp->tx_queue)) {
+		return false;
+	}
+
 	LOG_INFO("%p says: keying to [%s]:%u\n", peer, chipvpn_address_to_char(addr), addr->port);
 
 	chipvpn_packet_auth_t packet;
@@ -81,6 +85,10 @@ bool chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *dev
 }
 
 bool chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *addr) {
+	if(!chipvpn_queue_push_acquire(&udp->tx_queue)) {
+		return false;
+	}
+
 	LOG_INFO("%p says: replying auth to [%s:%u]\n", peer, chipvpn_address_to_char(addr), addr->port);
 
 	chipvpn_packet_auth_reply_t packet;
@@ -121,6 +129,10 @@ bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *
 }
 
 bool chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_udp_t *udp) {
+	if(!chipvpn_queue_push_acquire(&udp->tx_queue) || !peer->session.active) {
+		return false;
+	}
+
 	peer->session.counter++;
 
 	chipvpn_packet_data_t header = {
@@ -256,14 +268,7 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, 
 		LOG_INFO("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 	} else {
 		/* clear peer's session while in disconnected state */
-		if(
-			peer->prev_session.inbound.id != 0 ||
-			peer->prev_session.outbound.id != 0 ||
-			peer->session.inbound.id != 0 ||
-			peer->session.outbound.id != 0 ||
-			peer->next_session.inbound.id != 0 ||
-			peer->next_session.outbound.id != 0
-		) {
+		if(peer->prev_session.active || peer->session.active || peer->next_session.active) {
 			chipvpn_peer_reset_session(peer);
 		}
 	}
