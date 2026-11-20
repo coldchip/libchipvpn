@@ -11,6 +11,7 @@
 #include "util.h"
 #include "base64.h"
 #include "peer.h"
+#include "log.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
@@ -331,6 +332,7 @@ bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 
 	if(device->postup) {
 		chipvpn_run_command(device->postup);
+		LOG_INFO("[shell] %s\n", device->postup);
 	}
 
 	return true;
@@ -339,6 +341,7 @@ bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
 	if(device->postdown) {
 		chipvpn_run_command(device->postdown);
+		LOG_INFO("[shell] %s\n", device->postdown);
 	}
 
 	if(!chipvpn_device_toggle(device, false)) {

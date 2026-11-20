@@ -14,7 +14,7 @@ extern "C"
 #include "udp.h"
 #include "ipc.h"
 
-#define CHIPVPN_VERSION 300072ULL
+#define CHIPVPN_VERSION 300073ULL
 
 typedef struct {
 	chipvpn_device_t device;
@@ -26,7 +26,7 @@ bool           chipvpn_init(chipvpn_t *vpn, int ipc_fd);
 void           chipvpn_poll(chipvpn_t *vpn, uint64_t timeout);
 void           chipvpn_fdset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset, int *max);
 void           chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset);
-int            chipvpn_service(chipvpn_t *vpn);
+void           chipvpn_service(chipvpn_t *vpn);
 void           chipvpn_cleanup(chipvpn_t *vpn);
 
 #ifdef __cplusplus

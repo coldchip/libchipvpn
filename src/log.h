@@ -6,8 +6,10 @@
 
 typedef enum {
 	CHIPVPN_LOG_NONE  = 0,
-	CHIPVPN_LOG_ERROR = 1,
-	CHIPVPN_LOG_INFO  = 2
+	CHIPVPN_LOG_FATAL = 1,
+	CHIPVPN_LOG_ERROR = 2,
+	CHIPVPN_LOG_WARN  = 3,
+	CHIPVPN_LOG_INFO  = 4
 } chipvpn_log_level_e;
 
 typedef void (*chipvpn_log_cb_t)(chipvpn_log_level_e level, const char *msg, size_t len, void *userdata);
@@ -34,7 +36,9 @@ void chipvpn_log_write(chipvpn_log_level_e level, const char *fmt, ...)
 		}                                                                \
 	} while (0)
 
+#define LOG_FATAL(...) CHIPVPN_LOG(CHIPVPN_LOG_FATAL, __VA_ARGS__)
 #define LOG_ERR(...)   CHIPVPN_LOG(CHIPVPN_LOG_ERROR, __VA_ARGS__)
 #define LOG_INFO(...)  CHIPVPN_LOG(CHIPVPN_LOG_INFO,  __VA_ARGS__)
+#define LOG_WARN(...)  CHIPVPN_LOG(CHIPVPN_LOG_WARN, __VA_ARGS__)
 
 #endif

@@ -54,13 +54,12 @@ do { \
 	(p)[0] = _U8V((v) >> 24); \
 } while (0)
 
-void         chipvpn_print_key(const uint8_t *key);
 char        *chipvpn_strdup(const char *s);
 char        *chipvpn_read_file(const char *file);
 char        *chipvpn_sgets(char *buf, int n, const char **str);
 char        *chipvpn_format_bytes(uint64_t bytes);
 bool         chipvpn_secure_random(uint8_t *buf, int size);
-void         chipvpn_run_command(const char *command);
+bool         chipvpn_run_command(const char *command);
 uint64_t     chipvpn_get_time();
 uint64_t     chipvpn_get_realtime();
 int          chipvpn_secure_memcmp(const void *a, const void *b, size_t size);

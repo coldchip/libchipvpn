@@ -22,20 +22,23 @@
 bool chipvpn_init(chipvpn_t *vpn, int ipc_fd) {
 	/* create vpn device */
 	if(!chipvpn_device_init(&vpn->device)) {
-		return NULL;
+		LOG_ERR("failed to initialize chipvpn tun device\n");
+		return false;
 	}
 
 	/* create vpn socket */
 	if(!chipvpn_udp_init(&vpn->udp)) {
-		return NULL;
+		LOG_ERR("failed to initialize chipvpn udp socket\n");
+		return false;
 	}
 
 	/* create control socket */
 	if(!chipvpn_ipc_init(&vpn->ipc, ipc_fd)) {
-		return NULL;
+		LOG_ERR("failed to initialize chipvpn ipc socket\n");
+		return false;
 	}
 
-	return vpn;
+	return true;
 }
 
 void chipvpn_poll(chipvpn_t *vpn, uint64_t timeout) {
@@ -74,7 +77,7 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 	chipvpn_ipc_postselect(&vpn->ipc,       rdset, wdset);
 }
 
-int chipvpn_service(chipvpn_t *vpn) {
+void chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
 	chipvpn_device_peer_service(&vpn->device, &vpn->udp);
 
@@ -160,7 +163,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 		);
 
 		if(!success) {
-			LOG_ERR("%p says: unable to encrypt payload\n", peer);
 			continue;
 		}
 
@@ -212,7 +214,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 						chipvpn_ipc_printf(&vpn->ipc, "REJECT %s\n", public_b64);
 					}
-					LOG_ERR("noise handshake failed\n");
 					continue;
 				}
 
@@ -229,7 +230,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 				/* process auth reply packet */
 				chipvpn_peer_t *peer = chipvpn_noise_consume_reply(&vpn->device, packet);
 				if(!peer) {
-					LOG_ERR("noise handshake failed\n");
 					continue;
 				}
 
@@ -268,13 +268,11 @@ int chipvpn_service(chipvpn_t *vpn) {
 				);
 
 				if(!success) {
-					LOG_ERR("%p says: packet has invalid mac\n", peer);
 					continue;
 				}
 
 				/* must be after decrypt */
 				if(!chipvpn_bitmap_validate(&session->bitmap, counter)) {
-					LOG_ERR("%p says: rejected replayed packet\n", peer);
 					continue;
 				}
 
@@ -282,7 +280,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				/* update address if it doesn't match */
 				if(!chipvpn_address_endpoint_match(&peer->address, &addr)) {
-					LOG_INFO("%p says: ip or port changed\n", peer);
 					peer->address = addr;
 				}
 
@@ -331,7 +328,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 
 				/* if the packet's source is part of peer's allowedip (authentication) */
 				if(!chipvpn_peer_allowip_match(peer, &src)) {
-					LOG_ERR("%p says: invalid allow ip [%s]\n", peer, chipvpn_address_to_char(&src));
 					continue;
 				}
 
@@ -347,7 +343,6 @@ int chipvpn_service(chipvpn_t *vpn) {
 			break;
 		}
 	}
-	return 0;
 }
 
 void chipvpn_cleanup(chipvpn_t *vpn) {

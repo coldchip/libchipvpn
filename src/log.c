@@ -5,11 +5,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#define ANSI_RESET "\x1b[0m"
-#define ANSI_DIM   "\x1b[90m"
-#define ANSI_RED   "\x1b[31m"
-#define ANSI_BRED  "\x1b[1;31m"
-#define ANSI_BCYN  "\x1b[1;36m"
+#define ANSI_RESET  "\x1b[0m"
+#define ANSI_DIM    "\x1b[90m"
+#define ANSI_RED    "\x1b[31m"
+#define ANSI_BRED   "\x1b[1;31m"
+#define ANSI_BG_RED "\x1b[1;37;41m"
+#define ANSI_BCYN   "\x1b[1;36m"
+#define ANSI_YELLOW  "\x1b[33m"
 
 chipvpn_log_level_e chipvpn_log_current_level = CHIPVPN_LOG_INFO;
 
@@ -29,14 +31,18 @@ static struct {
 
 static const char *const g_level_tags[] = {
 	[CHIPVPN_LOG_NONE]  = "",
+	[CHIPVPN_LOG_FATAL] = "FATAL",
 	[CHIPVPN_LOG_ERROR] = "ERROR",
-	[CHIPVPN_LOG_INFO]  = "INFO"
+	[CHIPVPN_LOG_INFO]  = "INFO",
+	[CHIPVPN_LOG_WARN]  = "WARN"
 };
 
 static const char *const g_level_colors[] = {
 	[CHIPVPN_LOG_NONE]  = "",
+	[CHIPVPN_LOG_FATAL] = ANSI_BG_RED,
 	[CHIPVPN_LOG_ERROR] = ANSI_BRED,
-	[CHIPVPN_LOG_INFO]  = ANSI_BCYN
+	[CHIPVPN_LOG_INFO]  = ANSI_BCYN,
+	[CHIPVPN_LOG_WARN]  = ANSI_YELLOW
 };
 
 static bool chipvpn_log_should_color(void) {
@@ -73,21 +79,29 @@ void chipvpn_log_set_callback(chipvpn_log_cb_t cb, void *userdata) {
 void chipvpn_log_write(chipvpn_log_level_e level, const char *fmt, ...) {
 	char buf[512];
 	const bool use_color = chipvpn_log_should_color();
-	const bool color_body = use_color && (level == CHIPVPN_LOG_ERROR);
+	const bool color_body = use_color &&
+		(level == CHIPVPN_LOG_FATAL || level == CHIPVPN_LOG_ERROR || level == CHIPVPN_LOG_WARN);
 
 	const char *suffix = color_body ? (ANSI_RESET "\n") : "\n";
 	const size_t suffix_len = color_body ? (sizeof(ANSI_RESET "\n") - 1) : 1;
 	const size_t max_text = sizeof(buf) - suffix_len - 1; /* room for suffix + '\0' */
 	size_t pos = 0;
 
-	const bool valid_lvl = (level >= CHIPVPN_LOG_ERROR && level <= CHIPVPN_LOG_INFO);
+	const bool valid_lvl = (level >= CHIPVPN_LOG_FATAL && level <= CHIPVPN_LOG_INFO);
 	const char *tag = valid_lvl ? g_level_tags[level] : "LOG";
 	const unsigned long long ts = chipvpn_get_realtime() / 1000ULL;
 
 	int n;
 	if(use_color) {
 		const char *tag_color = valid_lvl ? g_level_colors[level] : "";
-		const char *body_color = color_body ? ANSI_RED : "";
+		const char *body_color = "";
+		if(level == CHIPVPN_LOG_FATAL) {
+			body_color = ANSI_BRED;
+		} else if(level == CHIPVPN_LOG_ERROR) {
+			body_color = ANSI_RED;
+		} else if(level == CHIPVPN_LOG_WARN) {
+			body_color = ANSI_YELLOW;
+		}
 		n = snprintf(buf, max_text + 1, ANSI_DIM "[%llu]" ANSI_RESET " %s[%s]" ANSI_RESET " %s", ts, tag_color, tag, body_color);
 	} else {
 		n = snprintf(buf, max_text + 1, "[%llu] [%s] ", ts, tag);

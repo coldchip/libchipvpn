@@ -19,18 +19,6 @@
 #include <time.h>
 #include <stdarg.h>
 
-void chipvpn_print_key(const uint8_t *key) {
-	for(int i = 0; i < 32; i++) {
-		printf("%02x", key[i] & 0xff);
-	}
-	printf("\n");
-
-	char b64_key[45] = {0};
-	memset(b64_key, 0, sizeof(b64_key));
-	b64_encode(key, CURVE25519_KEY_SIZE, (uint8_t *)b64_key);
-	LOG_INFO("key: %s\n", b64_key);
-}
-
 char *chipvpn_strdup(const char *s) {
 	size_t len = strlen(s) + 1;
 	void *new = malloc(len);
@@ -63,10 +51,13 @@ char *chipvpn_sgets(char *buf, int n, const char **str) {
 	const char *lf = strchr(s, '\n');
 	int len = (lf == NULL) ? strlen(s) : (lf - s) + 1;
 
-	if (len == 0)
+	if(len == 0) {
 		return NULL;
-	if (len > n - 1)
+	}
+
+	if(len > n - 1) {
 		len = n - 1;
+	}
 
 	memcpy(buf, s, len);
 	buf[len] = 0;
@@ -117,10 +108,17 @@ bool chipvpn_secure_random(uint8_t *buf, int size) {
 	return true;
 }
 
-void chipvpn_run_command(const char *command) {
-	if(system(command) == 0) {
-		LOG_INFO("[bash] %s\n", command);
+bool chipvpn_run_command(const char *command) {
+	if (!command) {
+		return false;
 	}
+
+	int status = system(command);
+	if (status == -1) {
+		return false;
+	}
+
+	return WIFEXITED(status) && (WEXITSTATUS(status) == 0);
 }
 
 uint64_t chipvpn_get_time() {
@@ -157,7 +155,7 @@ int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {
 
 void chipvpn_secure_zero(void *v, size_t n) {
 	volatile uint8_t *p = (volatile uint8_t *)v;
-	while (n--) {
+	while(n--) {
 		*p++ = 0;
 	}
 }
