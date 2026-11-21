@@ -116,21 +116,29 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *de
 		return NULL;
 	}
 
+	uint64_t now = chipvpn_get_time();
+
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(peer->prev_session.active && session_id == peer->prev_session.inbound.id) {
-			if(session) *session = &peer->prev_session;
+		if(SESSION_ACTIVE(&peer->prev_session, now) && session_id == peer->prev_session.inbound.id) {
+			if(session) {
+				*session = &peer->prev_session;
+			}
 			return peer;
 		}
 
-		if(peer->session.active && session_id == peer->session.inbound.id) {
-			if(session) *session = &peer->session;
+		if(SESSION_ACTIVE(&peer->session, now) && session_id == peer->session.inbound.id) {
+			if(session) {
+				*session = &peer->session;
+			}
 			return peer;
 		}
 
-		if(peer->next_session.active && session_id == peer->next_session.inbound.id) {
-			if(session) *session = &peer->next_session;
+		if(SESSION_ACTIVE(&peer->next_session, now) && session_id == peer->next_session.inbound.id) {
+			if(session) {
+				*session = &peer->next_session;
+			}
 			return peer;
 		}
 	}
@@ -362,7 +370,7 @@ bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 	if(strlen(key) != 44) {
 		return false;
 	}
-	
+
 	if(b64_decode((const uint8_t*)key, strlen(key), device->private) != CURVE25519_KEY_SIZE) {
 		return false;
 	}
@@ -438,4 +446,6 @@ void chipvpn_device_cleanup(chipvpn_device_t *device) {
 	if(device->postdown) {
 		free(device->postdown);
 	}
+
+	chipvpn_secure_zero(device, sizeof(chipvpn_device_t));
 }

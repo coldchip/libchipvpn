@@ -13,10 +13,10 @@ typedef struct {
 
 typedef struct {
     chipvpn_queue_entry_t *pool;
-    int head;
-    int tail;
-    int size;
-    int total_size;
+    size_t head;
+    size_t tail;
+    size_t size;
+    size_t total_size;
 } chipvpn_queue_t;
 
 typedef struct {

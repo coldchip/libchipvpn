@@ -338,9 +338,9 @@ void chipvpn_noise_begin_session(chipvpn_peer_t *peer, bool is_initiator) {
 		0
 	);
 
-	peer->next_session.active = true;
-	peer->next_session.counter = 0ULL;
-	peer->next_session.inbound.id = peer->handshake.inbound_id;
-	peer->next_session.outbound.id = peer->handshake.outbound_id;
+	peer->next_session.last_created = chipvpn_get_time();
+	peer->next_session.counter      = 0ULL;
+	peer->next_session.inbound.id   = peer->handshake.inbound_id;
+	peer->next_session.outbound.id  = peer->handshake.outbound_id;
 	chipvpn_bitmap_reset(&peer->next_session.bitmap);
 }

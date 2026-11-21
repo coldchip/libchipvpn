@@ -68,12 +68,6 @@ bool chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *dev
 
 	peer->address = *addr;
 
-	/* expects a keepalive packet from initiator */
-	peer->ack_state = PEER_ACK_OWE_TX;
-	peer->last_ack = chipvpn_get_time();
-
-	peer->last_handshake = chipvpn_get_time();
-
 	LOG_INFO("%p says: hello\n", peer);
 	LOG_INFO("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
 	LOG_INFO("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
@@ -109,14 +103,10 @@ bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *
 
 	peer->address = *addr;
 
-	/* responder expects a keepalive packet (immediately) */
-	peer->ack_state = PEER_ACK_OWE_RX;
-	peer->last_ack = 0ULL;
-
-	peer->last_handshake = chipvpn_get_time();
-
-	/* promote peer session immediately from next_session to session */
+	/* promote peer session immediately and send keepalive */
 	chipvpn_peer_session_promote(peer);
+	chipvpn_peer_send_keepalive(peer, udp);
+	peer->ack_state = PEER_ACK_IDLE;
 
 	LOG_INFO("%p says: hello\n", peer);
 	LOG_INFO("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
@@ -129,7 +119,7 @@ bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *
 }
 
 bool chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_udp_t *udp) {
-	if(!chipvpn_queue_push_acquire(&udp->tx_queue) || !peer->session.active) {
+	if(!chipvpn_queue_push_acquire(&udp->tx_queue) || !SESSION_ACTIVE(&peer->session, chipvpn_get_time())) {
 		return false;
 	}
 
@@ -195,17 +185,23 @@ void chipvpn_peer_reset_handshake(chipvpn_peer_t *peer) {
 	chipvpn_secure_zero(&peer->handshake, sizeof(peer->handshake));
 }
 
-void chipvpn_peer_reset_session(chipvpn_peer_t *peer) {
-	LOG_INFO("%p says: clearing session data\n", peer);
+void chipvpn_peer_reset_expired_session(chipvpn_peer_t *peer) {
+	uint64_t now = chipvpn_get_time();
 
-	peer->tx = 0ULL;
-	peer->rx = 0ULL;
-	peer->last_ack = 0ULL;
-	peer->ack_state = PEER_ACK_IDLE;
+	if(peer->prev_session.last_created != 0ULL && !SESSION_ACTIVE(&peer->prev_session, now)) {
+		LOG_INFO("%p says: clearing expired prev session\n", peer);
+		chipvpn_secure_zero(&peer->prev_session, sizeof(peer->prev_session));
+	}
 
-	chipvpn_secure_zero(&peer->prev_session, sizeof(peer->prev_session));
-	chipvpn_secure_zero(&peer->session, sizeof(peer->session));
-	chipvpn_secure_zero(&peer->next_session, sizeof(peer->next_session));
+	if(peer->session.last_created != 0ULL && !SESSION_ACTIVE(&peer->session, now)) {
+		LOG_INFO("%p says: clearing expired session\n", peer);
+		chipvpn_secure_zero(&peer->session, sizeof(peer->session));
+	}
+
+	if(peer->next_session.last_created != 0ULL && !SESSION_ACTIVE(&peer->next_session, now)) {
+		LOG_INFO("%p says: clearing expired next session\n", peer);
+		chipvpn_secure_zero(&peer->next_session, sizeof(peer->next_session));
+	}
 }
 
 bool chipvpn_peer_add_allowip(chipvpn_peer_t *peer, const char *address, uint8_t prefix) {
@@ -254,12 +250,12 @@ bool chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key) {
 	if(strlen(key) != 44) {
 		return false;
 	}
-	
+
 	return b64_decode((const uint8_t*)key, strlen(key), peer->config.psk) == BLAKE2S_HASH_SIZE;
 }
 
 void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
-	if(!peer->next_session.active) {
+	if(!SESSION_ACTIVE(&peer->next_session, chipvpn_get_time())) {
 		return;
 	}
 
@@ -271,19 +267,17 @@ void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
 
 bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, uint64_t now) {
 	/* peer lifecycle service */
-	if(PEER_ACTIVE(peer, now)) {
+	
+	chipvpn_peer_reset_expired_session(peer);
+
+	if(SESSION_ACTIVE(&peer->session, now)) {
 		char tx[128];
 		char rx[128];
 		strcpy(tx, chipvpn_format_bytes(peer->tx));
 		strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-		LOG_INFO("%p says: peer alive, last handshake: [%lu] second(s)\n", peer, (now - peer->last_handshake) / 1000);
+		LOG_INFO("%p says: peer alive, session age: [%lu] second(s)\n", peer, (now - peer->session.last_created) / 1000);
 		LOG_INFO("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
-	} else {
-		/* clear peer's session while in disconnected state */
-		if(peer->prev_session.active || peer->session.active || peer->next_session.active) {
-			chipvpn_peer_reset_session(peer);
-		}
 	}
 
 	/* whenever peer requires a rekey */
@@ -311,9 +305,6 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, 
 }
 
 void chipvpn_peer_free(chipvpn_peer_t *peer) {
-	chipvpn_peer_reset_handshake(peer);
-	chipvpn_peer_reset_session(peer);
-
 	chipvpn_firewall_cleanup(&peer->firewall_inbound);
 	chipvpn_firewall_cleanup(&peer->firewall_outbound);
 
