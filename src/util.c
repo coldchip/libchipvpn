@@ -121,14 +121,22 @@ bool chipvpn_run_command(const char *command) {
 	return WIFEXITED(status) && (WEXITSTATUS(status) == 0);
 }
 
-uint64_t chipvpn_get_time() {
+#define CHIPVPN_TIME_EPOCH_OFFSET (365ULL * 24ULL * 60ULL * 60ULL * 1000ULL)
+
+uint64_t chipvpn_get_time(void) {
 	struct timespec ts;
 
-	if(clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
-		return 0;
+#ifdef CLOCK_MONOTONIC_COARSE
+	if(clock_gettime(CLOCK_MONOTONIC_COARSE, &ts) == 0) {
+		return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL) + CHIPVPN_TIME_EPOCH_OFFSET;
+	}
+#endif
+
+	if(clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+		return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL) + CHIPVPN_TIME_EPOCH_OFFSET;
 	}
 
-	return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL) + 31536000000ULL;
+	return CHIPVPN_TIME_EPOCH_OFFSET;
 }
 
 uint64_t chipvpn_get_realtime() {

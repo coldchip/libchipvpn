@@ -81,6 +81,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 	/* peer lifecycle service */
 	chipvpn_device_peer_service(&vpn->device, &vpn->udp);
 
+	/* buffer for packet processing */
 	uint8_t buffer[QUEUE_ENTRY_SIZE];
 
 	/* ipc */
@@ -167,10 +168,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		/* remote peer owe us a keepalive or a packet */
-		if(peer->ack_state != PEER_ACK_OWE_TX) {
-			peer->ack_state = PEER_ACK_OWE_TX;
-			peer->last_ack = chipvpn_get_time();
-		}
+		PEER_ACK_ARM(peer, PEER_ACK_OWE_TX, chipvpn_get_time());
 
 		/* any outbound packet is considered sending a keepalive packet */
 		peer->last_transmission = chipvpn_get_time();
@@ -295,10 +293,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* we owe remote a keepalive packet */
-				if(peer->ack_state != PEER_ACK_OWE_RX) {
-					peer->ack_state = PEER_ACK_OWE_RX;
-					peer->last_ack = chipvpn_get_time();
-				}
+				PEER_ACK_ARM(peer, PEER_ACK_OWE_RX, chipvpn_get_time());
 
 				/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 				chipvpn_address_t src = {0};

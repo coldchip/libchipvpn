@@ -95,6 +95,21 @@ extern "C"
 	GTEQ(now, PEER_NEXT_EXPIRY(peer)) \
 )
 
+/* ack state transitions */
+#define PEER_ACK_CLEAR(peer, state) do { \
+	if((peer)->ack_state == (state)) { \
+		(peer)->ack_state = PEER_ACK_IDLE; \
+		(peer)->last_ack  = 0ULL; \
+	} \
+} while(0)
+
+#define PEER_ACK_ARM(peer, state, now) do { \
+	if((peer)->ack_state != (state)) { \
+		(peer)->ack_state = (state); \
+		(peer)->last_ack  = (now); \
+	} \
+} while(0)
+
 typedef enum {
 	PEER_ACK_IDLE,
 	PEER_ACK_OWE_TX,
@@ -174,7 +189,7 @@ typedef struct chipvpn_peer {
 	uint8_t timestamp[TAI64N_SIZE];
 	/* last created, used for removing expired ephemeral peers */
 	uint64_t last_created;
-	/* last handshake initiation sent, retries are paced by CHIPVPN_REKEY_RETRY */
+	/* last handshake initiation sent, retries are paced by CHIPVPN_REKEY_TIMEOUT */
 	uint64_t last_initiation;
 	/* last packet sent, used for NAT traversal & persistent keepalive, updated when there is any tx packet */
 	uint64_t last_transmission;
@@ -205,7 +220,7 @@ bool                    chipvpn_peer_set_public_key(chipvpn_peer_t *peer, chipvp
 bool                    chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key);
 void                    chipvpn_peer_session_promote(chipvpn_peer_t *peer);
 
-bool                    chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, uint64_t now);
+bool                    chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp);
 
 void                    chipvpn_peer_free(chipvpn_peer_t *peer);
 

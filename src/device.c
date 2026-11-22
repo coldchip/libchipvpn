@@ -161,7 +161,7 @@ void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
 
 			p = chipvpn_list_next(p);
 
-			if(!chipvpn_peer_service(peer, device, udp, now)) {
+			if(!chipvpn_peer_service(peer, device, udp)) {
 				chipvpn_list_remove(&peer->node);
 				chipvpn_peer_free(peer);
 				continue;
