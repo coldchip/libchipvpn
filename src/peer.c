@@ -103,10 +103,10 @@ bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *
 
 	peer->address = *addr;
 
-	/* promote peer session immediately and send keepalive */
+	/* promote peer session immediately and trigger a keepalive */
 	chipvpn_peer_session_promote(peer);
-	chipvpn_peer_send_keepalive(peer, udp);
-	peer->ack_state = PEER_ACK_IDLE;
+	peer->ack_state = PEER_ACK_OWE_RX;
+	peer->last_ack = 0ULL;
 
 	LOG_INFO("%p says: hello\n", peer);
 	LOG_INFO("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
