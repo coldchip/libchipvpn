@@ -48,8 +48,8 @@ bool chipvpn_peer_send_connect(chipvpn_peer_t *peer, const chipvpn_device_t *dev
 	}
 
 	/* update timers and clear pending passive keepalive */
-	peer->last_transmission = chipvpn_get_time();
-	peer->last_initiation   = chipvpn_get_time();
+	peer->last_transmission = chipvpn_get_tick();
+	peer->last_initiation   = chipvpn_get_tick();
 	PEER_ACK_CLEAR(peer, PEER_ACK_OWE_RX);
 
 	LOG_INFO("%p says: keying to [%s]:%u\n", peer, chipvpn_address_to_char(addr), addr->port);
@@ -89,7 +89,7 @@ bool chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *
 	}
 
 	/* update timers and clear pending passive keepalive */
-	peer->last_transmission = chipvpn_get_time();
+	peer->last_transmission = chipvpn_get_tick();
 	PEER_ACK_CLEAR(peer, PEER_ACK_OWE_RX);
 
 	LOG_INFO("%p says: replying auth to [%s:%u]\n", peer, chipvpn_address_to_char(addr), addr->port);
@@ -119,7 +119,7 @@ bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *
 }
 
 bool chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_udp_t *udp) {
-	if(!chipvpn_queue_push_acquire(&udp->tx_queue) || !SESSION_ACTIVE(&peer->session, chipvpn_get_time())) {
+	if(!chipvpn_queue_push_acquire(&udp->tx_queue) || !SESSION_ACTIVE(&peer->session)) {
 		return false;
 	}
 
@@ -152,7 +152,7 @@ bool chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_udp_t *udp) {
 	PEER_ACK_CLEAR(peer, PEER_ACK_OWE_RX);
 
 	/* any outbound packet is considered sending a keepalive packet */
-	peer->last_transmission = chipvpn_get_time();
+	peer->last_transmission = chipvpn_get_tick();
 
 	chipvpn_queue_vector_t vector[] = {
 		{ .data = &header, .size = sizeof(header) }, 
@@ -184,19 +184,17 @@ void chipvpn_peer_reset_handshake(chipvpn_peer_t *peer) {
 }
 
 void chipvpn_peer_reset_expired_session(chipvpn_peer_t *peer) {
-	uint64_t now = chipvpn_get_time();
-
-	if(peer->prev_session.last_created != 0ULL && !SESSION_ACTIVE(&peer->prev_session, now)) {
+	if(peer->prev_session.last_created != 0ULL && !SESSION_ACTIVE(&peer->prev_session)) {
 		LOG_INFO("%p says: clearing expired prev session\n", peer);
 		chipvpn_secure_zero(&peer->prev_session, sizeof(peer->prev_session));
 	}
 
-	if(peer->session.last_created != 0ULL && !SESSION_ACTIVE(&peer->session, now)) {
+	if(peer->session.last_created != 0ULL && !SESSION_ACTIVE(&peer->session)) {
 		LOG_INFO("%p says: clearing expired session\n", peer);
 		chipvpn_secure_zero(&peer->session, sizeof(peer->session));
 	}
 
-	if(peer->next_session.last_created != 0ULL && !SESSION_ACTIVE(&peer->next_session, now)) {
+	if(peer->next_session.last_created != 0ULL && !SESSION_ACTIVE(&peer->next_session)) {
 		LOG_INFO("%p says: clearing expired next session\n", peer);
 		chipvpn_secure_zero(&peer->next_session, sizeof(peer->next_session));
 	}
@@ -253,7 +251,7 @@ bool chipvpn_peer_set_psk(chipvpn_peer_t *peer, const char *key) {
 }
 
 void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
-	if(!SESSION_ACTIVE(&peer->next_session, chipvpn_get_time())) {
+	if(!SESSION_ACTIVE(&peer->next_session)) {
 		return;
 	}
 
@@ -265,22 +263,20 @@ void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
 
 bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp) {
 	/* peer lifecycle service */
-	uint64_t now = chipvpn_get_time();
-	
 	chipvpn_peer_reset_expired_session(peer);
 
-	if(SESSION_ACTIVE(&peer->session, now)) {
+	if(SESSION_ACTIVE(&peer->session)) {
 		char tx[128];
 		char rx[128];
 		strcpy(tx, chipvpn_format_bytes(peer->tx));
 		strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-		LOG_INFO("%p says: peer alive, session age: [%lu] second(s)\n", peer, (now - peer->session.last_created) / 1000);
+		LOG_INFO("%p says: peer alive, session age: [%lu] second(s)\n", peer, (chipvpn_get_tick() - peer->session.last_created) / 1000);
 		LOG_INFO("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 	}
 
 	/* whenever peer requires a rekey */
-	if(PEER_REKEY(peer, now)) {
+	if(PEER_REKEY(peer)) {
 		chipvpn_peer_send_connect(
 			peer, 
 			device, 
@@ -290,12 +286,12 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, 
 	}
 
 	/* whenever peer requires a keepalive */
-	if(PEER_KEEPALIVE(peer, now)) {
+	if(PEER_KEEPALIVE(peer)) {
 		chipvpn_peer_send_keepalive(peer, udp);
 	}
 
 	/* remove peer if it is ephemeral and has timeout */
-	if(PEER_EXPIRE(peer, now)) {
+	if(PEER_EXPIRE(peer)) {
 		LOG_INFO("%p says: ephemeral peer has expired\n", peer);
 		return false;
 	}

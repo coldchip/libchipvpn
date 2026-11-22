@@ -10,7 +10,6 @@
 #include "address.h"
 #include "util.h"
 #include "base64.h"
-#include "peer.h"
 #include "log.h"
 #include <linux/if.h>
 #include <linux/if_tun.h>
@@ -116,26 +115,24 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *de
 		return NULL;
 	}
 
-	uint64_t now = chipvpn_get_time();
-
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(SESSION_ACTIVE(&peer->prev_session, now) && session_id == peer->prev_session.inbound.id) {
+		if(session_id == peer->prev_session.inbound.id && SESSION_ACTIVE(&peer->prev_session)) {
 			if(session) {
 				*session = &peer->prev_session;
 			}
 			return peer;
 		}
 
-		if(SESSION_ACTIVE(&peer->session, now) && session_id == peer->session.inbound.id) {
+		if(session_id == peer->session.inbound.id && SESSION_ACTIVE(&peer->session)) {
 			if(session) {
 				*session = &peer->session;
 			}
 			return peer;
 		}
 
-		if(SESSION_ACTIVE(&peer->next_session, now) && session_id == peer->next_session.inbound.id) {
+		if(session_id == peer->next_session.inbound.id && SESSION_ACTIVE(&peer->next_session)) {
 			if(session) {
 				*session = &peer->next_session;
 			}
@@ -147,12 +144,10 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_session(const chipvpn_device_t *de
 }
 
 void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
-	uint64_t now = chipvpn_get_time();
-
 	static uint64_t last_service = 0ULL;
 
-	if(now > last_service + 500) {
-		last_service = now;
+	if(GTEQ(chipvpn_get_tick(), last_service + 500ULL)) {
+		last_service = chipvpn_get_tick();
 
 		chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers);
 

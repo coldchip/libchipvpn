@@ -32,14 +32,14 @@ extern "C"
 #define SESSION_NEXT_STALE(session)    ((session)->last_created + CHIPVPN_REKEY_AFTER_TIME)
 #define SESSION_NEXT_INACTIVE(session) ((session)->last_created + CHIPVPN_REJECT_AFTER_TIME)
 
-#define SESSION_ACTIVE(session, now) ( \
-	GTEQ(now, (session)->last_created) && \
-	LT(now, SESSION_NEXT_INACTIVE(session)) \
+#define SESSION_ACTIVE(session) ( \
+	GTEQ(chipvpn_get_tick(), (session)->last_created) && \
+	LT(chipvpn_get_tick(), SESSION_NEXT_INACTIVE(session)) \
 )
 
-#define SESSION_FRESH(session, now) ( \
-	GTEQ(now, (session)->last_created) && \
-	LT(now, SESSION_NEXT_STALE(session)) \
+#define SESSION_FRESH(session) ( \
+	GTEQ(chipvpn_get_tick(), (session)->last_created) && \
+	LT(chipvpn_get_tick(), SESSION_NEXT_STALE(session)) \
 )
 
 /* peer timer logic */
@@ -50,49 +50,49 @@ extern "C"
 #define PEER_NEXT_EXPIRY(peer)     ((peer)->last_created + CHIPVPN_EPHEMERAL_EXPIRY)
 
 /* base state predicates */
-#define PEER_INITIATOR(peer)   ((peer)->config.endpoint.port > 0U)
+#define PEER_INITIATOR(peer) ((peer)->config.endpoint.port > 0U)
 
 /* sub-trigger predicates */
-#define PEER_OVERDUE_TX(peer, now) ( \
-	SESSION_ACTIVE(&(peer)->session, now) && \
+#define PEER_OVERDUE_TX(peer) ( \
+	SESSION_ACTIVE(&(peer)->session) && \
 	(peer)->ack_state == PEER_ACK_OWE_TX && \
-	GTEQ(now, PEER_NEXT_OVERDUE_TX(peer)) \
+	GTEQ(chipvpn_get_tick(), PEER_NEXT_OVERDUE_TX(peer)) \
 )
 
-#define PEER_OVERDUE_RX(peer, now) ( \
-	SESSION_ACTIVE(&(peer)->session, now) && \
+#define PEER_OVERDUE_RX(peer) ( \
+	SESSION_ACTIVE(&(peer)->session) && \
 	(peer)->ack_state == PEER_ACK_OWE_RX && \
-	GTEQ(now, PEER_NEXT_OVERDUE_RX(peer)) \
+	GTEQ(chipvpn_get_tick(), PEER_NEXT_OVERDUE_RX(peer)) \
 )
 
-#define PEER_PERIODIC_REKEY(peer, now) ( \
-	!SESSION_FRESH(&(peer)->session, now) && \
+#define PEER_PERIODIC_REKEY(peer) ( \
+	!SESSION_FRESH(&(peer)->session) && \
 	PEER_INITIATOR(peer) \
 )
 
-#define PEER_PERIODIC_KEEPALIVE(peer, now) ( \
-	SESSION_ACTIVE(&(peer)->session, now) && \
-	GTEQ(now, PEER_NEXT_KEEPALIVE(peer)) \
+#define PEER_PERIODIC_KEEPALIVE(peer) ( \
+	SESSION_ACTIVE(&(peer)->session) && \
+	GTEQ(chipvpn_get_tick(), PEER_NEXT_KEEPALIVE(peer)) \
 )
 
 /* top-level predicates */
-#define PEER_REKEY(peer, now) ( \
-	GTEQ(now, PEER_NEXT_RETRY(peer)) && \
+#define PEER_REKEY(peer) ( \
+	GTEQ(chipvpn_get_tick(), PEER_NEXT_RETRY(peer)) && \
 	( \
-		PEER_PERIODIC_REKEY(peer, now) || \
-		PEER_OVERDUE_TX(peer, now) \
+		PEER_PERIODIC_REKEY(peer) || \
+		PEER_OVERDUE_TX(peer) \
 	) \
 )
 
-#define PEER_KEEPALIVE(peer, now)  ( \
-	PEER_PERIODIC_KEEPALIVE(peer, now) || \
-	PEER_OVERDUE_RX(peer, now) \
+#define PEER_KEEPALIVE(peer) ( \
+	PEER_PERIODIC_KEEPALIVE(peer) || \
+	PEER_OVERDUE_RX(peer) \
 )
 
-#define PEER_EXPIRE(peer, now) ( \
-	!SESSION_ACTIVE(&(peer)->session, now) && \
+#define PEER_EXPIRE(peer) ( \
+	!SESSION_ACTIVE(&(peer)->session) && \
 	(peer)->type == PEER_EPHEMERAL && \
-	GTEQ(now, PEER_NEXT_EXPIRY(peer)) \
+	GTEQ(chipvpn_get_tick(), PEER_NEXT_EXPIRY(peer)) \
 )
 
 /* ack state transitions */
@@ -103,10 +103,10 @@ extern "C"
 	} \
 } while(0)
 
-#define PEER_ACK_ARM(peer, state, now) do { \
+#define PEER_ACK_ARM(peer, state) do { \
 	if((peer)->ack_state != (state)) { \
 		(peer)->ack_state = (state); \
-		(peer)->last_ack  = (now); \
+		(peer)->last_ack  = chipvpn_get_tick(); \
 	} \
 } while(0)
 

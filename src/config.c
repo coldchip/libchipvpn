@@ -45,7 +45,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 				}
 
 				chipvpn_list_insert(chipvpn_list_end(&vpn->device.peers), peer);
-				peer->last_created = chipvpn_get_time();
+				peer->last_created = chipvpn_get_tick();
 				continue;
 			}
 

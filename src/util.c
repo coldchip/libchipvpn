@@ -98,7 +98,10 @@ bool chipvpn_secure_random(uint8_t *buf, int size) {
 		if(tmp == -1 && (errno == EAGAIN || errno == EINTR)) {
 			continue;
 		}
-		if(tmp == -1) return false;
+		if(tmp == -1) {
+			close(fd);
+			return false;
+		}
 		offset += tmp;
 		size -= tmp;
 	}
@@ -123,16 +126,16 @@ bool chipvpn_run_command(const char *command) {
 
 #define CHIPVPN_TIME_EPOCH_OFFSET (365ULL * 24ULL * 60ULL * 60ULL * 1000ULL)
 
-uint64_t chipvpn_get_time(void) {
-	struct timespec ts;
-
-#ifdef CLOCK_MONOTONIC_COARSE
-	if(clock_gettime(CLOCK_MONOTONIC_COARSE, &ts) == 0) {
-		return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL) + CHIPVPN_TIME_EPOCH_OFFSET;
-	}
+#ifdef CLOCK_BOOTTIME
+#define CHIPVPN_MONO_CLOCK CLOCK_BOOTTIME
+#else
+#define CHIPVPN_MONO_CLOCK CLOCK_MONOTONIC
 #endif
 
-	if(clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+uint64_t chipvpn_get_monotime(void) {
+	struct timespec ts;
+
+	if(clock_gettime(CHIPVPN_MONO_CLOCK, &ts) == 0) {
 		return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL) + CHIPVPN_TIME_EPOCH_OFFSET;
 	}
 
@@ -142,11 +145,25 @@ uint64_t chipvpn_get_time(void) {
 uint64_t chipvpn_get_realtime() {
 	struct timespec ts;
 
-	if(clock_gettime(CLOCK_REALTIME, &ts) < 0) {
-		return 0;
+	if(clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+		return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
 	}
 
-	return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+	return 0ULL;
+}
+
+static uint64_t cached_time = 0ULL;
+
+void chipvpn_update_tick() {
+	cached_time = chipvpn_get_monotime();
+}
+
+uint64_t chipvpn_get_tick() {
+	if(cached_time == 0ULL) {
+		cached_time = chipvpn_get_monotime();
+	}
+
+	return cached_time;
 }
 
 int chipvpn_secure_memcmp(const void *a, const void *b, size_t size) {

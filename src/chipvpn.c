@@ -20,6 +20,8 @@
 #include "queue.h"
 
 bool chipvpn_init(chipvpn_t *vpn, int ipc_fd) {
+	/* update cached time */
+	chipvpn_update_tick();
 	/* create vpn device */
 	if(!chipvpn_device_init(&vpn->device)) {
 		LOG_ERR("failed to initialize chipvpn tun device\n");
@@ -78,6 +80,8 @@ void chipvpn_isset(chipvpn_t *vpn, fd_set *rdset, fd_set *wdset) {
 }
 
 void chipvpn_service(chipvpn_t *vpn) {
+	/* update cached tick to the current time */
+	chipvpn_update_tick();
 	/* peer lifecycle service */
 	chipvpn_device_peer_service(&vpn->device, &vpn->udp);
 
@@ -133,7 +137,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 		/* lookup peer by the packet address (authentication) */
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(&vpn->device, &dst);
-		if(!peer || !SESSION_ACTIVE(&peer->session, chipvpn_get_time())) {
+		if(!peer || !SESSION_ACTIVE(&peer->session)) {
 			continue;
 		}
 
@@ -168,10 +172,10 @@ void chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		/* remote peer owe us a keepalive or a packet */
-		PEER_ACK_ARM(peer, PEER_ACK_OWE_TX, chipvpn_get_time());
+		PEER_ACK_ARM(peer, PEER_ACK_OWE_TX);
 
 		/* any outbound packet is considered sending a keepalive packet */
-		peer->last_transmission = chipvpn_get_time();
+		peer->last_transmission = chipvpn_get_tick();
 
 		peer->tx += r;
 
@@ -293,7 +297,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* we owe remote a keepalive packet */
-				PEER_ACK_ARM(peer, PEER_ACK_OWE_RX, chipvpn_get_time());
+				PEER_ACK_ARM(peer, PEER_ACK_OWE_RX);
 
 				/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 				chipvpn_address_t src = {0};
