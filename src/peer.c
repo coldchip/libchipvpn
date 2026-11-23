@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <inttypes.h> 
 #include <stdio.h>
 #include <endian.h>
 #include "chipvpn.h"
@@ -271,7 +272,7 @@ bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, 
 		strcpy(tx, chipvpn_format_bytes(peer->tx));
 		strcpy(rx, chipvpn_format_bytes(peer->rx));
 
-		LOG_INFO("%p says: peer alive, session age: [%lu] second(s)\n", peer, (chipvpn_get_tick() - peer->session.last_created) / 1000);
+		LOG_INFO("%p says: peer alive, session age: [%" PRIu64 "] second(s)\n", peer, (chipvpn_get_tick() - peer->session.last_created) / 1000);
 		LOG_INFO("%p says: tx: [%s] rx: [%s]\n", peer, tx, rx);
 	}
 
