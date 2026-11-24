@@ -12,7 +12,7 @@
 #include "base64.h"
 #include "util.h"
 
-chipvpn_command_section_e section;
+int section = 0;
 
 void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 	char line[8192];

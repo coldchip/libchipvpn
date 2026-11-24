@@ -54,19 +54,19 @@ bool chipvpn_udp_init(chipvpn_udp_t *udp) {
 	return true;
 }
 
-bool chipvpn_udp_set_recvbuf(const chipvpn_udp_t *sock, int size) {
+bool chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size) {
 	return setsockopt(sock->fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == 0;
 }
 
-bool chipvpn_udp_set_sendbuf(const chipvpn_udp_t *sock, int size) {
+bool chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size) {
 	return setsockopt(sock->fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == 0;
 }
 
-bool chipvpn_udp_set_fwmark(const chipvpn_udp_t *sock, int fwmark) {
+bool chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark) {
 	return setsockopt(sock->fd, SOL_SOCKET, SO_MARK, &fwmark, sizeof(fwmark)) == 0;
 }
 
-bool chipvpn_udp_bind(const chipvpn_udp_t *udp, const chipvpn_address_t *address) {
+bool chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *address) {
 	struct sockaddr_storage ss = {0};
 	socklen_t len = 0;
 
@@ -99,7 +99,7 @@ bool chipvpn_udp_bind(const chipvpn_udp_t *udp, const chipvpn_address_t *address
 	return bind(udp->fd, (struct sockaddr *)&ss, len) == 0;
 }
 
-static inline bool chipvpn_udp_raw_read(const chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
+static inline bool chipvpn_udp_raw_read(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 	ssize_t r = -1;
 
 	/* read socket */
@@ -140,7 +140,7 @@ static inline bool chipvpn_udp_raw_read(const chipvpn_udp_t *udp, chipvpn_queue_
 	return true;
 }
 
-static inline bool chipvpn_udp_raw_write(const chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
+static inline bool chipvpn_udp_raw_write(chipvpn_udp_t *udp, chipvpn_queue_entry_t *entry) {
 	ssize_t w = -1;
 
 	/* write socket */

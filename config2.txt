@@ -2,7 +2,7 @@ section:device
 name:cv-server
 network:10.128.0.1/16
 bind:[0.0.0.0]:4433
-mtu:1500
+mtu:1420
 public:GMgfpuBPrYdxWSH3CqnpG9MUe1CcbNMxfivZyTPCNE8=
 private:UNiQ+s2rphl9UczJ6Z9Wnm+xwEzT82VY2XPy1cuEKm4=
 ifup:ifup
@@ -11,6 +11,8 @@ section:peer
 allow:10.64.0.2/32
 public:ihjaCjeBm1xpEeVj9NEYfgLb5L51ByG6J4hFu4lYoQM=
 
-section:peer
-allow:10.64.0.3/32
-public:kmbIRLvbFCoYodVPoicXxkcmNelYi8mFqmmeR53vY1U=
+#section:peer
+#allow:10.128.1.2/32
+#public:zEB+eXM+NYQRPKVpt8TXm6DB1kGkgVwJXsC9W6nQ8UM=
+#inbound:0.0.0.0/0
+#outbound:0.0.0.0/0

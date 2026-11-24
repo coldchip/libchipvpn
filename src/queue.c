@@ -21,14 +21,14 @@ bool chipvpn_queue_init(chipvpn_queue_t *queue, size_t queue_size) {
 	return true;
 }
 
-chipvpn_queue_entry_t *chipvpn_queue_push_acquire(const chipvpn_queue_t *queue) {
+chipvpn_queue_entry_t *chipvpn_queue_push_acquire(chipvpn_queue_t *queue) {
 	if(queue->size >= queue->total_size) {
 		return NULL;
 	}
 	return &queue->pool[queue->tail];
 }
 
-chipvpn_queue_entry_t *chipvpn_queue_pop_acquire(const chipvpn_queue_t *queue) {
+chipvpn_queue_entry_t *chipvpn_queue_pop_acquire(chipvpn_queue_t *queue) {
 	if(queue->size == 0) {
 		return NULL;
 	}
@@ -45,7 +45,7 @@ void chipvpn_queue_pop_commit(chipvpn_queue_t *queue, chipvpn_queue_entry_t *ent
 	queue->size--;
 }
 
-size_t chipvpn_queue_push(chipvpn_queue_t *queue, void *data, size_t size, const chipvpn_address_t *address) {
+size_t chipvpn_queue_push(chipvpn_queue_t *queue, void *data, size_t size, chipvpn_address_t *address) {
 	chipvpn_queue_vector_t vector[1] = {{
 		.data = data,
 		.size = size
@@ -63,7 +63,7 @@ size_t chipvpn_queue_pop(chipvpn_queue_t *queue, void *data, size_t size, chipvp
 	return chipvpn_queue_pop_vector(queue, vector, 1, address);
 }
 
-size_t chipvpn_queue_push_vector(chipvpn_queue_t *queue, chipvpn_queue_vector_t *vector, size_t size, const chipvpn_address_t *address) {
+size_t chipvpn_queue_push_vector(chipvpn_queue_t *queue, chipvpn_queue_vector_t *vector, size_t size, chipvpn_address_t *address) {
 	chipvpn_queue_entry_t *entry = chipvpn_queue_push_acquire(queue);
 	if(entry == NULL) {
 		return 0;

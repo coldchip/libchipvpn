@@ -27,6 +27,7 @@ typedef struct __attribute__((__packed__)) {
 bool                    chipvpn_ipc_init(chipvpn_ipc_t *ipc, int fd);
 bool                    chipvpn_ipc_printf(chipvpn_ipc_t *ipc, const char* format, ...);
 
+bool                    chipvpn_ipc_send_auth(chipvpn_ipc_t *ipc, const uint8_t *static_public, chipvpn_address_t *address, chipvpn_packet_auth_t *packet);
 void                    chipvpn_ipc_preselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset, int *max);
 void                    chipvpn_ipc_postselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset);
 

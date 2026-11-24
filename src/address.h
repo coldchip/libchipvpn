@@ -11,14 +11,14 @@ extern "C"
 #include <sys/socket.h>
 #include <sys/un.h>
 
-typedef enum {
+enum {
 	CHIPVPN_ADDRESS_NONE = 0,
 	CHIPVPN_ADDRESS_IPV4 = 4,
 	CHIPVPN_ADDRESS_IPV6 = 6
-} chipvpn_address_type_e;
+};
 
 typedef struct {
-	chipvpn_address_type_e type;
+	int type;
 	union {
 		uint8_t ipv6[16];
 		uint32_t ipv4;
@@ -28,9 +28,9 @@ typedef struct {
 } chipvpn_address_t;
 
 bool           chipvpn_address_set_ip(chipvpn_address_t *address, const char *ip);
-bool           chipvpn_address_network_match(const chipvpn_address_t *network, const chipvpn_address_t *address);
-bool           chipvpn_address_endpoint_match(const chipvpn_address_t *left, const chipvpn_address_t *right);
-const char    *chipvpn_address_to_char(const chipvpn_address_t *address);     
+bool           chipvpn_address_network_match(chipvpn_address_t *network, chipvpn_address_t *address);
+bool           chipvpn_address_endpoint_match(chipvpn_address_t *left, chipvpn_address_t *right);
+const char    *chipvpn_address_to_char(chipvpn_address_t *address);     
 
 #ifdef __cplusplus
 }

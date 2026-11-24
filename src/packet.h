@@ -86,11 +86,11 @@ typedef struct {
 	uint16_t dst;
 } udp_tcp_port_t;
 
-typedef enum {
+enum {
 	CHIPVPN_PACKET_AUTH = 1,
 	CHIPVPN_PACKET_AUTH_REPLY = 2,
 	CHIPVPN_PACKET_DATA = 4,
-} chipvpn_packet_type_e;
+};
 
 typedef struct __attribute__((__packed__)) {
 	uint8_t type;

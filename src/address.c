@@ -21,7 +21,7 @@ bool chipvpn_address_set_ip(chipvpn_address_t *address, const char *ip) {
 	return false;
 }
 
-bool chipvpn_address_network_match(const chipvpn_address_t *network, const chipvpn_address_t *address) {
+bool chipvpn_address_network_match(chipvpn_address_t *network, chipvpn_address_t *address) {
 	if(network->type != address->type) {
 		return false;
 	}
@@ -55,7 +55,7 @@ bool chipvpn_address_network_match(const chipvpn_address_t *network, const chipv
 	return false;
 }
 
-bool chipvpn_address_endpoint_match(const chipvpn_address_t *left, const chipvpn_address_t *right) {
+bool chipvpn_address_endpoint_match(chipvpn_address_t *left, chipvpn_address_t *right) {
 	if(left->type != right->type || left->port != right->port) {
 		return false;
 	}
@@ -71,7 +71,7 @@ bool chipvpn_address_endpoint_match(const chipvpn_address_t *left, const chipvpn
 	return false;
 }
 
-const char *chipvpn_address_to_char(const chipvpn_address_t *address) {
+const char *chipvpn_address_to_char(chipvpn_address_t *address) {
 	static char result[INET6_ADDRSTRLEN];
 
 	if(address->type == CHIPVPN_ADDRESS_IPV4) {

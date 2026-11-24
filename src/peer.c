@@ -38,13 +38,13 @@ chipvpn_peer_t *chipvpn_peer_create() {
 	return peer;
 }
 
-bool chipvpn_peer_send_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *address) {
+bool chipvpn_peer_send_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *address) {
 	if(!chipvpn_queue_push_acquire(&udp->tx_queue)) {
 		return false;
 	}
 
 	chipvpn_packet_auth_t packet;
-	if(!chipvpn_noise_produce_connect(peer, device, &packet)) {
+	if(chipvpn_noise_produce_connect(device, peer, &packet) != CHIPVPN_NOISE_OK) {
 		return false;
 	}
 
@@ -58,7 +58,7 @@ bool chipvpn_peer_send_connect(chipvpn_peer_t *peer, const chipvpn_device_t *dev
 	return chipvpn_queue_push(&udp->tx_queue, &packet, sizeof(packet), address) > 0;
 }
 
-bool chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *address) {
+bool chipvpn_peer_recv_connect(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *address) {
 	/* authenticated */
 	if(!chipvpn_peer_send_auth_reply(peer, device, udp, address)) {
 		return false;
@@ -70,22 +70,18 @@ bool chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *dev
 	PEER_ACK_CLEAR(peer, PEER_ACK_OWE_TX);
 
 	LOG_INFO("%p says: hello\n", peer);
-	LOG_INFO("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
 	LOG_INFO("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
-
-	/* wipe handshake data */
-	chipvpn_peer_reset_handshake(peer);
 
 	return true;
 }
 
-bool chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *address) {
+bool chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp, chipvpn_address_t *address) {
 	if(!chipvpn_queue_push_acquire(&udp->tx_queue)) {
 		return false;
 	}
 
 	chipvpn_packet_auth_reply_t packet;
-	if(!chipvpn_noise_produce_reply(peer, device, &packet)) {
+	if(chipvpn_noise_produce_reply(device, peer, &packet) != CHIPVPN_NOISE_OK) {
 		return false;
 	}
 
@@ -98,7 +94,7 @@ bool chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *
 	return chipvpn_queue_push(&udp->tx_queue, &packet, sizeof(packet), address) > 0;
 }
 
-bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_udp_t *udp, const chipvpn_address_t *address) {
+bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_udp_t *udp, chipvpn_address_t *address) {
 	/* authenticated */
 	/* derive session and update peer state */
 	chipvpn_noise_begin_session(peer, true);
@@ -110,11 +106,7 @@ bool chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_udp_t *udp, cons
 	chipvpn_peer_send_keepalive(peer, udp);
 
 	LOG_INFO("%p says: hello\n", peer);
-	LOG_INFO("%p says: session: in [%u] out [%u]\n", peer, peer->handshake.inbound_id, peer->handshake.outbound_id);
 	LOG_INFO("%p says: peer connected from [%s:%u]\n", peer, chipvpn_address_to_char(&peer->address), peer->address.port);
-
-	/* wipe handshake data */
-	chipvpn_peer_reset_handshake(peer);
 
 	return true;
 }
@@ -168,7 +160,7 @@ void chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer) {
 	PEER_ACK_CLEAR(peer, PEER_ACK_OWE_TX);
 }
 
-bool chipvpn_peer_allowip_match(const chipvpn_peer_t *peer, const chipvpn_address_t *address) {
+bool chipvpn_peer_allowip_match(chipvpn_peer_t *peer, chipvpn_address_t *address) {
 	for(size_t i = 0; i < peer->config.allow_size; i++) {
 		if(chipvpn_address_network_match(&peer->config.allow[i], address)) {
 			return true;
@@ -176,12 +168,6 @@ bool chipvpn_peer_allowip_match(const chipvpn_peer_t *peer, const chipvpn_addres
 	}
 
 	return false;
-}
-
-void chipvpn_peer_reset_handshake(chipvpn_peer_t *peer) {
-	LOG_INFO("%p says: clearing handshake data\n", peer);
-
-	chipvpn_secure_zero(&peer->handshake, sizeof(peer->handshake));
 }
 
 void chipvpn_peer_reset_expired_session(chipvpn_peer_t *peer) {
@@ -262,7 +248,7 @@ void chipvpn_peer_session_promote(chipvpn_peer_t *peer) {
 	chipvpn_secure_zero(&peer->next_session, sizeof(peer->next_session));
 }
 
-bool chipvpn_peer_service(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp) {
+bool chipvpn_peer_service(chipvpn_peer_t *peer, chipvpn_device_t *device, chipvpn_udp_t *udp) {
 	/* peer lifecycle service */
 	chipvpn_peer_reset_expired_session(peer);
 

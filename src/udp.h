@@ -19,10 +19,10 @@ typedef struct {
 } chipvpn_udp_t;
 
 bool                    chipvpn_udp_init(chipvpn_udp_t *udp);
-bool                    chipvpn_udp_set_recvbuf(const chipvpn_udp_t *sock, int size);
-bool                    chipvpn_udp_set_sendbuf(const chipvpn_udp_t *sock, int size);
-bool                    chipvpn_udp_set_fwmark(const chipvpn_udp_t *sock, int fwmark);
-bool                    chipvpn_udp_bind(const chipvpn_udp_t *udp, const chipvpn_address_t *address);
+bool                    chipvpn_udp_set_recvbuf(chipvpn_udp_t *sock, int size);
+bool                    chipvpn_udp_set_sendbuf(chipvpn_udp_t *sock, int size);
+bool                    chipvpn_udp_set_fwmark(chipvpn_udp_t *sock, int fwmark);
+bool                    chipvpn_udp_bind(chipvpn_udp_t *udp, chipvpn_address_t *address);
 
 void                    chipvpn_udp_preselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset, int *max);
 void                    chipvpn_udp_postselect(chipvpn_udp_t *udp, fd_set *rdset, fd_set *wdset);

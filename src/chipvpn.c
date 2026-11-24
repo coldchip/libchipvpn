@@ -206,20 +206,27 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_t *packet = (chipvpn_packet_auth_t*)buffer;
 
+				chipvpn_peer_t *peer = NULL;
+				uint8_t static_public[CURVE25519_KEY_SIZE];
+
 				/* process auth packet */
-				chipvpn_peer_t *peer = chipvpn_noise_consume_connect(&vpn->device, packet);
-				if(!peer) {
-					if(chipvpn_queue_push_acquire(&vpn->ipc.tx_queue)) {
-						char public_b64[128] = {0};
-
-						b64_encode(packet->static_public, sizeof(packet->static_public), (uint8_t*)public_b64);
-
+				int status = chipvpn_noise_consume_connect(&vpn->device, &peer, packet, static_public);
+				switch(status) {
+					case CHIPVPN_NOISE_OK: {
+						chipvpn_peer_recv_connect(peer, &vpn->device, &vpn->udp, &address);
+					}
+					break;
+					case CHIPVPN_NOISE_ERR_UNKNOWN_PEER: {
+						char public_b64[64] = {0};
+						b64_encode(static_public, sizeof(static_public), (uint8_t*)public_b64);
 						chipvpn_ipc_printf(&vpn->ipc, "REJECT %s\n", public_b64);
 					}
-					continue;
+					break;
+					default: {
+						LOG_ERR("auth failed: %i\n", status); 
+					}
+					break;
 				}
-
-				chipvpn_peer_recv_connect(peer, &vpn->device, &vpn->udp, &address);
 			}
 			break;
 			case CHIPVPN_PACKET_AUTH_REPLY: {
@@ -229,10 +236,19 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 				chipvpn_packet_auth_reply_t *packet = (chipvpn_packet_auth_reply_t*)buffer;
 
+				chipvpn_peer_t *peer = NULL;
+
 				/* process auth reply packet */
-				chipvpn_peer_t *peer = chipvpn_noise_consume_reply(&vpn->device, packet);
-				if(!peer) {
-					continue;
+				int status = chipvpn_noise_consume_reply(&vpn->device, &peer, packet);
+				switch(status) {
+					case CHIPVPN_NOISE_OK: {
+						chipvpn_peer_recv_connect(peer, &vpn->device, &vpn->udp, &address);
+					}
+					break;
+					default: {
+						LOG_ERR("auth failed: %i\n", status); 
+					}
+					break;
 				}
 
 				chipvpn_peer_recv_auth_reply(peer, &vpn->udp, &address);

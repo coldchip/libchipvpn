@@ -39,6 +39,10 @@ bool chipvpn_ipc_init(chipvpn_ipc_t *ipc, int fd) {
 }
 
 bool chipvpn_ipc_printf(chipvpn_ipc_t *ipc, const char* format, ...) {
+	if(!chipvpn_queue_push_acquire(&ipc->tx_queue)) {
+		return false;
+	}
+
 	char buffer[1024];
 
 	va_list args;
@@ -51,7 +55,7 @@ bool chipvpn_ipc_printf(chipvpn_ipc_t *ipc, const char* format, ...) {
 	return chipvpn_queue_push(&ipc->tx_queue, buffer, strlen(buffer), NULL) == strlen(buffer);
 }
 
-bool chipvpn_ipc_send_auth(chipvpn_ipc_t *ipc, const uint8_t *public, const chipvpn_address_t *address, const chipvpn_packet_auth_t *packet) {
+bool chipvpn_ipc_send_auth(chipvpn_ipc_t *ipc, const uint8_t *static_public, chipvpn_address_t *address, chipvpn_packet_auth_t *packet) {
 	if(!chipvpn_queue_push_acquire(&ipc->tx_queue)) {
 		return false;
 	}
@@ -63,13 +67,13 @@ bool chipvpn_ipc_send_auth(chipvpn_ipc_t *ipc, const uint8_t *public, const chip
 	char pub_b64[64]     = {0};
 	char replay_b64[280] = {0}; /* 191 bytes -> 256 b64 chars + NUL */
 
-	b64_encode(public, CURVE25519_KEY_SIZE, (uint8_t*)pub_b64);
+	b64_encode(static_public, CURVE25519_KEY_SIZE, (uint8_t*)pub_b64);
 	b64_encode((const uint8_t*)&replay, sizeof(replay), (uint8_t*)replay_b64);
 
-	printf("%s\n", replay_b64);
+	printf("AUTH %s %s\n", pub_b64, replay_b64);
 
 	/* chipvpn_ipc_printf appends '\n' automatically; total line is ~307 bytes */
-	return chipvpn_ipc_printf(ipc, "AUTH %s %s", pub_b64, replay_b64);
+	return chipvpn_ipc_printf(ipc, "AUTH %s %s\n", pub_b64, replay_b64);
 }
 
 void chipvpn_ipc_preselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset, int *max) {

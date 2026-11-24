@@ -13,7 +13,7 @@
 #define ANSI_BCYN   "\x1b[1;36m"
 #define ANSI_YELLOW  "\x1b[33m"
 
-chipvpn_log_level_e chipvpn_log_current_level = CHIPVPN_LOG_INFO;
+int chipvpn_log_current_level = CHIPVPN_LOG_INFO;
 
 static struct {
 	int fd;
@@ -58,7 +58,7 @@ static bool chipvpn_log_should_color(void) {
 	return g_log.fd_is_tty != 0;
 }
 
-void chipvpn_log_set_level(chipvpn_log_level_e level) {
+void chipvpn_log_set_level(int level) {
 	chipvpn_log_current_level = level;
 }
 
@@ -76,7 +76,7 @@ void chipvpn_log_set_callback(chipvpn_log_cb_t cb, void *userdata) {
 	g_log.userdata = userdata;
 }
 
-void chipvpn_log_write(chipvpn_log_level_e level, const char *fmt, ...) {
+void chipvpn_log_write(int level, const char *fmt, ...) {
 	char buf[512];
 	const bool use_color = chipvpn_log_should_color();
 	const bool color_body = use_color &&
