@@ -170,7 +170,7 @@ typedef struct chipvpn_peer {
 		chipvpn_address_t endpoint;
 		chipvpn_address_t allow[PEER_MAX_ALLOWEDIPS];
 		size_t allow_size;
-		uint8_t public[CURVE25519_KEY_SIZE];
+		uint8_t static_public[CURVE25519_KEY_SIZE];
 		uint8_t psk[BLAKE2S_HASH_SIZE];
 	} config;
 
@@ -201,10 +201,10 @@ typedef struct chipvpn_peer {
 
 chipvpn_peer_t         *chipvpn_peer_create();
 
-bool                    chipvpn_peer_send_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *addr);
-bool                    chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *socket, const chipvpn_packet_auth_t *packet, const chipvpn_address_t *addr);
-bool                    chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *addr);
-bool                    chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_packet_auth_reply_t *packet, const chipvpn_address_t *addr);
+bool                    chipvpn_peer_send_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *address);
+bool                    chipvpn_peer_recv_connect(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *address);
+bool                    chipvpn_peer_send_auth_reply(chipvpn_peer_t *peer, const chipvpn_device_t *device, chipvpn_udp_t *udp, const chipvpn_address_t *address);
+bool                    chipvpn_peer_recv_auth_reply(chipvpn_peer_t *peer, chipvpn_udp_t *udp, const chipvpn_address_t *address);
 
 bool                    chipvpn_peer_send_keepalive(chipvpn_peer_t *peer, chipvpn_udp_t *socket);
 void                    chipvpn_peer_recv_keepalive(chipvpn_peer_t *peer);

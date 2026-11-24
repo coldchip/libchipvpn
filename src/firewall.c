@@ -10,17 +10,13 @@ bool chipvpn_firewall_init(chipvpn_list_t *list) {
 	return true;
 }
 
-bool chipvpn_firewall_insert(chipvpn_list_t *list, const chipvpn_address_t *net) {
-	if(list == NULL || net == NULL) {
-		return false;
-	}
-
+bool chipvpn_firewall_insert(chipvpn_list_t *list, const chipvpn_address_t *network) {
 	chipvpn_firewall_entry_t *entry = (chipvpn_firewall_entry_t*)malloc(sizeof(chipvpn_firewall_entry_t));
 	if(entry == NULL) {
 		return false;
 	}
 
-	memcpy(&entry->net, net, sizeof(chipvpn_address_t));
+	memcpy(&entry->network, network, sizeof(chipvpn_address_t));
 
 	chipvpn_list_insert(chipvpn_list_end(list), entry);
 
@@ -28,14 +24,10 @@ bool chipvpn_firewall_insert(chipvpn_list_t *list, const chipvpn_address_t *net)
 }
 
 bool chipvpn_firewall_match(const chipvpn_list_t *list, const chipvpn_address_t *address) {
-	if(list == NULL || address == NULL) {
-		return false;
-	}
-
 	for(chipvpn_list_node_t *it = chipvpn_list_begin(list); it != chipvpn_list_end(list); it = chipvpn_list_next(it)) {
 		chipvpn_firewall_entry_t *entry = (chipvpn_firewall_entry_t*)it;
 
-		if(chipvpn_address_network_match(&entry->net, address)) {
+		if(chipvpn_address_network_match(&entry->network, address)) {
 			return true;
 		}
 	}

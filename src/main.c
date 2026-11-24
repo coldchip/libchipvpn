@@ -28,12 +28,12 @@ void terminate(int type) {
 }
 
 int socket_connect(const char *host, int port) {
-	struct sockaddr_in addr = {0};
+	struct sockaddr_in address = {0};
 	
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
+	address.sin_family = AF_INET;
+	address.sin_port = htons(port);
 	
-	if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
+	if (inet_pton(AF_INET, host, &address.sin_addr) <= 0) {
 		LOG_ERR("invalid host IP address: %s\n", host);
 		return -1;
 	}
@@ -50,7 +50,7 @@ int socket_connect(const char *host, int port) {
 		if(flags < 0) flags = 0; 
 		fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
-		int res = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+		int res = connect(sock, (struct sockaddr*)&address, sizeof(address));
 		
 		if(res == 0) {
 			return sock;
@@ -223,14 +223,14 @@ int chipvpn_main(int argc, char const *argv[], int fd) {
 }
 
 int main(int argc, char const *argv[]) {
-	LOG_INFO("\n");
-	LOG_INFO(" ██████╗██╗  ██╗██╗██████╗ ██╗   ██╗██████╗ ███╗   ██╗\n");
-	LOG_INFO("██╔════╝██║  ██║██║██╔══██╗██║   ██║██╔══██╗████╗  ██║\n");
-	LOG_INFO("██║     ███████║██║██████╔╝██║   ██║██████╔╝██╔██╗ ██║\n");
-	LOG_INFO("██║     ██╔══██║██║██╔═══╝ ╚██╗ ██╔╝██╔═══╝ ██║╚██╗██║\n");
-	LOG_INFO("╚██████╗██║  ██║██║██║      ╚████╔╝ ██║     ██║ ╚████║\n");
-	LOG_INFO(" ╚═════╝╚═╝  ╚═╝╚═╝╚═╝       ╚═══╝  ╚═╝     ╚═╝  ╚═══╝\n");
-	LOG_INFO("\n");
+	printf("\n");
+	printf(" ██████╗██╗  ██╗██╗██████╗ ██╗   ██╗██████╗ ███╗   ██╗\n");
+	printf("██╔════╝██║  ██║██║██╔══██╗██║   ██║██╔══██╗████╗  ██║\n");
+	printf("██║     ███████║██║██████╔╝██║   ██║██████╔╝██╔██╗ ██║\n");
+	printf("██║     ██╔══██║██║██╔═══╝ ╚██╗ ██╔╝██╔═══╝ ██║╚██╗██║\n");
+	printf("╚██████╗██║  ██║██║██║      ╚████╔╝ ██║     ██║ ╚████║\n");
+	printf(" ╚═════╝╚═╝  ╚═╝╚═╝╚═╝       ╚═══╝  ╚═╝     ╚═╝  ╚═══╝\n");
+	printf("\n");
 
 	LOG_INFO("chipvpn v%llu\n", CHIPVPN_VERSION);
 	LOG_INFO("compiled on %s %s\n", __DATE__, __TIME__);

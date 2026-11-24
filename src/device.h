@@ -40,8 +40,8 @@ typedef struct {
 	
 	chipvpn_list_t peers;
 
-	uint8_t public[CURVE25519_KEY_SIZE];
-	uint8_t private[CURVE25519_KEY_SIZE];
+	uint8_t static_public[CURVE25519_KEY_SIZE];
+	uint8_t static_private[CURVE25519_KEY_SIZE];
 
 	chipvpn_queue_t tx_queue;
 	chipvpn_queue_t rx_queue;
@@ -65,12 +65,12 @@ bool                    chipvpn_device_set_postup(chipvpn_device_t *device, cons
 bool                    chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command);
 
 bool                    chipvpn_device_set_name(chipvpn_device_t *device, const char *name);
-bool                    chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_t *network);
-bool                    chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu);
-bool                    chipvpn_device_set_txqueuelen(chipvpn_device_t *device, int qlen);
-bool                    chipvpn_device_toggle(chipvpn_device_t *device, bool enable);
-bool                    chipvpn_device_set_enabled(chipvpn_device_t *device);
-bool                    chipvpn_device_set_disabled(chipvpn_device_t *device);
+bool                    chipvpn_device_set_address(const chipvpn_device_t *device, const chipvpn_address_t *network);
+bool                    chipvpn_device_set_mtu(const chipvpn_device_t *device, int mtu);
+bool                    chipvpn_device_set_txqueuelen(const chipvpn_device_t *device, int qlen);
+bool                    chipvpn_device_toggle(const chipvpn_device_t *device, bool enable);
+bool                    chipvpn_device_set_enabled(const chipvpn_device_t *device);
+bool                    chipvpn_device_set_disabled(const chipvpn_device_t *device);
 bool                    chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key);
 
 void                    chipvpn_device_preselect(chipvpn_device_t *device, fd_set *rdset, fd_set *wdset, int *max);

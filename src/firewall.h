@@ -12,11 +12,11 @@ extern "C"
 
 typedef struct {
 	chipvpn_list_node_t node;
-	chipvpn_address_t net;
+	chipvpn_address_t network;
 } chipvpn_firewall_entry_t;
 
 bool chipvpn_firewall_init(chipvpn_list_t *list);
-bool chipvpn_firewall_insert(chipvpn_list_t *list, const chipvpn_address_t *net);
+bool chipvpn_firewall_insert(chipvpn_list_t *list, const chipvpn_address_t *network);
 bool chipvpn_firewall_match(const chipvpn_list_t *list, const chipvpn_address_t *address);
 void chipvpn_firewall_cleanup(chipvpn_list_t *list);
 

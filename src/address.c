@@ -7,44 +7,44 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 
-bool chipvpn_address_set_ip(chipvpn_address_t *addr, const char *ip) {
-	if(inet_pton(AF_INET, ip, &addr->ipv4) == 1) {
-		addr->type = CHIPVPN_ADDRESS_IPV4;
+bool chipvpn_address_set_ip(chipvpn_address_t *address, const char *ip) {
+	if(inet_pton(AF_INET, ip, &address->ipv4) == 1) {
+		address->type = CHIPVPN_ADDRESS_IPV4;
 		return true;
 	}
 	
-	if(inet_pton(AF_INET6, ip, addr->ipv6) == 1) {
-		addr->type = CHIPVPN_ADDRESS_IPV6;
+	if(inet_pton(AF_INET6, ip, address->ipv6) == 1) {
+		address->type = CHIPVPN_ADDRESS_IPV6;
 		return true;
 	}
 	
 	return false;
 }
 
-bool chipvpn_address_network_match(const chipvpn_address_t *net, const chipvpn_address_t *addr) {
-	if(net->type != addr->type) {
+bool chipvpn_address_network_match(const chipvpn_address_t *network, const chipvpn_address_t *address) {
+	if(network->type != address->type) {
 		return false;
 	}
 
-	if(net->prefix == 0) {
+	if(network->prefix == 0) {
 		return true;
 	}
 
-	if(net->type == CHIPVPN_ADDRESS_IPV4) {
-		return !((addr->ipv4 ^ net->ipv4) & htonl(0xFFFFFFFFu << (32 - net->prefix)));
+	if(network->type == CHIPVPN_ADDRESS_IPV4) {
+		return !((address->ipv4 ^ network->ipv4) & htonl(0xFFFFFFFFu << (32 - network->prefix)));
 	}
 
-	if(net->type == CHIPVPN_ADDRESS_IPV6) {
-		uint8_t bytes = net->prefix / 8;
-		uint8_t bits  = net->prefix % 8;
+	if(network->type == CHIPVPN_ADDRESS_IPV6) {
+		uint8_t bytes = network->prefix / 8;
+		uint8_t bits  = network->prefix % 8;
 
-		if(bytes > 0 && memcmp(net->ipv6, addr->ipv6, bytes) != 0) {
+		if(bytes > 0 && memcmp(network->ipv6, address->ipv6, bytes) != 0) {
 			return false;
 		}
 
 		if(bits > 0) {
 			uint8_t mask = (uint8_t)(0xFF << (8 - bits));
-			if((net->ipv6[bytes] ^ addr->ipv6[bytes]) & mask) {
+			if((network->ipv6[bytes] ^ address->ipv6[bytes]) & mask) {
 				return false;
 			}
 		}
@@ -71,17 +71,17 @@ bool chipvpn_address_endpoint_match(const chipvpn_address_t *left, const chipvpn
 	return false;
 }
 
-const char *chipvpn_address_to_char(const chipvpn_address_t *addr) {
+const char *chipvpn_address_to_char(const chipvpn_address_t *address) {
 	static char result[INET6_ADDRSTRLEN];
 
-	if(addr->type == CHIPVPN_ADDRESS_IPV4) {
-		if(inet_ntop(AF_INET, &addr->ipv4, result, sizeof(result)) != NULL) {
+	if(address->type == CHIPVPN_ADDRESS_IPV4) {
+		if(inet_ntop(AF_INET, &address->ipv4, result, sizeof(result)) != NULL) {
 			return result;
 		}
 	}
 
-	if(addr->type == CHIPVPN_ADDRESS_IPV6) {
-		if(inet_ntop(AF_INET6, addr->ipv6, result, sizeof(result)) != NULL) {
+	if(address->type == CHIPVPN_ADDRESS_IPV6) {
+		if(inet_ntop(AF_INET6, address->ipv6, result, sizeof(result)) != NULL) {
 			return result;
 		}
 	}

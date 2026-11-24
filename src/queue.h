@@ -7,7 +7,7 @@
 
 typedef struct {
 	uint8_t buffer[QUEUE_ENTRY_SIZE];
-	chipvpn_address_t addr;
+	chipvpn_address_t address;
 	uint16_t size;
 } chipvpn_queue_entry_t;
 
@@ -32,11 +32,11 @@ chipvpn_queue_entry_t  *chipvpn_queue_pop_acquire(const chipvpn_queue_t *queue);
 void                    chipvpn_queue_push_commit(chipvpn_queue_t *queue, chipvpn_queue_entry_t *entry);
 void                    chipvpn_queue_pop_commit(chipvpn_queue_t *queue, chipvpn_queue_entry_t *entry);
 
-size_t                  chipvpn_queue_push(chipvpn_queue_t *queue, void *data, size_t size, const chipvpn_address_t *addr);
-size_t                  chipvpn_queue_pop(chipvpn_queue_t *queue, void *data, size_t size, chipvpn_address_t *addr);
+size_t                  chipvpn_queue_push(chipvpn_queue_t *queue, void *data, size_t size, const chipvpn_address_t *address);
+size_t                  chipvpn_queue_pop(chipvpn_queue_t *queue, void *data, size_t size, chipvpn_address_t *address);
 
-size_t                  chipvpn_queue_push_vector(chipvpn_queue_t *queue, chipvpn_queue_vector_t *vector, size_t size, const chipvpn_address_t *addr);
-size_t                  chipvpn_queue_pop_vector(chipvpn_queue_t *queue, chipvpn_queue_vector_t *vector, size_t size, chipvpn_address_t *addr);
+size_t                  chipvpn_queue_push_vector(chipvpn_queue_t *queue, chipvpn_queue_vector_t *vector, size_t size, const chipvpn_address_t *address);
+size_t                  chipvpn_queue_pop_vector(chipvpn_queue_t *queue, chipvpn_queue_vector_t *vector, size_t size, chipvpn_address_t *address);
 
 void                    chipvpn_queue_cleanup(chipvpn_queue_t *queue);
 

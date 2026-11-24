@@ -190,9 +190,9 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 	/* socket => tunnel */
 	while(chipvpn_queue_pop_acquire(&vpn->udp.rx_queue) && chipvpn_queue_push_acquire(&vpn->device.tx_queue)) {
-		chipvpn_address_t addr;
+		chipvpn_address_t address;
 
-		size_t r = chipvpn_queue_pop(&vpn->udp.rx_queue, buffer, sizeof(buffer), &addr);
+		size_t r = chipvpn_queue_pop(&vpn->udp.rx_queue, buffer, sizeof(buffer), &address);
 		if(r < sizeof(uint8_t)) {
 			continue;
 		}
@@ -219,7 +219,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				chipvpn_peer_recv_connect(peer, &vpn->device, &vpn->udp, packet, &addr);
+				chipvpn_peer_recv_connect(peer, &vpn->device, &vpn->udp, &address);
 			}
 			break;
 			case CHIPVPN_PACKET_AUTH_REPLY: {
@@ -235,7 +235,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				chipvpn_peer_recv_auth_reply(peer, &vpn->device, &vpn->udp, packet, &addr);
+				chipvpn_peer_recv_auth_reply(peer, &vpn->udp, &address);
 			}
 			break;
 			case CHIPVPN_PACKET_DATA: {
@@ -281,8 +281,8 @@ void chipvpn_service(chipvpn_t *vpn) {
 				/* --- authenticated zone --- */
 
 				/* update address if it doesn't match */
-				if(!chipvpn_address_endpoint_match(&peer->address, &addr)) {
-					peer->address = addr;
+				if(!chipvpn_address_endpoint_match(&peer->address, &address)) {
+					peer->address = address;
 				}
 
 				/* promote session if remote peer uses new session */

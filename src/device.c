@@ -76,7 +76,7 @@ chipvpn_peer_t *chipvpn_device_lookup_peer_by_pubkey(const chipvpn_device_t *dev
 	for(chipvpn_list_node_t *p = chipvpn_list_begin(&device->peers); p != chipvpn_list_end(&device->peers); p = chipvpn_list_next(p)) {
 		chipvpn_peer_t *peer = (chipvpn_peer_t*)p;
 
-		if(chipvpn_secure_memcmp(public, peer->config.public, sizeof(peer->config.public)) == 0) {
+		if(chipvpn_secure_memcmp(public, peer->config.static_public, sizeof(peer->config.static_public)) == 0) {
 			return peer;
 		}
 	}
@@ -166,14 +166,28 @@ void chipvpn_device_peer_service(chipvpn_device_t *device, chipvpn_udp_t *udp) {
 }
 
 bool chipvpn_device_set_postup(chipvpn_device_t *device, const char *command) {
-	if(device->postup) free(device->postup);
+	if(device->postup) {
+		free(device->postup);
+	}
+
 	device->postup = chipvpn_strdup(command);
+
+	if(!device->postup) {
+		return false;
+	}
 	return true;
 }
 
 bool chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command) {
-	if(device->postdown) free(device->postdown);
+	if(device->postdown) {
+		free(device->postdown);
+	}
+
 	device->postdown = chipvpn_strdup(command);
+
+	if(!device->postdown) {
+		return false;
+	}
 	return true;
 }
 
@@ -200,7 +214,7 @@ bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {
 	return true;
 }
 
-bool chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_t *network) {
+bool chipvpn_device_set_address(const chipvpn_device_t *device, const chipvpn_address_t *network) {
 	int domain;
 
 	switch(network->type) {
@@ -233,15 +247,15 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_
 	bool success = false;
 
 	if(network->type == CHIPVPN_ADDRESS_IPV4) {
-		struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
+		struct sockaddr_in *sa = (struct sockaddr_in *)&ifr.ifr_addr;
 
-		addr->sin_family = AF_INET;
-		addr->sin_addr.s_addr = network->ipv4;
+		sa->sin_family = AF_INET;
+		sa->sin_addr.s_addr = network->ipv4;
 
 		if(ioctl(fd, SIOCSIFADDR, &ifr) == 0) {
 			uint32_t mask = network->prefix == 0 ? 0 : UINT32_MAX << (32U - network->prefix);
 
-			addr->sin_addr.s_addr = htonl(mask);
+			sa->sin_addr.s_addr = htonl(mask);
 			success = ioctl(fd, SIOCSIFNETMASK, &ifr) == 0;
 		}
 	} else {
@@ -259,7 +273,7 @@ bool chipvpn_device_set_address(chipvpn_device_t *device, const chipvpn_address_
 	return success;
 }
 
-bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
+bool chipvpn_device_set_mtu(const chipvpn_device_t *device, int mtu) {
 	if(CHACHA20_POLY1305_ENC_LEN(mtu) + sizeof(chipvpn_packet_data_t) > QUEUE_ENTRY_SIZE) {
 		return false;
 	}
@@ -280,7 +294,7 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 }
 
 
-bool chipvpn_device_set_txqueuelen(chipvpn_device_t *device, int qlen) {
+bool chipvpn_device_set_txqueuelen(const chipvpn_device_t *device, int qlen) {
 	struct ifreq ifr = {0};
 	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
 	ifr.ifr_qlen = qlen;
@@ -296,7 +310,7 @@ bool chipvpn_device_set_txqueuelen(chipvpn_device_t *device, int qlen) {
 	return success;
 }
 
-bool chipvpn_device_toggle(chipvpn_device_t *device, bool enable) {
+bool chipvpn_device_toggle(const chipvpn_device_t *device, bool enable) {
 	struct ifreq ifr = {0};
 	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
 
@@ -341,7 +355,7 @@ static void chipvpn_device_run_hook(const char *cmd) {
 	}
 }
 
-bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
+bool chipvpn_device_set_enabled(const chipvpn_device_t *device) {
 	if(!chipvpn_device_toggle(device, true)) {
 		return false;
 	}
@@ -351,7 +365,7 @@ bool chipvpn_device_set_enabled(chipvpn_device_t *device) {
 	return true;
 }
 
-bool chipvpn_device_set_disabled(chipvpn_device_t *device) {
+bool chipvpn_device_set_disabled(const chipvpn_device_t *device) {
 	chipvpn_device_run_hook(device->postdown);
 
 	if(!chipvpn_device_toggle(device, false)) {
@@ -366,18 +380,18 @@ bool chipvpn_device_set_private_key(chipvpn_device_t *device, const char *key) {
 		return false;
 	}
 
-	if(b64_decode((const uint8_t*)key, strlen(key), device->private) != CURVE25519_KEY_SIZE) {
+	if(b64_decode((const uint8_t*)key, strlen(key), device->static_private) != CURVE25519_KEY_SIZE) {
 		return false;
 	}
 
-	device->private[0] &= 248;
-	device->private[31] = (device->private[31] & 127) | 64;
+	device->static_private[0] &= 248;
+	device->static_private[31] = (device->static_private[31] & 127) | 64;
 
-	uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
-	return curve25519(device->public, device->private, basepoint);
+	const uint8_t basepoint[CURVE25519_KEY_SIZE] = {9};
+	return curve25519(device->static_public, device->static_private, basepoint);
 }
 
-static inline bool chipvpn_device_raw_read(chipvpn_device_t *device, chipvpn_queue_entry_t *entry) {
+static inline bool chipvpn_device_raw_read(const chipvpn_device_t *device, chipvpn_queue_entry_t *entry) {
 	ssize_t r = read(device->fd, entry->buffer, sizeof(entry->buffer));
 	if(r <= 0) {
 		return false;
@@ -388,7 +402,7 @@ static inline bool chipvpn_device_raw_read(chipvpn_device_t *device, chipvpn_que
 	return true;
 }
 
-static inline bool chipvpn_device_raw_write(chipvpn_device_t *device, chipvpn_queue_entry_t *entry) {
+static inline bool chipvpn_device_raw_write(const chipvpn_device_t *device, chipvpn_queue_entry_t *entry) {
 	ssize_t w = write(device->fd, entry->buffer, entry->size);
 	if(w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
 		return false;
