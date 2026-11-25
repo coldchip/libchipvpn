@@ -229,7 +229,7 @@ int chipvpn_noise_consume_connect(chipvpn_device_t *device, chipvpn_peer_t **pee
 		if(static_public_out) {
 			memcpy(static_public_out, static_public, sizeof(static_public));
 		}
-		return CHIPVPN_NOISE_ERR_UNKNOWN_PEER;
+		return CHIPVPN_NOISE_ERR_LOOKUP;
 	}
 
 	/* ss */
@@ -334,7 +334,7 @@ int chipvpn_noise_consume_reply(chipvpn_device_t *device, chipvpn_peer_t **peer_
 
 	chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_handshake(device, le32toh(packet->receiver_index));
 	if(!peer) {
-		return CHIPVPN_NOISE_ERR_UNKNOWN_HANDSHAKE;
+		return CHIPVPN_NOISE_ERR_LOOKUP;
 	}
 
 	memcpy(chain_key, peer->handshake.chain_key, sizeof(chain_key));

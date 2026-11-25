@@ -61,19 +61,16 @@ bool chipvpn_ipc_send_auth(chipvpn_ipc_t *ipc, const uint8_t *static_public, chi
 	}
 
 	chipvpn_auth_replay_t replay = {0};
-	replay.address   = *address;
-	replay.packet    = *packet;
+	replay.address = *address;
+	replay.packet  = *packet;
 
-	char pub_b64[64]     = {0};
-	char replay_b64[280] = {0}; /* 191 bytes -> 256 b64 chars + NUL */
+	char static_public_b64[64] = {0};
+	char replay_b64[512]       = {0};
 
-	b64_encode(static_public, CURVE25519_KEY_SIZE, (uint8_t*)pub_b64);
+	b64_encode(static_public, CURVE25519_KEY_SIZE, (uint8_t*)static_public_b64);
 	b64_encode((const uint8_t*)&replay, sizeof(replay), (uint8_t*)replay_b64);
 
-	printf("AUTH %s %s\n", pub_b64, replay_b64);
-
-	/* chipvpn_ipc_printf appends '\n' automatically; total line is ~307 bytes */
-	return chipvpn_ipc_printf(ipc, "AUTH %s %s\n", pub_b64, replay_b64);
+	return chipvpn_ipc_printf(ipc, "AUTH %s %s\n", static_public_b64, replay_b64);
 }
 
 void chipvpn_ipc_preselect(chipvpn_ipc_t *ipc, fd_set *rdset, fd_set *wdset, int *max) {

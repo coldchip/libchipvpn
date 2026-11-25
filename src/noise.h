@@ -21,8 +21,7 @@ enum {
 	CHIPVPN_NOISE_ERR_DH,
 	CHIPVPN_NOISE_ERR_AEAD,
 	CHIPVPN_NOISE_ERR_TIMESTAMP,
-	CHIPVPN_NOISE_ERR_UNKNOWN_PEER,
-	CHIPVPN_NOISE_ERR_UNKNOWN_HANDSHAKE
+	CHIPVPN_NOISE_ERR_LOOKUP
 };
 
 void           chipvpn_noise_init(uint8_t *chain_key, uint8_t *hash_key, const uint8_t *peer_pub);

@@ -24,7 +24,7 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 
 		char key[128];
 		char value[4096];
-		if(sscanf(line, "%24[^:]:%1024[^\n]", key, value) != 2) {
+		if(sscanf(line, "%24[^:]:%2048[^\n]", key, value) != 2) {
 			LOG_FATAL("failed to parse config entry [%s]", line);
 			return;
 		}
@@ -74,6 +74,32 @@ void chipvpn_config_command(chipvpn_t *vpn, const char *command) {
 
 			chipvpn_list_remove(&peer->node);
 			chipvpn_peer_free(peer);
+			continue;
+		}
+
+		if(strcmp(key, "auth") == 0) {
+			size_t len = strlen(value);
+			if(len != b64e_size(sizeof(chipvpn_auth_replay_t))) {
+				LOG_WARN("invalid auth payload length [%zu]", len);
+				continue;
+			}
+
+			chipvpn_auth_replay_t payload;
+			if(b64_decode((const uint8_t *)value, len, (uint8_t *)&payload) != sizeof(payload)) {
+				LOG_WARN("failed to decode auth payload");
+				continue;
+			}
+
+			chipvpn_queue_entry_t *entry = chipvpn_queue_push_acquire(&vpn->udp.rx_queue);
+			if(!entry) {
+				LOG_WARN("udp rx queue full, dropping replayed auth");
+				continue;
+			}
+
+			entry->address = payload.address;
+			entry->size    = sizeof(payload.packet);
+			memcpy(entry->buffer, &payload.packet, sizeof(payload.packet));
+			chipvpn_queue_push_commit(&vpn->udp.rx_queue, entry);
 			continue;
 		}
 

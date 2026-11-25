@@ -11,8 +11,9 @@ section:peer
 allow:10.64.0.2/32
 public:ihjaCjeBm1xpEeVj9NEYfgLb5L51ByG6J4hFu4lYoQM=
 
-#section:peer
-#allow:10.128.1.2/32
-#public:zEB+eXM+NYQRPKVpt8TXm6DB1kGkgVwJXsC9W6nQ8UM=
-#inbound:0.0.0.0/0
-#outbound:0.0.0.0/0
+section:peer
+allow:10.128.1.2/32
+public:zEB+eXM+NYQRPKVpt8TXm6DB1kGkgVwJXsC9W6nQ8UM=
+inbound:0.0.0.0/0
+outbound:0.0.0.0/0
+
