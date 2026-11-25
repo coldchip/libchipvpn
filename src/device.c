@@ -54,22 +54,29 @@ bool chipvpn_device_init(chipvpn_device_t *device) {
 }
 
 uint32_t chipvpn_device_generate_index(chipvpn_device_t *device) {
-	uint32_t index;
+	for(int i = 0; i < 16; i++) {
+		uint32_t index = 0;
 
-	chipvpn_secure_random((uint8_t*)&index, sizeof(index));
-	if(index == 0) {
-		return 0;
+		if(!chipvpn_secure_random((uint8_t *)&index, sizeof(index))) {
+			return 0;
+		}
+
+		if(index == 0) {
+			continue;
+		}
+
+		if(chipvpn_device_lookup_peer_by_handshake(device, index) != NULL) {
+			continue;
+		}
+
+		if(chipvpn_device_lookup_peer_by_session(device, NULL, index) != NULL) {
+			continue;
+		}
+
+		return index;
 	}
 
-	if(chipvpn_device_lookup_peer_by_handshake(device, index) != NULL) {
-		return 0;
-	}
-
-	if(chipvpn_device_lookup_peer_by_session(device, NULL, index) != NULL) {
-		return 0;
-	}
-
-	return index;
+	return 0;
 }
 
 chipvpn_peer_t *chipvpn_device_lookup_peer_by_pubkey(chipvpn_device_t *device, const uint8_t *public) {
@@ -192,6 +199,11 @@ bool chipvpn_device_set_postdown(chipvpn_device_t *device, const char *command) 
 }
 
 bool chipvpn_device_set_name(chipvpn_device_t *device, const char *name) {
+	size_t len = strlen(name);
+	if(len == 0 || len >= IFNAMSIZ) {
+		return false;
+	}
+
 	struct ifreq ifr = {0};
 
 	strncpy(ifr.ifr_name, device->dev, IFNAMSIZ);
