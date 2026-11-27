@@ -261,8 +261,6 @@ void chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				/* --- authenticated zone --- */
-
 				/* update address if it doesn't match */
 				if(!chipvpn_address_endpoint_match(&peer->address, &address)) {
 					peer->address = address;
