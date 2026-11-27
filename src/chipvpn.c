@@ -146,6 +146,12 @@ void chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
+		/* pad packet to multiple of 16, capped at size of MTU */
+		size_t padded = chipvpn_packet_pad(buffer, r, vpn->device.mtu);
+		if(padded == 0) {
+			continue;
+		}
+
 		peer->session.counter++;
 
 		chipvpn_packet_data_t header = {
@@ -160,7 +166,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 		bool success = chipvpn_crypto_chacha20_poly1305_encrypt(
 			peer->session.outbound.key, 
 			buffer, 
-			r, 
+			padded, 
 			peer->session.counter, 
 			NULL, 
 			0,
@@ -181,7 +187,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 		chipvpn_queue_vector_t vector[] = {
 			{ .data = &header, .size = sizeof(header) }, 
-			{ .data = buffer, .size = r },
+			{ .data = buffer, .size = padded },
 			{ .data = mac, .size = sizeof(mac) }
 		};
 
@@ -300,23 +306,31 @@ void chipvpn_service(chipvpn_t *vpn) {
 				/* we owe remote a keepalive packet */
 				PEER_ACK_ARM(peer, PEER_ACK_OWE_RX);
 
+				/* unpad plaintext to ip total length */
+				size_t unpadded = chipvpn_packet_unpad(data, data_size);
+				if(unpadded == 0) {
+					continue;
+				}
+
 				/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 				chipvpn_address_t src = {0};
 				uint8_t version = ((uint8_t *)data)[0] >> 4;
 
 				switch(version) {
 					case 4: {
-						if(data_size < sizeof(ipv4_hdr_t)) continue;
+						if(unpadded < sizeof(ipv4_hdr_t)) continue;
 
 						ipv4_hdr_t *ipv4_hdr = (ipv4_hdr_t *)data;
+
 						src.type = CHIPVPN_ADDRESS_IPV4;
 						src.ipv4 = ipv4_hdr->src_addr;
 					}
 					break;
 					case 6: {
-						if(data_size < sizeof(ipv6_hdr_t)) continue;
+						if(unpadded < sizeof(ipv6_hdr_t)) continue;
 
 						ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)data;
+
 						src.type = CHIPVPN_ADDRESS_IPV6;
 						memcpy(src.ipv6, ipv6_hdr->src_addr, sizeof(ipv6_hdr->src_addr));
 					}
@@ -336,9 +350,9 @@ void chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				peer->rx += data_size;
+				peer->rx += unpadded;
 
-				chipvpn_queue_push(&vpn->device.tx_queue, data, data_size, NULL);
+				chipvpn_queue_push(&vpn->device.tx_queue, data, unpadded, NULL);
 			}
 			break;
 		}

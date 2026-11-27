@@ -32,6 +32,7 @@ typedef struct {
 	chipvpn_list_node_t node;
 	int fd;
 	char dev[IF_NAMESIZE + 1];
+	int mtu;
 	
 	chipvpn_list_t peers;
 

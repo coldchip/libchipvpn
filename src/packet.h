@@ -133,6 +133,9 @@ typedef struct __attribute__((__packed__)) {
 	uint8_t  payload[];
 } chipvpn_packet_data_t;
 
+size_t    chipvpn_packet_pad(uint8_t *data, size_t unpadded, int mtu);
+size_t    chipvpn_packet_unpad(const uint8_t *data, size_t padded);
+
 #ifdef __cplusplus
 }
 #endif

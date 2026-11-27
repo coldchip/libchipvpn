@@ -34,6 +34,11 @@ bool chipvpn_device_init(chipvpn_device_t *device) {
 
 	strncpy(device->dev, ifr.ifr_name, IFNAMSIZ);
 
+	if(!chipvpn_device_set_mtu(device, 1420)) {
+		close(fd);
+		return false;
+	}
+
 	device->fd       = fd;
 	device->postup   = NULL;
 	device->postdown = NULL;
@@ -301,6 +306,10 @@ bool chipvpn_device_set_mtu(chipvpn_device_t *device, int mtu) {
 
 	bool success = ioctl(fd, SIOCSIFMTU, &ifr) == 0;
 	close(fd);
+
+	if(success) {
+		device->mtu = mtu;
+	}
 
 	return success;
 }
