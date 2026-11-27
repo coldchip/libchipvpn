@@ -101,38 +101,14 @@ void chipvpn_service(chipvpn_t *vpn) {
 	/* tunnel => socket */
 	while(chipvpn_queue_pop_acquire(&vpn->device.rx_queue) && chipvpn_queue_push_acquire(&vpn->udp.tx_queue)) {
 		size_t r = chipvpn_queue_pop(&vpn->device.rx_queue, buffer, sizeof(buffer), NULL);
-		if(r <= 0) {
+		if(r == 0) {
 			continue;
 		}
 
 		/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 		chipvpn_address_t dst = {0};
-		uint8_t version = ((uint8_t *)buffer)[0] >> 4;
-
-		switch(version) {
-			case 4: {
-				if(r < sizeof(ipv4_hdr_t)) {
-					continue;
-				}
-
-				ipv4_hdr_t *ipv4_hdr = (ipv4_hdr_t *)buffer;
-				dst.type = CHIPVPN_ADDRESS_IPV4;
-				dst.ipv4 = ipv4_hdr->dst_addr;
-			}
-			break;
-			case 6: {
-				if(r < sizeof(ipv6_hdr_t)) {
-					continue;
-				}
-
-				ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)buffer;
-				dst.type = CHIPVPN_ADDRESS_IPV6;
-				memcpy(dst.ipv6, ipv6_hdr->dst_addr, sizeof(ipv6_hdr->dst_addr));
-			}
-			break;
-			default: {
-				continue;
-			}
+		if(!chipvpn_packet_parse_ip(buffer, r, NULL, &dst)) {
+			continue;
 		}
 
 		/* lookup peer by the packet address (authentication) */
@@ -147,7 +123,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		/* pad packet to multiple of 16, capped at size of MTU */
-		size_t padded = chipvpn_packet_pad(buffer, r, vpn->device.mtu);
+		size_t padded = chipvpn_packet_pad_ip(buffer, r, vpn->device.mtu);
 		if(padded == 0) {
 			continue;
 		}
@@ -250,12 +226,12 @@ void chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				chipvpn_packet_data_t *packet      = (chipvpn_packet_data_t*)buffer;
-				uint32_t               session_id  = le32toh(packet->session);
-				uint64_t               counter     = le64toh(packet->counter);
-				uint8_t               *data        = packet->payload;
-				size_t                 data_size   = CHACHA20_POLY1305_DEC_LEN(r - sizeof(chipvpn_packet_data_t));
-				uint8_t               *mac         = buffer + CHACHA20_POLY1305_DEC_LEN(r);
+				chipvpn_packet_data_t *packet       = (chipvpn_packet_data_t*)buffer;
+				uint32_t               session_id   = le32toh(packet->session);
+				uint64_t               counter      = le64toh(packet->counter);
+				uint8_t               *payload      = packet->payload;
+				size_t                 payload_size = CHACHA20_POLY1305_DEC_LEN(r - sizeof(chipvpn_packet_data_t));
+				uint8_t               *mac          = buffer + CHACHA20_POLY1305_DEC_LEN(r);
 
 				chipvpn_peer_session_t *session = NULL;
 
@@ -268,8 +244,8 @@ void chipvpn_service(chipvpn_t *vpn) {
 				/* attempt to decrypt packet */
 				bool success = chipvpn_crypto_chacha20_poly1305_decrypt(
 					session->inbound.key, 
-					data, 
-					data_size, 
+					payload, 
+					payload_size, 
 					counter, 
 					NULL, 
 					0, 
@@ -298,7 +274,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 				}
 
 				/* keepalive packet, update timers */
-				if(data_size == 0) {
+				if(payload_size == 0) {
 					chipvpn_peer_recv_keepalive(peer);
 					continue;
 				}
@@ -307,37 +283,15 @@ void chipvpn_service(chipvpn_t *vpn) {
 				PEER_ACK_ARM(peer, PEER_ACK_OWE_RX);
 
 				/* unpad plaintext to ip total length */
-				size_t unpadded = chipvpn_packet_unpad(data, data_size);
+				size_t unpadded = chipvpn_packet_unpad_ip(payload, payload_size);
 				if(unpadded == 0) {
 					continue;
 				}
 
 				/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 				chipvpn_address_t src = {0};
-				uint8_t version = ((uint8_t *)data)[0] >> 4;
-
-				switch(version) {
-					case 4: {
-						if(unpadded < sizeof(ipv4_hdr_t)) continue;
-
-						ipv4_hdr_t *ipv4_hdr = (ipv4_hdr_t *)data;
-
-						src.type = CHIPVPN_ADDRESS_IPV4;
-						src.ipv4 = ipv4_hdr->src_addr;
-					}
-					break;
-					case 6: {
-						if(unpadded < sizeof(ipv6_hdr_t)) continue;
-
-						ipv6_hdr_t *ipv6_hdr = (ipv6_hdr_t *)data;
-
-						src.type = CHIPVPN_ADDRESS_IPV6;
-						memcpy(src.ipv6, ipv6_hdr->src_addr, sizeof(ipv6_hdr->src_addr));
-					}
-					break;
-					default: {
-						continue;
-					}
+				if(!chipvpn_packet_parse_ip(payload, unpadded, &src, NULL)) {
+					continue;
 				}
 
 				/* if the packet's source is part of peer's allowedip (authentication) */
@@ -352,7 +306,7 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 				peer->rx += unpadded;
 
-				chipvpn_queue_push(&vpn->device.tx_queue, data, unpadded, NULL);
+				chipvpn_queue_push(&vpn->device.tx_queue, payload, unpadded, NULL);
 			}
 			break;
 		}

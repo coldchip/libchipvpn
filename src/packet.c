@@ -1,10 +1,11 @@
 #include <endian.h>
 #include <string.h>
+#include "address.h"
 #include "packet.h"
 
 #define CHIPVPN_PACKET_ALIGN 16U
 
-size_t chipvpn_packet_pad(uint8_t *data, size_t unpadded, int mtu) {
+size_t chipvpn_packet_pad_ip(uint8_t *data, size_t unpadded, int mtu) {
 	if(unpadded == 0) {
 		return 0;
 	}
@@ -18,7 +19,7 @@ size_t chipvpn_packet_pad(uint8_t *data, size_t unpadded, int mtu) {
 	return padded;
 }
 
-size_t chipvpn_packet_unpad(const uint8_t *data, size_t padded) {
+size_t chipvpn_packet_unpad_ip(const uint8_t *data, size_t padded) {
 	if(padded == 0) {
 		return 0;
 	}
@@ -42,5 +43,44 @@ size_t chipvpn_packet_unpad(const uint8_t *data, size_t padded) {
 		}
 		default:
 			return 0;
+	}
+}
+
+bool chipvpn_packet_parse_ip(const uint8_t *data, size_t size, chipvpn_address_t *src, chipvpn_address_t *dst) {
+	if(!data || size == 0) {
+		return false;
+	}
+
+	switch(data[0] >> 4) {
+		case 4: {
+			if(size < sizeof(ipv4_hdr_t)) {
+				return false;
+			}
+			const ipv4_hdr_t *hdr = (const ipv4_hdr_t *)data;
+			if(src) {
+				*src = (chipvpn_address_t){ .type = CHIPVPN_ADDRESS_IPV4, .ipv4 = hdr->src_addr };
+			}
+			if(dst) {
+				*dst = (chipvpn_address_t){ .type = CHIPVPN_ADDRESS_IPV4, .ipv4 = hdr->dst_addr };
+			}
+			return true;
+		}
+		case 6: {
+			if(size < sizeof(ipv6_hdr_t)) {
+				return false;
+			}
+			const ipv6_hdr_t *hdr = (const ipv6_hdr_t *)data;
+			if(src) {
+				*src = (chipvpn_address_t){ .type = CHIPVPN_ADDRESS_IPV6 };
+				memcpy(src->ipv6, hdr->src_addr, sizeof(hdr->src_addr));
+			}
+			if(dst) {
+				*dst = (chipvpn_address_t){ .type = CHIPVPN_ADDRESS_IPV6 };
+				memcpy(dst->ipv6, hdr->dst_addr, sizeof(hdr->dst_addr));
+			}
+			return true;
+		}
+		default:
+			return false;
 	}
 }

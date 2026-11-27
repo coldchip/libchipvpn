@@ -9,6 +9,7 @@ extern "C"
 #include <stdbool.h>
 #include "curve25519.h"
 #include "poly1305.h"
+#include "address.h"
 #include "util.h"
 
 typedef struct __attribute__((__packed__)) {
@@ -133,8 +134,9 @@ typedef struct __attribute__((__packed__)) {
 	uint8_t  payload[];
 } chipvpn_packet_data_t;
 
-size_t    chipvpn_packet_pad(uint8_t *data, size_t unpadded, int mtu);
-size_t    chipvpn_packet_unpad(const uint8_t *data, size_t padded);
+size_t chipvpn_packet_pad_ip(uint8_t *data, size_t unpadded, int mtu);
+size_t chipvpn_packet_unpad_ip(const uint8_t *data, size_t padded);
+bool   chipvpn_packet_parse_ip(const uint8_t *data, size_t size, chipvpn_address_t *src, chipvpn_address_t *dst);
 
 #ifdef __cplusplus
 }
