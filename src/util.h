@@ -62,7 +62,7 @@ bool         chipvpn_secure_random(uint8_t *buf, int size);
 bool         chipvpn_run_command(const char *command);
 uint64_t     chipvpn_get_monotime();
 uint64_t     chipvpn_get_realtime();
-void         chipvpn_update_tick();
+uint64_t     chipvpn_update_tick();
 uint64_t     chipvpn_get_tick();
 int          chipvpn_secure_memcmp(const void *a, const void *b, size_t size);
 void         chipvpn_secure_zero(void *v, size_t n);

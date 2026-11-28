@@ -58,6 +58,7 @@ bool chipvpn_packet_parse_ip(const uint8_t *data, size_t size, chipvpn_address_t
 				dst->type = CHIPVPN_ADDRESS_IPV4; 
 				dst->ipv4 = hdr->dst_addr;
 			}
+			
 			return true;
 		}
 		case 6: {

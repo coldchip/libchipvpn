@@ -106,8 +106,9 @@ void chipvpn_service(chipvpn_t *vpn) {
 		}
 
 		/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
+		chipvpn_address_t src = {0};
 		chipvpn_address_t dst = {0};
-		if(!chipvpn_packet_parse_ip(buffer, r, NULL, &dst)) {
+		if(!chipvpn_packet_parse_ip(buffer, r, &src, &dst)) {
 			continue;
 		}
 
@@ -117,8 +118,8 @@ void chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
-		/* if the packet's destination is part of peer's outbound firewall (authorisation) */
-		if(!chipvpn_firewall_match(&peer->firewall_outbound, &dst)) {
+		/* if the packet's source is part of peer's outbound firewall (authorisation) */
+		if(!chipvpn_firewall_match(&peer->firewall_outbound, &src)) {
 			continue;
 		}
 
@@ -288,7 +289,8 @@ void chipvpn_service(chipvpn_t *vpn) {
 
 				/* cast packet into chipvpn_address_t based on ipv4 or ipv6 */
 				chipvpn_address_t src = {0};
-				if(!chipvpn_packet_parse_ip(payload, unpadded, &src, NULL)) {
+				chipvpn_address_t dst = {0};
+				if(!chipvpn_packet_parse_ip(payload, unpadded, &src, &dst)) {
 					continue;
 				}
 
@@ -297,8 +299,8 @@ void chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				/* if the packet's source is part of peer's inbound firewall (authorisation) */
-				if(!chipvpn_firewall_match(&peer->firewall_inbound, &src)) {
+				/* if the packet's destination is part of peer's inbound firewall (authorisation) */
+				if(!chipvpn_firewall_match(&peer->firewall_inbound, &dst)) {
 					continue;
 				}
 
