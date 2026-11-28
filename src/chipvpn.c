@@ -112,13 +112,13 @@ void chipvpn_service(chipvpn_t *vpn) {
 			continue;
 		}
 
-		/* lookup peer by the packet address (authentication) */
+		/* lookup peer by the packet destination address (authentication) */
 		chipvpn_peer_t *peer = chipvpn_device_lookup_peer_by_ip(&vpn->device, &dst);
 		if(!peer || !SESSION_ACTIVE(&peer->session)) {
 			continue;
 		}
 
-		/* if the packet's source is part of peer's outbound firewall (authorisation) */
+		/* if the packet source address is part of peer's outbound firewall (authorisation) */
 		if(!chipvpn_firewall_match(&peer->firewall_outbound, &src)) {
 			continue;
 		}
@@ -294,12 +294,12 @@ void chipvpn_service(chipvpn_t *vpn) {
 					continue;
 				}
 
-				/* if the packet's source is part of peer's allowedip (authentication) */
+				/* if the packet source address is part of peer's allowedip (authentication) */
 				if(!chipvpn_peer_allowip_match(peer, &src)) {
 					continue;
 				}
 
-				/* if the packet's destination is part of peer's inbound firewall (authorisation) */
+				/* if the packet destination address is part of peer's inbound firewall (authorisation) */
 				if(!chipvpn_firewall_match(&peer->firewall_inbound, &dst)) {
 					continue;
 				}
